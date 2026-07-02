@@ -1,5 +1,7 @@
 # Contributing Guide
 
+Language: English | [繁體中文](CONTRIBUTING.zh-TW.md)
+
 Contributions are welcome. The usual flow is: fork the repository, add your generated output, open a pull request, and wait for review. After merge, your output appears in the gallery with your GitHub handle.
 
 ## TL;DR

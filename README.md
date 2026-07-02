@@ -1,10 +1,12 @@
 # AI Arena
 
+Language: English | [繁體中文](README.zh-TW.md)
+
 AI Arena is a static gallery for comparing outputs from different AI models and thinking-effort settings on the same task.
 
 The site is pure HTML, CSS, and JavaScript, so it can be deployed directly to GitHub Pages without a backend. The homepage is provider-neutral; OpenAI, Anthropic, Google, xAI, GLM, DeepSeek, Kimi, and other providers are represented through submission metadata.
 
-Want to contribute an AI-generated result? See [CONTRIBUTING.md](CONTRIBUTING.md).
+Want to contribute an AI-generated result? See [CONTRIBUTING.md](CONTRIBUTING.md). Traditional Chinese contribution notes are available in [CONTRIBUTING.zh-TW.md](CONTRIBUTING.zh-TW.md).
 
 ## Daily Workflow
 
@@ -157,7 +159,7 @@ External media must use `https:` URLs. `http:`, `data:`, `blob:`, and other prot
 
 ## GitHub Pages Deployment
 
-The repository includes `.github/workflows/pages.yml`. Initial repository setup should use:
+The repository includes `.github/workflows/pages.yml` and is configured to deploy with GitHub Actions. If the Pages settings ever need to be recreated, use:
 
 1. Repository **Settings -> Pages**.
 2. **Build and deployment -> Source -> GitHub Actions**.
