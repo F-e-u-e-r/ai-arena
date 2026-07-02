@@ -1,0 +1,80 @@
+name: AI Arena CI / Pages
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # 所有 PR 與 push 都會跑：驗證 manifest 同步 + 掃描祕密。
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Generate task manifest
+        run: node scripts/build-manifest.mjs
+
+      - name: Verify generated manifest is committed
+        run: |
+          if ! git diff --exit-code -- tasks.json; then
+            echo "::error file=tasks.json::tasks.json 未同步，請執行 node scripts/build-manifest.mjs 後重新 commit"
+            exit 1
+          fi
+
+      - name: Scan submissions for secrets
+        run: node scripts/scan-secrets.mjs
+
+  # 只有 push 到 main（或手動）才真正部署。PR（含 fork）不會 deploy。
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: validate
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Generate task manifest
+        run: node scripts/build-manifest.mjs
+
+      - name: Build static site
+        run: |
+          mkdir -p _site
+          cp -R index.html assets tasks tasks.json _site/
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Arena</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/style.css?v=3">
+</head>
+<body>
+  <header class="site-header">
+    <h1>AI&nbsp;Arena</h1>
+    <p class="tagline">同一個 task，不同 model 與 thinking effort 的並排對比</p>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <h2 class="sidebar-title">Tasks</h2>
+      <nav id="task-list" class="task-list"><!-- 由 app.js 動態產生 --></nav>
+    </aside>
+    <main id="main" class="main"><!-- 由 app.js 動態產生 --></main>
+  </div>
+
+  <script src="assets/app.js?v=3"></script>
+</body>
+</html>

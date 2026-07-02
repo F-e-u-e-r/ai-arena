@@ -1,0 +1,8 @@
+{
+  "title": "旋轉立方體 (Three.js)",
+  "type": "iframe",
+  "runtime": "webgl",
+  "prompt": "用原生 HTML + Three.js + CSS，做一個在 3D 空間中持續旋轉的立方體，要有光照效果。",
+  "description": "比較不同 model / effort 在 3D 場景細節上的差異：材質、光照、陰影、構圖。",
+  "order": 10
+}

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spinning Cube — Opus 4.8 low</title>
+<style>html,body{margin:0;height:100%;background:#000;overflow:hidden}canvas{display:block}</style>
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+</script>
+</head>
+<body>
+<script type="module">
+import * as THREE from 'three';
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 100);
+camera.position.z = 3;
+
+const renderer = new THREE.WebGLRenderer();
+renderer.setSize(innerWidth, innerHeight);
+document.body.append(renderer.domElement);
+
+const cube = new THREE.Mesh(
+  new THREE.BoxGeometry(1, 1, 1),
+  new THREE.MeshNormalMaterial()
+);
+scene.add(cube);
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+function animate() {
+  requestAnimationFrame(animate);
+  cube.rotation.x += 0.01;
+  cube.rotation.y += 0.01;
+  renderer.render(scene, camera);
+}
+animate();
+</script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bouncing Ball — Opus 4.8 low</title>
+<style>html,body{margin:0;height:100%;background:#111;overflow:hidden}canvas{display:block}</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const cv = document.getElementById('c');
+const ctx = cv.getContext('2d');
+cv.width = innerWidth;
+cv.height = innerHeight;
+addEventListener('resize', () => { cv.width = innerWidth; cv.height = innerHeight; });
+
+let x = cv.width / 2, y = 80, vy = 0;
+const r = 30;
+
+function frame() {
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  vy += 0.5;
+  y += vy;
+  if (y + r > cv.height) { y = cv.height - r; vy = -vy * 0.8; }
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = '#e74c3c';
+  ctx.fill();
+  requestAnimationFrame(frame);
+}
+frame();
+</script>
+</body>
+</html>

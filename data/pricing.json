@@ -1,0 +1,52 @@
+{
+  "_note": "以 modelId 為 key 的 token 單價表。單位 = USD / 1,000,000 tokens。build-manifest.mjs 會用 submission 的 metrics.tokens 自動算出 costUsd。價格請以 OpenRouter / AWS Bedrock / 官方 pricing 頁為準，更新時一併更新 source 與 verifiedAt。cachedInput 省略時，快取 token 會以 input 價計算。",
+  "_fields": {
+    "input": "每 1M 輸入(非快取) token 的 USD 價格",
+    "output": "每 1M 輸出 token 的 USD 價格",
+    "cachedInput": "每 1M 快取讀取 token 的 USD 價格 (選填)",
+    "source": "價格來源",
+    "verifiedAt": "最後查證日期 (YYYY-MM-DD)"
+  },
+  "models": {
+    "claude-opus-4-8": {
+      "input": 15,
+      "output": 75,
+      "cachedInput": 1.5,
+      "source": "bedrock",
+      "verifiedAt": null
+    },
+    "claude-sonnet-4-6": {
+      "input": 3,
+      "output": 15,
+      "cachedInput": 0.3,
+      "source": "bedrock",
+      "verifiedAt": null
+    },
+    "claude-haiku-4-5": {
+      "input": 1,
+      "output": 5,
+      "cachedInput": 0.1,
+      "source": "bedrock",
+      "verifiedAt": null
+    },
+    "gpt-5": {
+      "input": 1.25,
+      "output": 10,
+      "cachedInput": 0.125,
+      "source": "openrouter",
+      "verifiedAt": null
+    },
+    "gemini-2.5-pro": {
+      "input": 1.25,
+      "output": 10,
+      "source": "openrouter",
+      "verifiedAt": null
+    },
+    "deepseek-v3": {
+      "input": 0.27,
+      "output": 1.1,
+      "source": "openrouter",
+      "verifiedAt": null
+    }
+  }
+}

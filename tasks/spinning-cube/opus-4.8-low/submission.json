@@ -1,0 +1,16 @@
+{
+  "provider": "anthropic",
+  "model": "Opus 4.8",
+  "modelId": "claude-opus-4-8",
+  "effort": "low",
+  "client": "claude-code",
+  "author": "F-e-u-e-r",
+  "generatedAt": "2026-07-02T09:20:00Z",
+  "metrics": {
+    "durationMs": 11800,
+    "inputTokens": 512,
+    "outputTokens": 1140,
+    "cachedInputTokens": 0
+  },
+  "order": 20
+}

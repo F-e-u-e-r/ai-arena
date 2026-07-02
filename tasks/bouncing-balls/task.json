@@ -1,0 +1,8 @@
+{
+  "title": "彈跳球動畫 (Canvas)",
+  "type": "iframe",
+  "runtime": "canvas",
+  "prompt": "用原生 HTML + JavaScript + CSS（Canvas），做一個會在畫面內彈跳的球的動畫，要有重力與反彈。",
+  "description": "比較純前端 Canvas 動畫的物理感、視覺細節與完成度。",
+  "order": 20
+}

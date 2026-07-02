@@ -1,0 +1,100 @@
+[
+  {
+    "title": "旋轉立方體 (Three.js)",
+    "type": "iframe",
+    "runtime": "webgl",
+    "prompt": "用原生 HTML + Three.js + CSS，做一個在 3D 空間中持續旋轉的立方體，要有光照效果。",
+    "description": "比較不同 model / effort 在 3D 場景細節上的差異：材質、光照、陰影、構圖。",
+    "order": 10,
+    "id": "spinning-cube",
+    "submissions": [
+      {
+        "provider": "anthropic",
+        "model": "Opus 4.8",
+        "modelId": "claude-opus-4-8",
+        "effort": "high",
+        "client": "claude-code",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-07-02T09:12:00Z",
+        "metrics": {
+          "durationMs": 38200,
+          "inputTokens": 512,
+          "outputTokens": 2680,
+          "cachedInputTokens": 0
+        },
+        "order": 10,
+        "id": "opus-4.8-high",
+        "costUsd": 0.20868,
+        "path": "tasks/spinning-cube/opus-4.8-high/"
+      },
+      {
+        "provider": "anthropic",
+        "model": "Opus 4.8",
+        "modelId": "claude-opus-4-8",
+        "effort": "low",
+        "client": "claude-code",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-07-02T09:20:00Z",
+        "metrics": {
+          "durationMs": 11800,
+          "inputTokens": 512,
+          "outputTokens": 1140,
+          "cachedInputTokens": 0
+        },
+        "order": 20,
+        "id": "opus-4.8-low",
+        "costUsd": 0.09318,
+        "path": "tasks/spinning-cube/opus-4.8-low/"
+      }
+    ]
+  },
+  {
+    "title": "彈跳球動畫 (Canvas)",
+    "type": "iframe",
+    "runtime": "canvas",
+    "prompt": "用原生 HTML + JavaScript + CSS（Canvas），做一個會在畫面內彈跳的球的動畫，要有重力與反彈。",
+    "description": "比較純前端 Canvas 動畫的物理感、視覺細節與完成度。",
+    "order": 20,
+    "id": "bouncing-balls",
+    "submissions": [
+      {
+        "provider": "anthropic",
+        "model": "Opus 4.8",
+        "modelId": "claude-opus-4-8",
+        "effort": "high",
+        "client": "claude-code",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-07-02T09:34:00Z",
+        "metrics": {
+          "durationMs": 41800,
+          "inputTokens": 486,
+          "outputTokens": 3040,
+          "cachedInputTokens": 0
+        },
+        "order": 10,
+        "id": "opus-4.8-high",
+        "costUsd": 0.23529,
+        "path": "tasks/bouncing-balls/opus-4.8-high/"
+      },
+      {
+        "provider": "anthropic",
+        "model": "Opus 4.8",
+        "modelId": "claude-opus-4-8",
+        "effort": "low",
+        "client": "claude-code",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-07-02T09:41:00Z",
+        "metrics": {
+          "durationMs": 9600,
+          "inputTokens": 486,
+          "outputTokens": 940,
+          "cachedInputTokens": 0
+        },
+        "order": 20,
+        "id": "opus-4.8-low",
+        "costUsd": 0.07779,
+        "path": "tasks/bouncing-balls/opus-4.8-low/"
+      }
+    ]
+  }
+]

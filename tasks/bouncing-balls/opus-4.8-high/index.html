@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bouncing Balls — Opus 4.8 high</title>
+<style>html,body{margin:0;height:100%;background:#0b0d12;overflow:hidden}canvas{display:block}</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const cv = document.getElementById('c');
+const ctx = cv.getContext('2d');
+let W, H;
+function resize() { W = cv.width = innerWidth; H = cv.height = innerHeight; }
+resize();
+addEventListener('resize', resize);
+
+const COLORS = ['#4f8cff', '#ff5ea8', '#42e3a0', '#ffd23f', '#b06cff'];
+const balls = Array.from({ length: 18 }, () => ({
+  x: Math.random() * innerWidth,
+  y: Math.random() * innerHeight * 0.5,
+  vx: (Math.random() * 2 - 1) * 4,
+  vy: 0,
+  r: 8 + Math.random() * 22,
+  c: COLORS[Math.floor(Math.random() * COLORS.length)]
+}));
+const G = 0.4, REST = 0.82;
+
+function frame() {
+  ctx.fillStyle = 'rgba(11,13,18,0.25)'; // 半透明覆蓋 → 拖尾效果
+  ctx.fillRect(0, 0, W, H);
+  for (const b of balls) {
+    b.vy += G;
+    b.x += b.vx;
+    b.y += b.vy;
+    if (b.x - b.r < 0) { b.x = b.r; b.vx = -b.vx * REST; }
+    if (b.x + b.r > W) { b.x = W - b.r; b.vx = -b.vx * REST; }
+    if (b.y + b.r > H) { b.y = H - b.r; b.vy = -b.vy * REST; b.vx *= 0.99; }
+    if (b.y - b.r < 0) { b.y = b.r; b.vy = -b.vy * REST; }
+    const g = ctx.createRadialGradient(b.x - b.r * 0.3, b.y - b.r * 0.3, b.r * 0.1, b.x, b.y, b.r);
+    g.addColorStop(0, '#fff');
+    g.addColorStop(0.25, b.c);
+    g.addColorStop(1, b.c);
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+    ctx.fillStyle = g;
+    ctx.fill();
+  }
+  requestAnimationFrame(frame);
+}
+frame();
+</script>
+</body>
+</html>
