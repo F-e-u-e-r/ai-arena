@@ -113,8 +113,8 @@ function makeCard(task, sub) {
   if (sub.effort) head.append(el('span', 'badge effort-' + sub.effort, sub.effort));
   if (sub.client) head.append(el('span', 'badge client ' + clientClass(sub.client), sub.client));
   if (sub.label) head.append(el('span', 'badge', sub.label));
-  const author = authorLink(sub.author);
-  if (author) head.append(author);
+  const byline = submissionByline(sub);
+  if (byline) head.append(byline);
   card.append(head);
 
   const body = el('div', 'card-body');
@@ -159,6 +159,38 @@ function authorLink(author) {
     a.rel = 'noopener';
   }
   return a;
+}
+
+function submissionByline(sub) {
+  const generatedAt = formatUtcMinute(sub.generatedAt);
+  const author = authorLink(sub.author);
+  if (!generatedAt && !author) return null;
+
+  const byline = el('div', 'submission-byline');
+  if (generatedAt) {
+    const time = el('time', 'generated-at', generatedAt + (author ? ' ' : ''));
+    const parsed = new Date(sub.generatedAt);
+    time.dateTime = parsed.toISOString();
+    time.title = 'Generated at ' + generatedAt + ' UTC';
+    byline.append(time);
+  }
+  if (author) byline.append(author);
+  return byline;
+}
+
+function formatUtcMinute(value) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return [
+    date.getUTCFullYear(),
+    pad2(date.getUTCMonth() + 1),
+    pad2(date.getUTCDate())
+  ].join('-') + ' ' + pad2(date.getUTCHours()) + ':' + pad2(date.getUTCMinutes());
+}
+
+function pad2(n) {
+  return String(n).padStart(2, '0');
 }
 
 function formatDuration(ms) {

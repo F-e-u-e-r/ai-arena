@@ -143,6 +143,7 @@ body {
   gap: 8px;
   padding: 10px 12px;
   border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
 }
 .model { font-size: 14px; font-weight: 600; }
 .badge {
@@ -169,12 +170,20 @@ body {
 .client-kiro { color: #38bdf8; border-color: #1e4b63; }
 .client-api { color: #94a3b8; }
 
-.author {
+.submission-byline {
   margin-left: auto;
+  display: inline-flex;
+  align-items: center;
   font-size: 12px;
   color: var(--muted);
-  text-decoration: none;
   white-space: nowrap;
+}
+.generated-at {
+  font-variant-numeric: tabular-nums;
+}
+.author {
+  color: var(--muted);
+  text-decoration: none;
 }
 .author:hover { color: var(--text); text-decoration: underline; }
 

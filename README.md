@@ -77,7 +77,7 @@ tasks/spinning-cube/openai-gpt-high/
 }
 ```
 
-`client` is the tool used to generate the output, such as `claude-code`, `codex`, `opencode`, `kiro`, `cursor`, or `api`. `author` is shown as a GitHub link on the submission card. See [CONTRIBUTING.md](CONTRIBUTING.md) for metrics and cost details.
+`client` is the tool used to generate the output, such as `claude-code`, `codex`, `opencode`, `kiro`, `cursor`, or `api`. `generatedAt` is rendered in UTC before the GitHub author link, for example `2026-07-02 18:00 @F-e-u-e-r`. See [CONTRIBUTING.md](CONTRIBUTING.md) for metrics and cost details.
 
 You can include additional metadata for comparison or future filtering:
 

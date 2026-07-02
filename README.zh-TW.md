@@ -77,7 +77,7 @@ tasks/spinning-cube/openai-gpt-high/
 }
 ```
 
-`client` 是用來產生輸出的工具，例如 `claude-code`、`codex`、`opencode`、`kiro`、`cursor` 或 `api`。`author` 會在提交卡片上顯示為 GitHub 連結。更多 metrics 與成本細節請見 [CONTRIBUTING.zh-TW.md](CONTRIBUTING.zh-TW.md)。
+`client` 是用來產生輸出的工具，例如 `claude-code`、`codex`、`opencode`、`kiro`、`cursor` 或 `api`。`generatedAt` 會以 UTC 顯示在 GitHub author 連結前，例如 `2026-07-02 18:00 @F-e-u-e-r`。更多 metrics 與成本細節請見 [CONTRIBUTING.zh-TW.md](CONTRIBUTING.zh-TW.md)。
 
 你可以加入更多 metadata，供比較或未來篩選使用：
 

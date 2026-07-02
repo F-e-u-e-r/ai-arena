@@ -47,7 +47,7 @@ Only `provider` and `model` are required. Missing optional values are shown as a
 | `effort` | Thinking effort, such as `high`, `medium`, or `low`. Free-form string. |
 | `client` | Tool used to generate the output, such as `claude-code`, `codex`, `opencode`, `kiro`, `cursor`, or `api`. Free-form string. |
 | `author` | Your GitHub handle. The site links this to `https://github.com/<author>`. |
-| `generatedAt` | ISO 8601 timestamp. |
+| `generatedAt` | ISO 8601 timestamp. Rendered in UTC before the GitHub author link. |
 | `metrics` | See [metrics fields](#metrics-fields). |
 | `order` | Sort order within the task. Lower values appear first. |
 

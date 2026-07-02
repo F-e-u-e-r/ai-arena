@@ -47,7 +47,7 @@
 | `effort` | 思考強度，例如 `high`、`medium` 或 `low`。自由格式字串。 |
 | `client` | 用來產生輸出的工具，例如 `claude-code`、`codex`、`opencode`、`kiro`、`cursor` 或 `api`。自由格式字串。 |
 | `author` | 你的 GitHub handle。網站會連到 `https://github.com/<author>`。 |
-| `generatedAt` | ISO 8601 timestamp。 |
+| `generatedAt` | ISO 8601 timestamp。會以 UTC 顯示在 GitHub author 連結前。 |
 | `metrics` | 請見 [metrics 欄位](#metrics-欄位)。 |
 | `order` | 任務內排序。數值越小越前面。 |
 
