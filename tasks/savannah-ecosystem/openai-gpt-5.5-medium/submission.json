@@ -2,9 +2,9 @@
   "provider": "openai",
   "model": "GPT-5.5",
   "modelId": "gpt-5.5",
-  "effort": "xhigh",
+  "effort": "medium",
   "client": "codex",
   "author": "F-e-u-e-r",
-  "generatedAt": "2026-07-02T16:22:26Z",
-  "order": 30
+  "generatedAt": "2026-07-04T19:03:39Z",
+  "order": 40
 }

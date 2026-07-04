@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Savannah Ecosystem</title>
+  <link rel="icon" href="../../../assets/favicon.svg">
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #9fd0ee; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #263021; }
+    canvas { display: block; width: 100vw; height: 100vh; }
+    .toolbar { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; max-width: min(920px, calc(100vw - 24px)); padding: 8px; background: rgba(255,255,255,.68); border: 1px solid rgba(38,48,33,.16); border-radius: 8px; backdrop-filter: blur(8px); }
+    button { border: 1px solid rgba(38,48,33,.24); background: #fff8e7; color: #263021; border-radius: 6px; padding: 7px 10px; font: 700 12px/1 system-ui; cursor: pointer; }
+    button[aria-pressed="true"] { background: #263021; color: #fff8e7; }
+    .hud { position: fixed; left: 14px; top: 12px; display: grid; gap: 4px; padding: 10px 12px; background: rgba(255,255,255,.46); border-radius: 8px; border: 1px solid rgba(38,48,33,.12); backdrop-filter: blur(6px); font-size: 12px; }
+    .hud strong { font-size: 17px; }
+  </style>
+</head>
+<body>
+  <canvas id="world"></canvas>
+  <section class="hud">
+    <strong>Advanced Savannah</strong>
+    <span id="readout"></span>
+  </section>
+  <nav class="toolbar" id="toolbar" aria-label="Weather and season controls"></nav>
+  <script>
+    const canvas = document.getElementById('world');
+    const ctx = canvas.getContext('2d');
+    const readout = document.getElementById('readout');
+    const toolbar = document.getElementById('toolbar');
+    const weatherNames = ['Sunny', 'Rain', 'Heavy Rain', 'Snow', 'Thunderstorm', 'Tornado'];
+    const state = { weather: 'Sunny', season: 'Wet Season', seasonClock: 0, transition: 0, particles: 0, fps: 60 };
+
+    function resize() {
+      const dpr = Math.min(devicePixelRatio || 1, 2);
+      canvas.width = Math.floor(innerWidth * dpr);
+      canvas.height = Math.floor(innerHeight * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    addEventListener('resize', resize); resize();
+
+    class ParticlePool {
+      constructor(max) {
+        this.pool = Array.from({ length: max }, () => ({ active: false }));
+        this.active = [];
+      }
+      spawn(init) {
+        const p = this.pool.find(x => !x.active);
+        if (!p) return null;
+        Object.assign(p, init, { active: true, life: init.life ?? 1, age: 0 });
+        this.active.push(p);
+        return p;
+      }
+      clear(type = null) {
+        this.active = this.active.filter(p => {
+          if (type && p.type !== type) return true;
+          p.active = false; return false;
+        });
+      }
+      update(dt, w, h) {
+        for (let i = this.active.length - 1; i >= 0; i--) {
+          const p = this.active[i];
+          p.age += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx += (p.ax || 0) * dt; p.vy += (p.ay || 0) * dt;
+          if (p.age > p.life || p.y > h + 80 || p.x < -120 || p.x > w + 120) {
+            p.active = false; this.active.splice(i, 1);
+          }
+        }
+      }
+      draw(ctx) {
+        for (const p of this.active) {
+          ctx.save(); ctx.globalAlpha = Math.max(0, 1 - p.age / p.life) * (p.alpha ?? 1);
+          if (p.type === 'rain') { ctx.strokeStyle = p.color; ctx.lineWidth = p.size; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - 8, p.y + 24); ctx.stroke(); }
+          else if (p.type === 'dust') { ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill(); }
+          else { ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill(); }
+          ctx.restore();
+        }
+      }
+    }
+
+    class Animal {
+      constructor(kind, x, lane) {
+        this.kind = kind; this.x = x; this.lane = lane; this.phase = Math.random() * 9; this.state = 'moving';
+        this.speedBase = { lion: 28, elephant: 18, leopard: 48 }[kind];
+        this.scale = { lion: 1, elephant: 1.42, leopard: .82 }[kind];
+        this.groupOffset = Math.random() * 30;
+      }
+      y(h) { return h * (.62 + this.lane * .055); }
+      bounds(h) { const y = this.y(h); return { x: this.x, y, r: 28 * this.scale }; }
+      update(dt, w, h) {
+        const wet = state.season === 'Wet Season';
+        const weatherMod = { Sunny: 1, Rain: .9, 'Heavy Rain': .72, Snow: .55, Thunderstorm: .66, Tornado: 1.16 }[state.weather];
+        const speciesMod = this.kind === 'leopard' && state.weather === 'Thunderstorm' ? .5 : 1;
+        const herdMod = !wet && this.kind !== 'leopard' ? .82 : 1.1;
+        this.phase += dt;
+        if (this.kind === 'lion' && Math.sin(this.phase * .45 + this.groupOffset) > .88) this.state = 'resting';
+        else if (this.kind === 'elephant' && Math.sin(this.phase * .3 + this.groupOffset) > .86) this.state = 'drinking';
+        else if (this.kind === 'leopard' && Math.sin(this.phase * .75 + this.groupOffset) > .9) this.state = 'climbing';
+        else this.state = 'moving';
+        const stateMod = this.state === 'resting' || this.state === 'drinking' ? .18 : 1;
+        this.x += this.speedBase * weatherMod * speciesMod * herdMod * stateMod * dt;
+        if (this.x > w + 90) this.x = -80 - Math.random() * 120;
+      }
+      draw(ctx, h) {
+        const y = this.y(h) + (this.state === 'climbing' ? Math.sin(this.phase * 5) * 20 - 24 : 0);
+        ctx.save(); ctx.translate(this.x, y); ctx.scale(this.scale, this.scale);
+        if (this.kind === 'elephant') this.drawElephant(ctx);
+        if (this.kind === 'lion') this.drawLion(ctx);
+        if (this.kind === 'leopard') this.drawLeopard(ctx);
+        ctx.restore();
+      }
+      legs(ctx, color, count = 4) {
+        ctx.strokeStyle = color; ctx.lineWidth = 5; ctx.lineCap = 'round';
+        for (let i = 0; i < count; i++) {
+          const x = -20 + i * 12, swing = Math.sin(this.phase * 5 + i) * 5;
+          ctx.beginPath(); ctx.moveTo(x, 10); ctx.lineTo(x + swing, 28); ctx.stroke();
+        }
+      }
+      drawLion(ctx) {
+        this.legs(ctx, '#7a5528'); ctx.fillStyle = '#c99545'; roundedEllipse(ctx, 0, 0, 58, 25);
+        ctx.fillStyle = '#6b3f20'; ctx.beginPath(); ctx.arc(31, -8, 18, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#d7a24e'; ctx.beginPath(); ctx.arc(36, -7, 10, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#6b3f20'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(-31, -3); ctx.quadraticCurveTo(-48, -21, -57, -4); ctx.stroke();
+        label(ctx, this.state, 0, -34);
+      }
+      drawElephant(ctx) {
+        this.legs(ctx, '#6d7677'); ctx.fillStyle = '#8b9898'; roundedEllipse(ctx, 0, -4, 72, 35);
+        ctx.beginPath(); ctx.arc(36, -10, 20, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#7f8a8a'; ctx.beginPath(); ctx.ellipse(25, -15, 12, 18, -.3, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#6d7677'; ctx.lineWidth = 7; ctx.beginPath(); ctx.moveTo(50, -2); ctx.quadraticCurveTo(64, 14, 52, 25 + Math.sin(this.phase * 6) * 5); ctx.stroke();
+        label(ctx, this.state, 0, -42);
+      }
+      drawLeopard(ctx) {
+        this.legs(ctx, '#91652a'); ctx.fillStyle = '#d6a044'; roundedEllipse(ctx, 0, 0, 56, 19);
+        ctx.beginPath(); ctx.arc(31, -8, 11, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#2c2118'; for (let i = 0; i < 9; i++) { ctx.beginPath(); ctx.arc(-23 + i * 7, -5 + Math.sin(i) * 8, 2, 0, Math.PI * 2); ctx.fill(); }
+        ctx.strokeStyle = '#91652a'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(-31, -4); ctx.quadraticCurveTo(-54, -18, -65, 5); ctx.stroke();
+        label(ctx, this.state, 0, -31);
+      }
+    }
+
+    function roundedEllipse(ctx, x, y, w, h) { ctx.beginPath(); ctx.ellipse(x, y, w / 2, h / 2, 0, 0, Math.PI * 2); ctx.fill(); }
+    function label(ctx, text, x, y) { ctx.font = '9px system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(33,35,25,.76)'; ctx.fillText(text, x, y); }
+
+    class WeatherManager {
+      constructor(pool, animals) {
+        this.pool = pool; this.animals = animals; this.tornado = { x: -100, y: 0, r: 46 }; this.lightning = null; this.lightningTimer = 0;
+      }
+      setWeather(name) {
+        state.weather = name;
+        this.pool.clear();
+        if (name === 'Tornado') this.tornado.x = -90;
+      }
+      safeLightning(w, h) {
+        // Sample candidate strike points and reject any inside live animal bounds.
+        for (let i = 0; i < 30; i++) {
+          const x = 80 + Math.random() * (w - 160), y = h * (.58 + Math.random() * .25);
+          const unsafe = this.animals.some(a => { const b = a.bounds(h); return Math.hypot(b.x - x, b.y - y) < b.r + 42; });
+          if (!unsafe) return { x, y };
+        }
+        return { x: w * .08, y: h * .78 };
+      }
+      update(dt, w, h) {
+        const wet = state.season === 'Wet Season';
+        const rate = { Sunny: wet ? 8 : 18, Rain: 90, 'Heavy Rain': 220, Snow: 75, Thunderstorm: 170, Tornado: 70 }[state.weather];
+        for (let i = 0; i < rate * dt; i++) this.spawnParticle(w, h);
+        if (state.weather === 'Thunderstorm') {
+          this.lightningTimer -= dt;
+          if (this.lightningTimer <= 0) {
+            this.lightning = { ...this.safeLightning(w, h), age: 0 };
+            this.lightningTimer = 1.2 + Math.random() * 1.7;
+          }
+          if (this.lightning) { this.lightning.age += dt; if (this.lightning.age > .18) this.lightning = null; }
+        } else this.lightning = null;
+        if (state.weather === 'Tornado') {
+          const nearest = this.animals.reduce((best, a) => Math.abs(a.x - this.tornado.x) < Math.abs(best.x - this.tornado.x) ? a : best, this.animals[0]);
+          this.tornado.x += Math.sign(nearest.x - this.tornado.x) * 38 * dt;
+          this.tornado.y = nearest.y(h) - 28;
+          for (let i = 0; i < 8; i++) this.pool.spawn({ type: 'dust', x: this.tornado.x + (Math.random() - .5) * 80, y: this.tornado.y + Math.random() * 90, vx: (Math.random() - .5) * 160, vy: -70 - Math.random() * 80, size: 2 + Math.random() * 6, color: '#b98a55', alpha: .55, life: 1.2 });
+        }
+        this.pool.update(dt, w, h);
+        state.particles = this.pool.active.length;
+      }
+      spawnParticle(w, h) {
+        if (state.weather === 'Rain' || state.weather === 'Heavy Rain' || state.weather === 'Thunderstorm') {
+          this.pool.spawn({ type: 'rain', x: Math.random() * w, y: -20, vx: -90, vy: 540 + Math.random() * 260, size: state.weather === 'Heavy Rain' ? 2 : 1.2, color: 'rgba(73,109,148,.75)', life: 1.4 });
+        } else if (state.weather === 'Snow') {
+          this.pool.spawn({ type: 'snow', x: Math.random() * w, y: -20, vx: -20 + Math.random() * 40, vy: 45 + Math.random() * 60, size: 2 + Math.random() * 3, color: '#f8fbff', alpha: .9, life: 6 });
+        } else {
+          this.pool.spawn({ type: 'dust', x: Math.random() * w, y: h * (.66 + Math.random() * .28), vx: -25 + Math.random() * 50, vy: -10 - Math.random() * 25, size: 1 + Math.random() * 3, color: state.season === 'Dry Season' ? '#d2a15d' : '#77aa55', alpha: .32, life: 2.1 });
+        }
+      }
+      draw(ctx, w, h) {
+        if (state.weather === 'Heavy Rain' || state.weather === 'Rain' || state.weather === 'Thunderstorm') {
+          ctx.fillStyle = state.weather === 'Heavy Rain' ? 'rgba(82,108,124,.28)' : 'rgba(86,126,160,.14)'; ctx.fillRect(0, 0, w, h);
+          ctx.fillStyle = 'rgba(67,94,105,.25)'; for (let x = 0; x < w; x += 90) { ctx.beginPath(); ctx.ellipse(x + 25, h * .87, 48, 7, 0, 0, Math.PI * 2); ctx.fill(); }
+        }
+        if (this.lightning) {
+          ctx.strokeStyle = '#fff7b2'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(this.lightning.x - 35, 0);
+          for (let y = 0; y < this.lightning.y; y += 38) ctx.lineTo(this.lightning.x + (Math.random() - .5) * 45, y);
+          ctx.lineTo(this.lightning.x, this.lightning.y); ctx.stroke();
+        }
+        this.pool.draw(ctx);
+        if (state.weather === 'Tornado') {
+          ctx.save(); ctx.translate(this.tornado.x, this.tornado.y); ctx.strokeStyle = 'rgba(83,78,66,.72)'; ctx.lineWidth = 8;
+          for (let i = 0; i < 8; i++) { ctx.beginPath(); ctx.ellipse(0, i * 12, 18 + i * 7, 6 + i * 2, Math.sin(performance.now() / 400 + i), 0, Math.PI * 2); ctx.stroke(); }
+          ctx.restore();
+        }
+      }
+    }
+
+    class Ecosystem {
+      constructor() {
+        this.animals = [
+          new Animal('lion', -40, 0), new Animal('lion', -135, .35),
+          new Animal('elephant', -260, 1.15), new Animal('elephant', -360, 1.55),
+          new Animal('leopard', -190, .75), new Animal('leopard', -470, 1.95)
+        ];
+        this.pool = new ParticlePool(1100);
+        this.weather = new WeatherManager(this.pool, this.animals);
+        this.last = performance.now();
+      }
+      update(now) {
+        const dt = Math.min((now - this.last) / 1000, .05); this.last = now;
+        const w = innerWidth, h = innerHeight;
+        state.fps = state.fps * .9 + (1 / Math.max(dt, .001)) * .1;
+        state.seasonClock += dt;
+        if (state.seasonClock > 60) this.toggleSeason();
+        this.animals.forEach(a => a.update(dt, w, h));
+        this.weather.update(dt, w, h);
+        this.draw(w, h, now / 1000);
+        requestAnimationFrame(t => this.update(t));
+      }
+      toggleSeason() { state.season = state.season === 'Dry Season' ? 'Wet Season' : 'Dry Season'; state.seasonClock = 0; state.transition = 1; }
+      draw(w, h, t) {
+        state.transition = Math.max(0, state.transition - .015);
+        const wet = state.season === 'Wet Season';
+        const sky = wet ? ['#8fcfed','#f9d58d'] : ['#e2bd78','#f5d093'];
+        const grd = ctx.createLinearGradient(0, 0, 0, h); grd.addColorStop(0, sky[0]); grd.addColorStop(.55, sky[1]); grd.addColorStop(1, wet ? '#7fb567' : '#c99a4f');
+        ctx.fillStyle = grd; ctx.fillRect(0, 0, w, h);
+        this.drawBackground(w, h, t, wet);
+        this.weather.draw(ctx, w, h);
+        this.animals.sort((a,b) => a.lane - b.lane).forEach(a => a.draw(ctx, h));
+        readout.textContent = `${state.weather} | ${state.season} | ${Math.ceil(60 - state.seasonClock)}s | ${state.particles} particles | ${Math.round(state.fps)} FPS`;
+      }
+      drawBackground(w, h, t, wet) {
+        ctx.fillStyle = wet ? '#6f8f72' : '#a38352'; mountain(0, h*.47, w*.55, 82); mountain(w*.35, h*.49, w*.7, 72);
+        ctx.fillStyle = wet ? '#598e55' : '#b98b42'; ctx.fillRect(0, h*.66, w, h*.34);
+        ctx.strokeStyle = wet ? 'rgba(37,98,42,.45)' : 'rgba(122,83,31,.38)'; ctx.lineWidth = 2;
+        for (let x = -20; x < w + 20; x += 12) { const y = h*.72 + Math.sin(x*.03 + t)*9; ctx.beginPath(); ctx.moveTo(x, h); ctx.quadraticCurveTo(x + 3, y, x + 7, h*.68); ctx.stroke(); }
+        for (let i = 0; i < 7; i++) drawAcacia((i * 173 + (t * (8 + i)) % w) % (w + 180) - 90, h*.64 + (i % 3)*28, .75 + (i % 3)*.18);
+      }
+    }
+
+    function mountain(x, y, w, h) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + w*.28, y - h); ctx.lineTo(x + w*.55, y - h*.22); ctx.lineTo(x + w, y); ctx.closePath(); ctx.fill(); }
+    function drawAcacia(x, y, s) {
+      ctx.save(); ctx.translate(x, y); ctx.scale(s, s); ctx.strokeStyle = '#544125'; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(0, 42); ctx.lineTo(6, 0); ctx.stroke();
+      ctx.fillStyle = '#486f38'; for (const p of [[-26,-11,30,13],[6,-22,35,15],[34,-8,28,12]]) { ctx.beginPath(); ctx.ellipse(p[0], p[1], p[2], p[3], 0, 0, Math.PI*2); ctx.fill(); }
+      ctx.restore();
+    }
+
+    function buildToolbar() {
+      for (const name of weatherNames) {
+        const b = document.createElement('button'); b.textContent = name; b.setAttribute('aria-pressed', name === state.weather);
+        b.onclick = () => { ecosystem.weather.setWeather(name); refreshButtons(); };
+        toolbar.appendChild(b);
+      }
+      const season = document.createElement('button'); season.textContent = 'Toggle Season'; season.onclick = () => { ecosystem.toggleSeason(); refreshButtons(); }; toolbar.appendChild(season);
+    }
+    function refreshButtons() { [...toolbar.querySelectorAll('button')].forEach(b => b.setAttribute('aria-pressed', b.textContent === state.weather)); }
+    addEventListener('keydown', e => {
+      const n = Number(e.key); if (n >= 1 && n <= 6) { ecosystem.weather.setWeather(weatherNames[n - 1]); refreshButtons(); }
+      if (e.key.toLowerCase() === 's') ecosystem.toggleSeason();
+    });
+
+    const ecosystem = new Ecosystem();
+    buildToolbar();
+    requestAnimationFrame(t => ecosystem.update(t));
+  </script>
+</body>
+</html>

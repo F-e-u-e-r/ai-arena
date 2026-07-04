@@ -108,8 +108,8 @@
     "submissions": [
       {
         "provider": "openai",
-        "model": "GPT-5",
-        "modelId": "gpt-5",
+        "model": "GPT-5.5",
+        "modelId": "gpt-5.5",
         "effort": "xhigh",
         "client": "codex",
         "author": "F-e-u-e-r",
@@ -117,6 +117,18 @@
         "order": 30,
         "id": "openai-gpt-5-codex",
         "path": "tasks/savannah-ecosystem/openai-gpt-5-codex/"
+      },
+      {
+        "provider": "openai",
+        "model": "GPT-5.5",
+        "modelId": "gpt-5.5",
+        "effort": "medium",
+        "client": "codex",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-07-04T19:03:39Z",
+        "order": 40,
+        "id": "openai-gpt-5.5-medium",
+        "path": "tasks/savannah-ecosystem/openai-gpt-5.5-medium/"
       }
     ]
   },
@@ -131,8 +143,8 @@
     "submissions": [
       {
         "provider": "openai",
-        "model": "GPT-5",
-        "modelId": "gpt-5",
+        "model": "GPT-5.5",
+        "modelId": "gpt-5.5",
         "effort": "xhigh",
         "client": "codex",
         "author": "F-e-u-e-r",
@@ -140,6 +152,18 @@
         "order": 30,
         "id": "openai-gpt-5-codex",
         "path": "tasks/tokyo-island/openai-gpt-5-codex/"
+      },
+      {
+        "provider": "openai",
+        "model": "GPT-5.5",
+        "modelId": "gpt-5.5",
+        "effort": "medium",
+        "client": "codex",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-07-04T19:03:39Z",
+        "order": 40,
+        "id": "openai-gpt-5.5-medium",
+        "path": "tasks/tokyo-island/openai-gpt-5.5-medium/"
       }
     ]
   }
