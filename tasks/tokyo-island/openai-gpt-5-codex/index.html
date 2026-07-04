@@ -1,638 +1,266 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Floating Tokyo Island - GPT-5 Codex</title>
-<style>
-  :root {
-    color-scheme: dark;
-    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  }
-
-  html,
-  body {
-    width: 100%;
-    height: 100%;
-    margin: 0;
-    overflow: hidden;
-    background: #91d8ff;
-  }
-
-  canvas {
-    display: block;
-    width: 100vw;
-    height: 100vh;
-    cursor: grab;
-    touch-action: none;
-  }
-
-  canvas:active {
-    cursor: grabbing;
-  }
-
-  .status {
-    position: fixed;
-    left: 16px;
-    bottom: 16px;
-    display: grid;
-    grid-template-columns: repeat(4, auto);
-    gap: 10px;
-    color: #f8fafc;
-    font-size: 12px;
-    line-height: 1;
-    pointer-events: none;
-  }
-
-  .pill {
-    min-width: 78px;
-    padding: 9px 10px;
-    border-radius: 8px;
-    background: rgba(12, 18, 32, 0.58);
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.22);
-    backdrop-filter: blur(14px);
-  }
-
-  .pill span {
-    display: block;
-    color: #cbd5e1;
-    font-size: 10px;
-    margin-bottom: 5px;
-  }
-
-  .pill strong {
-    display: block;
-    font-size: 13px;
-  }
-
-  @media (max-width: 640px) {
-    .status {
-      left: 10px;
-      right: 10px;
-      bottom: 10px;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px;
-    }
-
-    .pill {
-      min-width: 0;
-    }
-  }
-</style>
-<script type="importmap">
-{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
-</script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Floating Tokyo Island</title>
+  <link rel="icon" href="../../../assets/favicon.svg">
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #8fd3ff; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    #app { position: fixed; inset: 0; }
+    .hud { position: fixed; left: 18px; top: 16px; color: #17324d; text-shadow: 0 1px 0 rgba(255,255,255,.55); pointer-events: none; }
+    .hud h1 { margin: 0 0 4px; font-size: clamp(20px, 3vw, 34px); letter-spacing: 0; }
+    .hud p { margin: 0; font-size: 13px; max-width: 320px; line-height: 1.35; }
+    .panel { position: fixed; right: 14px; bottom: 14px; display: grid; gap: 6px; color: #17324d; font-size: 12px; background: rgba(255,255,255,.62); border: 1px solid rgba(23,50,77,.16); padding: 10px 12px; border-radius: 8px; backdrop-filter: blur(8px); }
+    canvas { display: block; }
+  </style>
 </head>
 <body>
-<div class="status" id="status"></div>
-
-<script type="module">
-import * as THREE from "three";
-
-const statusEl = document.getElementById("status");
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x91d8ff);
-scene.fog = new THREE.Fog(0x91d8ff, 11, 28);
-
-const camera = new THREE.PerspectiveCamera(46, innerWidth / innerHeight, 0.1, 80);
-const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-renderer.setPixelRatio(Math.min(2, devicePixelRatio || 1));
-renderer.setSize(innerWidth, innerHeight);
-renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-document.body.append(renderer.domElement);
-
-const clock = new THREE.Clock();
-let elapsed = 0;
-let fps = 60;
-
-const ambient = new THREE.AmbientLight(0xffffff, 1.2);
-const sunLight = new THREE.DirectionalLight(0xffffff, 3.4);
-const moonLight = new THREE.DirectionalLight(0xa7c7ff, 0);
-sunLight.castShadow = true;
-sunLight.shadow.mapSize.set(1024, 1024);
-sunLight.shadow.camera.near = 1;
-sunLight.shadow.camera.far = 30;
-sunLight.shadow.camera.left = -8;
-sunLight.shadow.camera.right = 8;
-sunLight.shadow.camera.top = 8;
-sunLight.shadow.camera.bottom = -8;
-scene.add(ambient, sunLight, moonLight);
-
-const sunDisc = new THREE.Mesh(
-  new THREE.SphereGeometry(0.32, 24, 16),
-  new THREE.MeshBasicMaterial({ color: 0xffdf74 })
-);
-const moonDisc = new THREE.Mesh(
-  new THREE.SphereGeometry(0.24, 24, 16),
-  new THREE.MeshBasicMaterial({ color: 0xdbeafe })
-);
-scene.add(sunDisc, moonDisc);
-
-const tempV1 = new THREE.Vector3();
-const tempV2 = new THREE.Vector3();
-const yAxis = new THREE.Vector3(0, 1, 0);
-
-function toon(color, options = {}) {
-  return new THREE.MeshToonMaterial({
-    color,
-    emissive: options.emissive || 0x000000,
-    emissiveIntensity: options.emissiveIntensity || 0,
-    transparent: options.transparent || false,
-    opacity: options.opacity ?? 1,
-    side: options.side || THREE.FrontSide
-  });
-}
-
-function cylinderBetween(start, end, radius, material, radialSegments = 8) {
-  const direction = tempV1.copy(end).sub(start);
-  const length = direction.length();
-  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, length, radialSegments), material);
-  mesh.position.copy(tempV2.copy(start).add(end).multiplyScalar(0.5));
-  mesh.quaternion.setFromUnitVectors(yAxis, direction.normalize());
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  return mesh;
-}
-
-class DragCamera {
-  constructor(camera, domElement) {
-    this.camera = camera;
-    this.domElement = domElement;
-    this.angle = 0.8;
-    this.targetAngle = 0.8;
-    this.radius = 9.4;
-    this.height = 3.55;
-    this.dragging = false;
-    this.lastX = 0;
-
-    domElement.addEventListener("pointerdown", event => {
-      this.dragging = true;
-      this.lastX = event.clientX;
-      domElement.setPointerCapture(event.pointerId);
-    });
-    domElement.addEventListener("pointermove", event => {
-      if (!this.dragging) return;
-      const dx = event.clientX - this.lastX;
-      this.lastX = event.clientX;
-      this.targetAngle -= dx * 0.007;
-    });
-    domElement.addEventListener("pointerup", event => {
-      this.dragging = false;
-      domElement.releasePointerCapture(event.pointerId);
-    });
-    domElement.addEventListener("wheel", event => {
-      this.radius = THREE.MathUtils.clamp(this.radius + event.deltaY * 0.004, 6.4, 12.4);
-    }, { passive: true });
-  }
-
-  update(dt) {
-    this.angle += (this.targetAngle - this.angle) * Math.min(1, dt * 8);
-    this.camera.position.set(Math.sin(this.angle) * this.radius, this.height, Math.cos(this.angle) * this.radius);
-    this.camera.lookAt(0, 0.35, 0);
-  }
-}
-
-class Island {
-  constructor() {
-    this.group = new THREE.Group();
-    this.group.rotation.y = -0.35;
-    this.createIslandBody();
-    this.createTrees();
-    scene.add(this.group);
-  }
-
-  createIslandBody() {
-    const grass = toon(0x59b84a);
-    const earth = toon(0x8a5a34);
-    const rock = toon(0x6d6c63);
-
-    const top = new THREE.Mesh(new THREE.CylinderGeometry(3.65, 3.3, 0.34, 48), grass);
-    top.position.y = 0;
-    top.receiveShadow = true;
-    top.castShadow = true;
-    this.group.add(top);
-
-    const side = new THREE.Mesh(new THREE.CylinderGeometry(3.28, 2.08, 1.2, 11), earth);
-    side.position.y = -0.72;
-    side.castShadow = true;
-    side.receiveShadow = true;
-    this.group.add(side);
-
-    const underside = new THREE.Mesh(new THREE.ConeGeometry(2.05, 1.75, 11), rock);
-    underside.position.y = -2.16;
-    underside.castShadow = true;
-    underside.receiveShadow = true;
-    this.group.add(underside);
-
-    const path = new THREE.Mesh(new THREE.TorusGeometry(1.62, 0.045, 8, 80), toon(0xe8d59a));
-    path.rotation.x = Math.PI / 2;
-    path.position.y = 0.205;
-    this.group.add(path);
-
-    for (let i = 0; i < 18; i++) {
-      const angle = (i / 18) * Math.PI * 2;
-      const stone = new THREE.Mesh(new THREE.DodecahedronGeometry(0.12 + Math.random() * 0.05), rock);
-      stone.position.set(Math.cos(angle) * 3.1, 0.18, Math.sin(angle) * 3.1);
-      stone.rotation.set(Math.random(), Math.random(), Math.random());
-      stone.castShadow = true;
-      this.group.add(stone);
+  <div id="app"></div>
+  <section class="hud">
+    <h1>Floating Tokyo Island</h1>
+    <p>Drag left or right to orbit. Press F to speed the 15 second day-night cycle.</p>
+  </section>
+  <section class="panel">
+    <span id="phase">phase</span>
+    <span id="stats">leaves</span>
+  </section>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+      }
     }
-  }
+  </script>
+  <script type="module">
+    import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+    import { OrbitControls } from 'https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js';
 
-  createTrees() {
-    const trunk = toon(0x8b5a2b);
-    const leaf = toon(0xd9492f);
-    const positions = [
-      [-2.5, 0.22, -0.8],
-      [2.55, 0.22, 0.45],
-      [-1.15, 0.22, -2.25],
-      [1.05, 0.22, 2.15]
-    ];
-    for (const [x, y, z] of positions) {
-      const group = new THREE.Group();
-      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.075, 0.55, 7), trunk);
-      stem.position.y = 0.28;
-      stem.castShadow = true;
-      const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(0.34, 1), leaf);
-      crown.position.y = 0.68;
-      crown.scale.set(1.15, 0.95, 1.15);
-      crown.castShadow = true;
-      group.add(stem, crown);
-      group.position.set(x, y, z);
-      this.group.add(group);
-    }
-  }
+    const root = document.getElementById('app');
+    const phaseEl = document.getElementById('phase');
+    const statsEl = document.getElementById('stats');
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.Fog(0x9fd8ff, 18, 58);
 
-  update(time) {
-    this.group.position.y = Math.sin(time * 1.15) * 0.16;
-    this.group.rotation.z = Math.sin(time * 0.55) * 0.025;
-  }
-}
+    const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 120);
+    camera.position.set(8, 5.6, 10);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    root.appendChild(renderer.domElement);
 
-class TokyoTower {
-  constructor(parent) {
-    this.group = new THREE.Group();
-    this.group.position.set(0, 0.18, 0);
-    this.group.scale.setScalar(0.82);
-    this.red = toon(0xe34135, { emissive: 0x6b120c, emissiveIntensity: 0 });
-    this.white = toon(0xf8fafc, { emissive: 0xffd67a, emissiveIntensity: 0 });
-    this.lightMaterial = toon(0xffcf6e, { emissive: 0xffad33, emissiveIntensity: 0 });
-    this.pointLights = [];
-    this.createStructure();
-    parent.add(this.group);
-  }
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.enablePan = false;
+    controls.minDistance = 7;
+    controls.maxDistance = 18;
+    controls.maxPolarAngle = Math.PI * .47;
+    controls.target.set(0, 1.2, 0);
 
-  createStructure() {
-    const base = [
-      new THREE.Vector3(-0.86, 0, -0.86),
-      new THREE.Vector3(0.86, 0, -0.86),
-      new THREE.Vector3(0.86, 0, 0.86),
-      new THREE.Vector3(-0.86, 0, 0.86)
-    ];
-    const mid = [
-      new THREE.Vector3(-0.34, 1.55, -0.34),
-      new THREE.Vector3(0.34, 1.55, -0.34),
-      new THREE.Vector3(0.34, 1.55, 0.34),
-      new THREE.Vector3(-0.34, 1.55, 0.34)
-    ];
-    const top = [
-      new THREE.Vector3(-0.12, 2.9, -0.12),
-      new THREE.Vector3(0.12, 2.9, -0.12),
-      new THREE.Vector3(0.12, 2.9, 0.12),
-      new THREE.Vector3(-0.12, 2.9, 0.12)
-    ];
+    const hemi = new THREE.HemisphereLight(0xdff7ff, 0x6f7b4a, 1.8);
+    const sunLight = new THREE.DirectionalLight(0xffffff, 2.7);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.set(2048, 2048);
+    const moonLight = new THREE.DirectionalLight(0xaec7ff, .15);
+    scene.add(hemi, sunLight, moonLight);
 
-    for (let i = 0; i < 4; i++) {
-      this.group.add(cylinderBetween(base[i], mid[i], 0.035, this.red));
-      this.group.add(cylinderBetween(mid[i], top[i], 0.026, this.white));
-      this.group.add(cylinderBetween(base[i], mid[(i + 1) % 4], 0.014, this.white));
-      this.group.add(cylinderBetween(mid[i], top[(i + 1) % 4], 0.012, this.red));
-    }
+    const toon = (color, opts = {}) => new THREE.MeshToonMaterial({ color, ...opts });
+    const standard = (color, opts = {}) => new THREE.MeshStandardMaterial({ color, roughness: .72, metalness: .02, ...opts });
 
-    for (const y of [0.72, 1.5, 2.28]) {
-      const deck = new THREE.Mesh(new THREE.BoxGeometry(1.12 - y * 0.22, 0.13, 1.12 - y * 0.22), y > 1.9 ? this.white : this.red);
-      deck.position.y = y;
-      deck.castShadow = true;
-      this.group.add(deck);
-    }
-
-    const cabin = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.22, 0.62), this.lightMaterial);
-    cabin.position.y = 1.78;
-    cabin.castShadow = true;
-    this.group.add(cabin);
-
-    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.027, 0.04, 1.05, 10), this.red);
-    mast.position.y = 3.38;
-    mast.castShadow = true;
-    this.group.add(mast);
-
-    const beacon = new THREE.PointLight(0xff9e35, 0, 4.5);
-    beacon.position.set(0, 2.15, 0);
-    this.group.add(beacon);
-    this.pointLights.push(beacon);
-  }
-
-  setLights(amount) {
-    this.red.emissiveIntensity = amount * 0.38;
-    this.white.emissiveIntensity = amount * 0.26;
-    this.lightMaterial.emissiveIntensity = amount * 1.6;
-    for (const light of this.pointLights) light.intensity = amount * 2.4;
-  }
-}
-
-class Landmark {
-  static fuji(parent) {
-    const group = new THREE.Group();
-    group.position.set(2.0, 0.17, -1.35);
-    const mountain = new THREE.Mesh(new THREE.ConeGeometry(0.72, 1.06, 4), toon(0x5c79a8));
-    mountain.position.y = 0.53;
-    mountain.rotation.y = Math.PI / 4;
-    mountain.castShadow = true;
-    const snow = new THREE.Mesh(new THREE.ConeGeometry(0.31, 0.33, 4), toon(0xf8fafc));
-    snow.position.y = 1.05;
-    snow.rotation.y = Math.PI / 4;
-    group.add(mountain, snow);
-    parent.add(group);
-  }
-
-  static torii(parent, lights) {
-    const group = new THREE.Group();
-    group.position.set(-2.05, 0.2, 1.25);
-    const red = toon(0xde2d26, { emissive: 0x5a0a08, emissiveIntensity: 0 });
-    const black = toon(0x292524);
-    const posts = [
-      new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.065, 0.9, 8), red),
-      new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.065, 0.9, 8), red)
-    ];
-    posts[0].position.set(-0.35, 0.45, 0);
-    posts[1].position.set(0.35, 0.45, 0);
-    const beam = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.13, 0.12), red);
-    beam.position.y = 0.92;
-    const cap = new THREE.Mesh(new THREE.BoxGeometry(1.24, 0.08, 0.16), black);
-    cap.position.y = 1.05;
-    group.add(posts[0], posts[1], beam, cap);
-    group.traverse(obj => {
-      if (obj.isMesh) obj.castShadow = true;
-    });
-    const light = new THREE.PointLight(0xff6533, 0, 2.6);
-    light.position.set(0, 0.78, 0.18);
-    group.add(light);
-    lights.push({ light, materials: [red] });
-    parent.add(group);
-  }
-
-  static temple(parent, lights) {
-    const group = new THREE.Group();
-    group.position.set(-1.45, 0.2, -1.62);
-    const wood = toon(0x9a5132, { emissive: 0x4d1f13, emissiveIntensity: 0 });
-    const roof = toon(0x263238);
-    const glow = toon(0xffd166, { emissive: 0xffb13b, emissiveIntensity: 0 });
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.42, 0.58), wood);
-    body.position.y = 0.28;
-    const roof1 = new THREE.Mesh(new THREE.ConeGeometry(0.62, 0.28, 4), roof);
-    roof1.position.y = 0.64;
-    roof1.rotation.y = Math.PI / 4;
-    const roof2 = new THREE.Mesh(new THREE.ConeGeometry(0.48, 0.24, 4), roof);
-    roof2.position.y = 0.9;
-    roof2.rotation.y = Math.PI / 4;
-    const lantern = new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 8), glow);
-    lantern.position.set(0, 0.42, 0.32);
-    group.add(body, roof1, roof2, lantern);
-    group.traverse(obj => {
-      if (obj.isMesh) obj.castShadow = true;
-    });
-    const light = new THREE.PointLight(0xffba48, 0, 3.2);
-    light.position.set(0, 0.46, 0.38);
-    group.add(light);
-    lights.push({ light, materials: [wood, glow] });
-    parent.add(group);
-  }
-}
-
-class MapleLeafSystem {
-  constructor(count) {
-    this.count = count;
-    this.geometry = this.createLeafGeometry();
-    this.materials = [0xc2410c, 0xdc2626, 0xf97316, 0xf59e0b].map(color => toon(color, {
-      side: THREE.DoubleSide,
-      transparent: true,
-      opacity: 0.92
-    }));
-    this.leaves = [];
-    for (let i = 0; i < count; i++) {
-      const mesh = new THREE.Mesh(this.geometry, this.materials[i % this.materials.length]);
-      mesh.userData = {};
-      this.reset(mesh, true);
-      scene.add(mesh);
-      this.leaves.push(mesh);
-    }
-  }
-
-  createLeafGeometry() {
-    const shape = new THREE.Shape();
-    const points = [
-      [0, 0.19], [0.05, 0.08], [0.16, 0.12], [0.08, 0.02],
-      [0.2, -0.01], [0.06, -0.04], [0.1, -0.18], [0, -0.08],
-      [-0.1, -0.18], [-0.06, -0.04], [-0.2, -0.01], [-0.08, 0.02],
-      [-0.16, 0.12], [-0.05, 0.08]
-    ];
-    shape.moveTo(points[0][0], points[0][1]);
-    for (let i = 1; i < points.length; i++) shape.lineTo(points[i][0], points[i][1]);
-    shape.closePath();
-    return new THREE.ShapeGeometry(shape);
-  }
-
-  reset(mesh, initial = false) {
-    const data = mesh.userData;
-    data.baseX = THREE.MathUtils.randFloatSpread(9);
-    data.baseZ = THREE.MathUtils.randFloatSpread(8);
-    data.speed = THREE.MathUtils.randFloat(0.35, 1.05);
-    data.swing = THREE.MathUtils.randFloat(0.18, 0.72);
-    data.phase = Math.random() * Math.PI * 2;
-    data.spin = new THREE.Vector3(
-      THREE.MathUtils.randFloat(-1.8, 1.8),
-      THREE.MathUtils.randFloat(-2.4, 2.4),
-      THREE.MathUtils.randFloat(-1.4, 1.4)
-    );
-    const y = initial ? THREE.MathUtils.randFloat(-0.8, 7.2) : THREE.MathUtils.randFloat(5.4, 7.4);
-    mesh.position.set(data.baseX, y, data.baseZ);
-    const scale = THREE.MathUtils.randFloat(0.45, 0.82);
-    mesh.scale.setScalar(scale);
-    mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
-  }
-
-  update(dt, time) {
-    // Leaves are a fixed-size object pool: falling meshes are recycled to the
-    // top of the volume instead of allocating new particles during animation.
-    for (const leaf of this.leaves) {
-      const data = leaf.userData;
-      leaf.position.y -= data.speed * dt;
-      leaf.position.x = data.baseX + Math.sin(time * 1.8 + data.phase) * data.swing;
-      leaf.position.z += Math.sin(time * 1.15 + data.phase) * 0.16 * dt;
-      leaf.rotation.x += data.spin.x * dt;
-      leaf.rotation.y += data.spin.y * dt;
-      leaf.rotation.z += data.spin.z * dt;
-      if (leaf.position.y < -1.1) this.reset(leaf);
-    }
-  }
-}
-
-class DayNightCycle {
-  constructor(lightTargets) {
-    this.duration = 15;
-    this.phase = 0;
-    this.phaseName = "Day";
-    this.lightTargets = lightTargets;
-    this.keyframes = [
-      { t: 0, name: "Day", sky: 0x91d8ff, fog: 0xbfe9ff, amb: 1.35, sun: 3.4, moon: 0.0 },
-      { t: 0.25, name: "Dusk", sky: 0xffa45c, fog: 0xffc17f, amb: 0.88, sun: 1.55, moon: 0.18 },
-      { t: 0.5, name: "Night", sky: 0x111936, fog: 0x1d2d55, amb: 0.36, sun: 0.0, moon: 1.25 },
-      { t: 0.75, name: "Dawn", sky: 0xffc9a8, fog: 0xffdec2, amb: 0.72, sun: 1.0, moon: 0.32 },
-      { t: 1, name: "Day", sky: 0x91d8ff, fog: 0xbfe9ff, amb: 1.35, sun: 3.4, moon: 0.0 }
-    ];
-  }
-
-  update(dt, time) {
-    this.phase = (this.phase + dt / this.duration) % 1;
-    const frame = this.sample(this.phase);
-    scene.background.copy(frame.sky);
-    scene.fog.color.copy(frame.fog);
-    ambient.intensity = frame.amb;
-    sunLight.intensity = frame.sun;
-    moonLight.intensity = frame.moon;
-
-    const angle = this.phase * Math.PI * 2 - Math.PI * 0.42;
-    const sunY = Math.sin(angle) * 7.4 + 1.4;
-    sunLight.position.set(Math.cos(angle) * 8.8, sunY, -4.8);
-    sunDisc.position.copy(sunLight.position).multiplyScalar(1.08);
-    const moonAngle = angle + Math.PI;
-    moonLight.position.set(Math.cos(moonAngle) * 8.2, Math.sin(moonAngle) * 6.8 + 1.2, 4.5);
-    moonDisc.position.copy(moonLight.position).multiplyScalar(1.05);
-
-    // Landmark lights ramp on from dusk through night and fade before dawn,
-    // matching the same normalized 15-second cycle as the sky interpolation.
-    const lightAmount = THREE.MathUtils.smoothstep(this.phase, 0.22, 0.34) * (1 - THREE.MathUtils.smoothstep(this.phase, 0.68, 0.8));
-    for (const target of this.lightTargets) {
-      if (target instanceof TokyoTower) target.setLights(lightAmount);
-      else {
-        target.light.intensity = lightAmount * 1.7;
-        for (const material of target.materials) material.emissiveIntensity = lightAmount * 0.9;
+    class Island {
+      constructor() {
+        this.group = new THREE.Group();
+        const grass = new THREE.Mesh(new THREE.CylinderGeometry(4.2, 4.8, .72, 40), toon(0x71c95b));
+        grass.position.y = 0;
+        grass.castShadow = grass.receiveShadow = true;
+        const rock = new THREE.Mesh(new THREE.ConeGeometry(4.45, 3.3, 40), standard(0xb47a4b));
+        rock.position.y = -1.95;
+        rock.rotation.y = Math.PI / 40;
+        rock.castShadow = rock.receiveShadow = true;
+        const rim = new THREE.Mesh(new THREE.TorusGeometry(4.12, .08, 8, 80), toon(0x3ca85f));
+        rim.position.y = .39;
+        this.group.add(grass, rock, rim);
+        for (let i = 0; i < 28; i++) {
+          const stone = new THREE.Mesh(new THREE.DodecahedronGeometry(.08 + Math.random() * .1), standard(0x8f755f));
+          const a = Math.random() * Math.PI * 2, r = 3.1 + Math.random() * .9;
+          stone.position.set(Math.cos(a) * r, .42, Math.sin(a) * r);
+          stone.castShadow = true;
+          this.group.add(stone);
+        }
+        scene.add(this.group);
+      }
+      update(t) {
+        this.group.position.y = Math.sin(t * 1.2) * .18;
+        this.group.rotation.z = Math.sin(t * .55) * .015;
       }
     }
 
-    sunDisc.visible = sunY > -0.6;
-    moonDisc.visible = moonLight.position.y > -0.6;
-    sunDisc.material.color.setHex(this.phase > 0.18 && this.phase < 0.38 ? 0xffb15f : 0xffdf74);
-    this.phaseName = frame.name;
-  }
-
-  sample(t) {
-    let a = this.keyframes[0];
-    let b = this.keyframes[1];
-    for (let i = 0; i < this.keyframes.length - 1; i++) {
-      if (t >= this.keyframes[i].t && t <= this.keyframes[i + 1].t) {
-        a = this.keyframes[i];
-        b = this.keyframes[i + 1];
-        break;
+    class TokyoTower {
+      constructor(parent) {
+        this.group = new THREE.Group();
+        this.lit = [];
+        const orange = toon(0xf26932), cream = toon(0xfff0d8), glow = standard(0xff7b35, { emissive: 0xff5b1d, emissiveIntensity: 0 });
+        const makeLeg = (x, z, ry) => {
+          const leg = new THREE.Mesh(new THREE.BoxGeometry(.18, 3.2, .18), orange);
+          leg.position.set(x, 1.85, z); leg.rotation.z = x * -.13; leg.rotation.x = z * .13; leg.castShadow = true; this.group.add(leg);
+        };
+        makeLeg(-.72, -.72); makeLeg(.72, -.72); makeLeg(-.72, .72); makeLeg(.72, .72);
+        for (let y of [.72, 1.55, 2.45, 3.25]) {
+          const deck = new THREE.Mesh(new THREE.BoxGeometry(1.9 - y * .28, .14, 1.9 - y * .28), y > 2 ? cream : orange);
+          deck.position.y = y; deck.castShadow = true; this.group.add(deck);
+        }
+        const needle = new THREE.Mesh(new THREE.ConeGeometry(.22, 1.5, 8), orange);
+        needle.position.y = 4.25; needle.castShadow = true; this.group.add(needle);
+        for (let y of [1.1, 2.05, 3.05]) {
+          const band = new THREE.Mesh(new THREE.TorusGeometry(.72 - y * .12, .025, 6, 30), glow);
+          band.position.y = y; band.rotation.x = Math.PI / 2; this.group.add(band); this.lit.push(band.material);
+        }
+        const beacon = new THREE.PointLight(0xff9a44, 0, 8);
+        beacon.position.set(0, 3.6, 0); this.group.add(beacon); this.beacon = beacon;
+        parent.add(this.group);
+      }
+      setLights(on, k) {
+        const intensity = on ? k : 0;
+        this.beacon.intensity = intensity * 2.5;
+        this.lit.forEach(m => m.emissiveIntensity = intensity * 1.4);
       }
     }
-    const local = THREE.MathUtils.smoothstep((t - a.t) / (b.t - a.t), 0, 1);
-    return {
-      name: local < 0.5 ? a.name : b.name,
-      sky: new THREE.Color(a.sky).lerp(new THREE.Color(b.sky), local),
-      fog: new THREE.Color(a.fog).lerp(new THREE.Color(b.fog), local),
-      amb: THREE.MathUtils.lerp(a.amb, b.amb, local),
-      sun: THREE.MathUtils.lerp(a.sun, b.sun, local),
-      moon: THREE.MathUtils.lerp(a.moon, b.moon, local)
-    };
-  }
-}
 
-function addClouds() {
-  const material = new THREE.MeshToonMaterial({ color: 0xffffff, transparent: true, opacity: 0.72 });
-  const groups = [];
-  for (const spec of [[-5, 3.4, -4.5, 1.1], [4.7, 4.05, -3.4, 0.9], [0.5, 4.8, -6.5, 1.28]]) {
-    const group = new THREE.Group();
-    group.position.set(spec[0], spec[1], spec[2]);
-    group.userData = { baseX: spec[0], speed: 0.08 + Math.random() * 0.06 };
-    for (let i = 0; i < 4; i++) {
-      const puff = new THREE.Mesh(new THREE.SphereGeometry((0.35 + i * 0.04) * spec[3], 16, 10), material);
-      puff.position.set((i - 1.5) * 0.42 * spec[3], Math.sin(i) * 0.12, Math.cos(i) * 0.09);
-      group.add(puff);
+    class Landmark {
+      static fuji(parent) {
+        const g = new THREE.Group();
+        const mountain = new THREE.Mesh(new THREE.ConeGeometry(.95, 1.4, 5), toon(0x6f91b8));
+        mountain.position.y = .95; mountain.castShadow = true;
+        const snow = new THREE.Mesh(new THREE.ConeGeometry(.38, .42, 5), toon(0xf6fbff));
+        snow.position.y = 1.61; snow.castShadow = true;
+        g.position.set(-2.6, .38, -1.6); g.add(mountain, snow); parent.add(g); return g;
+      }
+      static torii(parent) {
+        const g = new THREE.Group(), red = toon(0xdc3545), dark = toon(0x372222);
+        for (const x of [-.42,.42]) { const p = new THREE.Mesh(new THREE.BoxGeometry(.16,.92,.14), red); p.position.set(x,.84,0); p.castShadow = true; g.add(p); }
+        const top = new THREE.Mesh(new THREE.BoxGeometry(1.35,.16,.2), red); top.position.y = 1.35; top.castShadow = true;
+        const cap = new THREE.Mesh(new THREE.BoxGeometry(1.65,.12,.24), dark); cap.position.y = 1.52; cap.castShadow = true;
+        g.position.set(2.2,.35,-1.5); g.rotation.y = -.5; g.add(top, cap); parent.add(g); return g;
+      }
+      static temple(parent) {
+        const g = new THREE.Group(), wood = toon(0x8b4b36), roofMat = toon(0x2f6650);
+        const base = new THREE.Mesh(new THREE.BoxGeometry(1.25,.52,.9), wood); base.position.y = .72; base.castShadow = true;
+        const roof = new THREE.Mesh(new THREE.ConeGeometry(.95,.45,4), roofMat); roof.position.y = 1.24; roof.rotation.y = Math.PI / 4; roof.castShadow = true;
+        g.position.set(-1.9,.35,1.7); g.rotation.y = .35; g.add(base, roof); parent.add(g); return g;
+      }
     }
-    scene.add(group);
-    groups.push(group);
-  }
-  return groups;
-}
 
-function addBackdropMountains() {
-  const materialA = toon(0x7aa1bd);
-  const materialB = toon(0xf5f7fb);
-  for (let i = 0; i < 9; i++) {
-    const angle = (i / 9) * Math.PI * 2;
-    const mountain = new THREE.Mesh(new THREE.ConeGeometry(0.9 + Math.random() * 0.6, 1.7 + Math.random() * 0.8, 5), materialA);
-    mountain.position.set(Math.cos(angle) * 13, -1.55, Math.sin(angle) * 13);
-    mountain.rotation.y = angle;
-    scene.add(mountain);
-    const cap = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.38, 5), materialB);
-    cap.position.set(mountain.position.x, mountain.position.y + mountain.geometry.parameters.height * 0.45, mountain.position.z);
-    cap.rotation.y = angle;
-    scene.add(cap);
-  }
-}
+    class MapleLeafSystem {
+      constructor(count = 240) {
+        this.leaves = [];
+        const shape = new THREE.Shape();
+        shape.moveTo(0, .24); shape.lineTo(.08,.07); shape.lineTo(.24,.09); shape.lineTo(.12,-.03); shape.lineTo(.18,-.2); shape.lineTo(0,-.09); shape.lineTo(-.18,-.2); shape.lineTo(-.12,-.03); shape.lineTo(-.24,.09); shape.lineTo(-.08,.07); shape.closePath();
+        const geom = new THREE.ShapeGeometry(shape);
+        for (let i = 0; i < count; i++) {
+          const mat = new THREE.MeshToonMaterial({ color: [0xd94b38,0xff8a2a,0xb42f2b,0xffc247][i % 4], side: THREE.DoubleSide });
+          const leaf = new THREE.Mesh(geom, mat);
+          leaf.userData.seed = Math.random() * 99;
+          this.reset(leaf, true);
+          scene.add(leaf); this.leaves.push(leaf);
+        }
+      }
+      reset(leaf, randomY = false) {
+        const a = Math.random() * Math.PI * 2, r = 4.2 + Math.random() * 8;
+        leaf.position.set(Math.cos(a) * r, randomY ? Math.random() * 9 + 1 : 8 + Math.random() * 3, Math.sin(a) * r);
+        leaf.rotation.set(Math.random()*6, Math.random()*6, Math.random()*6);
+        leaf.scale.setScalar(.55 + Math.random() * .45);
+        leaf.userData.speed = .45 + Math.random() * .9;
+      }
+      update(dt, t) {
+        for (const leaf of this.leaves) {
+          const s = leaf.userData.seed;
+          leaf.position.y -= leaf.userData.speed * dt;
+          leaf.position.x += Math.sin(t * 1.7 + s) * dt * .45;
+          leaf.position.z += Math.cos(t * 1.35 + s) * dt * .28;
+          leaf.rotation.x += dt * (1.2 + s % 1);
+          leaf.rotation.z += dt * (1.6 + s % 2);
+          if (leaf.position.y < -2.7) this.reset(leaf);
+        }
+      }
+    }
 
-const island = new Island();
-const landmarkLights = [];
-const tower = new TokyoTower(island.group);
-Landmark.fuji(island.group);
-Landmark.torii(island.group, landmarkLights);
-Landmark.temple(island.group, landmarkLights);
-const mapleLeaves = new MapleLeafSystem(185);
-const cloudGroups = addClouds();
-addBackdropMountains();
+    class DayNightCycle {
+      constructor(tower, litLandmarks) {
+        this.tower = tower;
+        this.litLandmarks = litLandmarks;
+        this.speed = 1;
+        this.sun = new THREE.Mesh(new THREE.SphereGeometry(.45, 24, 16), standard(0xffd45c, { emissive: 0xffb02e, emissiveIntensity: 1 }));
+        this.moon = new THREE.Mesh(new THREE.SphereGeometry(.35, 24, 16), standard(0xdbe7ff, { emissive: 0x8eabff, emissiveIntensity: .45 }));
+        scene.add(this.sun, this.moon);
+      }
+      update(t) {
+        const p = (t * this.speed % 15) / 15;
+        const a = p * Math.PI * 2;
+        const day = Math.max(0, Math.sin(a));
+        const night = Math.max(0, -Math.sin(a));
+        const dusk = Math.max(0, 1 - Math.abs(p - .33) / .12);
+        const dawn = Math.max(0, 1 - Math.abs(p - .86) / .12);
+        const lightK = THREE.MathUtils.clamp(night + dusk * .75, 0, 1);
+        sunLight.position.set(Math.cos(a) * 12, Math.sin(a) * 12, 4);
+        moonLight.position.set(Math.cos(a + Math.PI) * 10, Math.sin(a + Math.PI) * 10, -5);
+        this.sun.position.copy(sunLight.position).multiplyScalar(.72);
+        this.moon.position.copy(moonLight.position).multiplyScalar(.75);
+        sunLight.intensity = .45 + day * 2.4 + dusk * .8 + dawn * .7;
+        moonLight.intensity = .15 + night * 1.1;
+        hemi.intensity = .55 + day * 1.25 + dawn * .35;
+        const sky = new THREE.Color(0x8fd3ff).lerp(new THREE.Color(0xffa35d), Math.max(dusk, dawn) * .7).lerp(new THREE.Color(0x101936), night * .82);
+        const fog = new THREE.Color(0xbfdff0).lerp(new THREE.Color(0x241b42), night * .75).lerp(new THREE.Color(0xffbf7a), Math.max(dusk, dawn) * .3);
+        renderer.setClearColor(sky);
+        scene.fog.color.copy(fog);
+        this.tower.setLights(lightK > .12, lightK);
+        this.litLandmarks.forEach(o => o.traverse(m => { if (m.material?.emissive) m.material.emissiveIntensity = lightK * .25; }));
+        phaseEl.textContent = `cycle ${Math.round(p * 15)}s / lights ${lightK > .12 ? 'on' : 'off'}`;
+      }
+    }
 
-const cycle = new DayNightCycle([tower, ...landmarkLights]);
-const controls = new DragCamera(camera, renderer.domElement);
+    const island = new Island();
+    const tower = new TokyoTower(island.group);
+    const landmarks = [Landmark.fuji(island.group), Landmark.torii(island.group), Landmark.temple(island.group)];
+    const leaves = new MapleLeafSystem();
+    const cycle = new DayNightCycle(tower, landmarks);
+    addClouds();
 
-function updateStatus() {
-  statusEl.innerHTML = `
-    <div class="pill"><span>Cycle</span><strong>${cycle.phaseName}</strong></div>
-    <div class="pill"><span>Leaves</span><strong>${mapleLeaves.count}</strong></div>
-    <div class="pill"><span>FPS</span><strong>${Math.round(fps)}</strong></div>
-    <div class="pill"><span>Drag</span><strong>${Math.round(THREE.MathUtils.radToDeg(controls.angle))} deg</strong></div>
-  `;
-}
+    function addClouds() {
+      const mat = toon(0xffffff);
+      for (let i = 0; i < 9; i++) {
+        const g = new THREE.Group();
+        for (let j = 0; j < 4; j++) {
+          const puff = new THREE.Mesh(new THREE.SphereGeometry(.35 + Math.random() * .24, 14, 10), mat);
+          puff.position.set(j * .38, Math.random() * .18, Math.random() * .16);
+          g.add(puff);
+        }
+        const a = i / 9 * Math.PI * 2, r = 10 + Math.random() * 6;
+        g.position.set(Math.cos(a)*r, 3.8 + Math.random() * 2.2, Math.sin(a)*r);
+        g.userData.speed = .04 + Math.random() * .035;
+        scene.add(g);
+      }
+    }
 
-function animate() {
-  const dt = Math.min(0.05, clock.getDelta() || 0.016);
-  elapsed += dt;
-  fps += ((1 / dt) - fps) * 0.06;
+    addEventListener('keydown', e => { if (e.key.toLowerCase() === 'f') cycle.speed = cycle.speed === 1 ? 4 : 1; });
+    addEventListener('resize', () => {
+      camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+    });
 
-  cycle.update(dt, elapsed);
-  island.update(elapsed);
-  mapleLeaves.update(dt, elapsed);
-  controls.update(dt);
-  for (const group of cloudGroups) {
-    group.position.x = group.userData.baseX + Math.sin(elapsed * group.userData.speed) * 1.6;
-  }
-
-  renderer.render(scene, camera);
-  updateStatus();
-  requestAnimationFrame(animate);
-}
-
-addEventListener("resize", () => {
-  camera.aspect = innerWidth / innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setPixelRatio(Math.min(2, devicePixelRatio || 1));
-  renderer.setSize(innerWidth, innerHeight);
-});
-
-animate();
-</script>
+    let last = performance.now();
+    function animate(now) {
+      const dt = Math.min((now - last) / 1000, .05);
+      last = now;
+      const t = now / 1000;
+      island.update(t); leaves.update(dt, t); cycle.update(t); controls.update();
+      for (const child of scene.children) if (child.userData.speed) child.rotation.y += dt * child.userData.speed;
+      statsEl.textContent = `${leaves.leaves.length} pooled maple leaves`;
+      renderer.render(scene, camera);
+      requestAnimationFrame(animate);
+    }
+    requestAnimationFrame(animate);
+  </script>
 </body>
 </html>
