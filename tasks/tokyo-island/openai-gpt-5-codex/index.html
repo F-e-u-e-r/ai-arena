@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Floating Tokyo Island - GPT-5 Codex</title>
+<style>
+  :root {
+    color-scheme: dark;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  html,
+  body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background: #91d8ff;
+  }
+
+  canvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+    cursor: grab;
+    touch-action: none;
+  }
+
+  canvas:active {
+    cursor: grabbing;
+  }
+
+  .status {
+    position: fixed;
+    left: 16px;
+    bottom: 16px;
+    display: grid;
+    grid-template-columns: repeat(4, auto);
+    gap: 10px;
+    color: #f8fafc;
+    font-size: 12px;
+    line-height: 1;
+    pointer-events: none;
+  }
+
+  .pill {
+    min-width: 78px;
+    padding: 9px 10px;
+    border-radius: 8px;
+    background: rgba(12, 18, 32, 0.58);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.22);
+    backdrop-filter: blur(14px);
+  }
+
+  .pill span {
+    display: block;
+    color: #cbd5e1;
+    font-size: 10px;
+    margin-bottom: 5px;
+  }
+
+  .pill strong {
+    display: block;
+    font-size: 13px;
+  }
+
+  @media (max-width: 640px) {
+    .status {
+      left: 10px;
+      right: 10px;
+      bottom: 10px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .pill {
+      min-width: 0;
+    }
+  }
+</style>
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+</script>
+</head>
+<body>
+<div class="status" id="status"></div>
+
+<script type="module">
+import * as THREE from "three";
+
+const statusEl = document.getElementById("status");
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x91d8ff);
+scene.fog = new THREE.Fog(0x91d8ff, 11, 28);
+
+const camera = new THREE.PerspectiveCamera(46, innerWidth / innerHeight, 0.1, 80);
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(2, devicePixelRatio || 1));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.append(renderer.domElement);
+
+const clock = new THREE.Clock();
+let elapsed = 0;
+let fps = 60;
+
+const ambient = new THREE.AmbientLight(0xffffff, 1.2);
+const sunLight = new THREE.DirectionalLight(0xffffff, 3.4);
+const moonLight = new THREE.DirectionalLight(0xa7c7ff, 0);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.set(1024, 1024);
+sunLight.shadow.camera.near = 1;
+sunLight.shadow.camera.far = 30;
+sunLight.shadow.camera.left = -8;
+sunLight.shadow.camera.right = 8;
+sunLight.shadow.camera.top = 8;
+sunLight.shadow.camera.bottom = -8;
+scene.add(ambient, sunLight, moonLight);
+
+const sunDisc = new THREE.Mesh(
+  new THREE.SphereGeometry(0.32, 24, 16),
+  new THREE.MeshBasicMaterial({ color: 0xffdf74 })
+);
+const moonDisc = new THREE.Mesh(
+  new THREE.SphereGeometry(0.24, 24, 16),
+  new THREE.MeshBasicMaterial({ color: 0xdbeafe })
+);
+scene.add(sunDisc, moonDisc);
+
+const tempV1 = new THREE.Vector3();
+const tempV2 = new THREE.Vector3();
+const yAxis = new THREE.Vector3(0, 1, 0);
+
+function toon(color, options = {}) {
+  return new THREE.MeshToonMaterial({
+    color,
+    emissive: options.emissive || 0x000000,
+    emissiveIntensity: options.emissiveIntensity || 0,
+    transparent: options.transparent || false,
+    opacity: options.opacity ?? 1,
+    side: options.side || THREE.FrontSide
+  });
+}
+
+function cylinderBetween(start, end, radius, material, radialSegments = 8) {
+  const direction = tempV1.copy(end).sub(start);
+  const length = direction.length();
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, length, radialSegments), material);
+  mesh.position.copy(tempV2.copy(start).add(end).multiplyScalar(0.5));
+  mesh.quaternion.setFromUnitVectors(yAxis, direction.normalize());
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  return mesh;
+}
+
+class DragCamera {
+  constructor(camera, domElement) {
+    this.camera = camera;
+    this.domElement = domElement;
+    this.angle = 0.8;
+    this.targetAngle = 0.8;
+    this.radius = 9.4;
+    this.height = 3.55;
+    this.dragging = false;
+    this.lastX = 0;
+
+    domElement.addEventListener("pointerdown", event => {
+      this.dragging = true;
+      this.lastX = event.clientX;
+      domElement.setPointerCapture(event.pointerId);
+    });
+    domElement.addEventListener("pointermove", event => {
+      if (!this.dragging) return;
+      const dx = event.clientX - this.lastX;
+      this.lastX = event.clientX;
+      this.targetAngle -= dx * 0.007;
+    });
+    domElement.addEventListener("pointerup", event => {
+      this.dragging = false;
+      domElement.releasePointerCapture(event.pointerId);
+    });
+    domElement.addEventListener("wheel", event => {
+      this.radius = THREE.MathUtils.clamp(this.radius + event.deltaY * 0.004, 6.4, 12.4);
+    }, { passive: true });
+  }
+
+  update(dt) {
+    this.angle += (this.targetAngle - this.angle) * Math.min(1, dt * 8);
+    this.camera.position.set(Math.sin(this.angle) * this.radius, this.height, Math.cos(this.angle) * this.radius);
+    this.camera.lookAt(0, 0.35, 0);
+  }
+}
+
+class Island {
+  constructor() {
+    this.group = new THREE.Group();
+    this.group.rotation.y = -0.35;
+    this.createIslandBody();
+    this.createTrees();
+    scene.add(this.group);
+  }
+
+  createIslandBody() {
+    const grass = toon(0x59b84a);
+    const earth = toon(0x8a5a34);
+    const rock = toon(0x6d6c63);
+
+    const top = new THREE.Mesh(new THREE.CylinderGeometry(3.65, 3.3, 0.34, 48), grass);
+    top.position.y = 0;
+    top.receiveShadow = true;
+    top.castShadow = true;
+    this.group.add(top);
+
+    const side = new THREE.Mesh(new THREE.CylinderGeometry(3.28, 2.08, 1.2, 11), earth);
+    side.position.y = -0.72;
+    side.castShadow = true;
+    side.receiveShadow = true;
+    this.group.add(side);
+
+    const underside = new THREE.Mesh(new THREE.ConeGeometry(2.05, 1.75, 11), rock);
+    underside.position.y = -2.16;
+    underside.castShadow = true;
+    underside.receiveShadow = true;
+    this.group.add(underside);
+
+    const path = new THREE.Mesh(new THREE.TorusGeometry(1.62, 0.045, 8, 80), toon(0xe8d59a));
+    path.rotation.x = Math.PI / 2;
+    path.position.y = 0.205;
+    this.group.add(path);
+
+    for (let i = 0; i < 18; i++) {
+      const angle = (i / 18) * Math.PI * 2;
+      const stone = new THREE.Mesh(new THREE.DodecahedronGeometry(0.12 + Math.random() * 0.05), rock);
+      stone.position.set(Math.cos(angle) * 3.1, 0.18, Math.sin(angle) * 3.1);
+      stone.rotation.set(Math.random(), Math.random(), Math.random());
+      stone.castShadow = true;
+      this.group.add(stone);
+    }
+  }
+
+  createTrees() {
+    const trunk = toon(0x8b5a2b);
+    const leaf = toon(0xd9492f);
+    const positions = [
+      [-2.5, 0.22, -0.8],
+      [2.55, 0.22, 0.45],
+      [-1.15, 0.22, -2.25],
+      [1.05, 0.22, 2.15]
+    ];
+    for (const [x, y, z] of positions) {
+      const group = new THREE.Group();
+      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.075, 0.55, 7), trunk);
+      stem.position.y = 0.28;
+      stem.castShadow = true;
+      const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(0.34, 1), leaf);
+      crown.position.y = 0.68;
+      crown.scale.set(1.15, 0.95, 1.15);
+      crown.castShadow = true;
+      group.add(stem, crown);
+      group.position.set(x, y, z);
+      this.group.add(group);
+    }
+  }
+
+  update(time) {
+    this.group.position.y = Math.sin(time * 1.15) * 0.16;
+    this.group.rotation.z = Math.sin(time * 0.55) * 0.025;
+  }
+}
+
+class TokyoTower {
+  constructor(parent) {
+    this.group = new THREE.Group();
+    this.group.position.set(0, 0.18, 0);
+    this.group.scale.setScalar(0.82);
+    this.red = toon(0xe34135, { emissive: 0x6b120c, emissiveIntensity: 0 });
+    this.white = toon(0xf8fafc, { emissive: 0xffd67a, emissiveIntensity: 0 });
+    this.lightMaterial = toon(0xffcf6e, { emissive: 0xffad33, emissiveIntensity: 0 });
+    this.pointLights = [];
+    this.createStructure();
+    parent.add(this.group);
+  }
+
+  createStructure() {
+    const base = [
+      new THREE.Vector3(-0.86, 0, -0.86),
+      new THREE.Vector3(0.86, 0, -0.86),
+      new THREE.Vector3(0.86, 0, 0.86),
+      new THREE.Vector3(-0.86, 0, 0.86)
+    ];
+    const mid = [
+      new THREE.Vector3(-0.34, 1.55, -0.34),
+      new THREE.Vector3(0.34, 1.55, -0.34),
+      new THREE.Vector3(0.34, 1.55, 0.34),
+      new THREE.Vector3(-0.34, 1.55, 0.34)
+    ];
+    const top = [
+      new THREE.Vector3(-0.12, 2.9, -0.12),
+      new THREE.Vector3(0.12, 2.9, -0.12),
+      new THREE.Vector3(0.12, 2.9, 0.12),
+      new THREE.Vector3(-0.12, 2.9, 0.12)
+    ];
+
+    for (let i = 0; i < 4; i++) {
+      this.group.add(cylinderBetween(base[i], mid[i], 0.035, this.red));
+      this.group.add(cylinderBetween(mid[i], top[i], 0.026, this.white));
+      this.group.add(cylinderBetween(base[i], mid[(i + 1) % 4], 0.014, this.white));
+      this.group.add(cylinderBetween(mid[i], top[(i + 1) % 4], 0.012, this.red));
+    }
+
+    for (const y of [0.72, 1.5, 2.28]) {
+      const deck = new THREE.Mesh(new THREE.BoxGeometry(1.12 - y * 0.22, 0.13, 1.12 - y * 0.22), y > 1.9 ? this.white : this.red);
+      deck.position.y = y;
+      deck.castShadow = true;
+      this.group.add(deck);
+    }
+
+    const cabin = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.22, 0.62), this.lightMaterial);
+    cabin.position.y = 1.78;
+    cabin.castShadow = true;
+    this.group.add(cabin);
+
+    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.027, 0.04, 1.05, 10), this.red);
+    mast.position.y = 3.38;
+    mast.castShadow = true;
+    this.group.add(mast);
+
+    const beacon = new THREE.PointLight(0xff9e35, 0, 4.5);
+    beacon.position.set(0, 2.15, 0);
+    this.group.add(beacon);
+    this.pointLights.push(beacon);
+  }
+
+  setLights(amount) {
+    this.red.emissiveIntensity = amount * 0.38;
+    this.white.emissiveIntensity = amount * 0.26;
+    this.lightMaterial.emissiveIntensity = amount * 1.6;
+    for (const light of this.pointLights) light.intensity = amount * 2.4;
+  }
+}
+
+class Landmark {
+  static fuji(parent) {
+    const group = new THREE.Group();
+    group.position.set(2.0, 0.17, -1.35);
+    const mountain = new THREE.Mesh(new THREE.ConeGeometry(0.72, 1.06, 4), toon(0x5c79a8));
+    mountain.position.y = 0.53;
+    mountain.rotation.y = Math.PI / 4;
+    mountain.castShadow = true;
+    const snow = new THREE.Mesh(new THREE.ConeGeometry(0.31, 0.33, 4), toon(0xf8fafc));
+    snow.position.y = 1.05;
+    snow.rotation.y = Math.PI / 4;
+    group.add(mountain, snow);
+    parent.add(group);
+  }
+
+  static torii(parent, lights) {
+    const group = new THREE.Group();
+    group.position.set(-2.05, 0.2, 1.25);
+    const red = toon(0xde2d26, { emissive: 0x5a0a08, emissiveIntensity: 0 });
+    const black = toon(0x292524);
+    const posts = [
+      new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.065, 0.9, 8), red),
+      new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.065, 0.9, 8), red)
+    ];
+    posts[0].position.set(-0.35, 0.45, 0);
+    posts[1].position.set(0.35, 0.45, 0);
+    const beam = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.13, 0.12), red);
+    beam.position.y = 0.92;
+    const cap = new THREE.Mesh(new THREE.BoxGeometry(1.24, 0.08, 0.16), black);
+    cap.position.y = 1.05;
+    group.add(posts[0], posts[1], beam, cap);
+    group.traverse(obj => {
+      if (obj.isMesh) obj.castShadow = true;
+    });
+    const light = new THREE.PointLight(0xff6533, 0, 2.6);
+    light.position.set(0, 0.78, 0.18);
+    group.add(light);
+    lights.push({ light, materials: [red] });
+    parent.add(group);
+  }
+
+  static temple(parent, lights) {
+    const group = new THREE.Group();
+    group.position.set(-1.45, 0.2, -1.62);
+    const wood = toon(0x9a5132, { emissive: 0x4d1f13, emissiveIntensity: 0 });
+    const roof = toon(0x263238);
+    const glow = toon(0xffd166, { emissive: 0xffb13b, emissiveIntensity: 0 });
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.42, 0.58), wood);
+    body.position.y = 0.28;
+    const roof1 = new THREE.Mesh(new THREE.ConeGeometry(0.62, 0.28, 4), roof);
+    roof1.position.y = 0.64;
+    roof1.rotation.y = Math.PI / 4;
+    const roof2 = new THREE.Mesh(new THREE.ConeGeometry(0.48, 0.24, 4), roof);
+    roof2.position.y = 0.9;
+    roof2.rotation.y = Math.PI / 4;
+    const lantern = new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 8), glow);
+    lantern.position.set(0, 0.42, 0.32);
+    group.add(body, roof1, roof2, lantern);
+    group.traverse(obj => {
+      if (obj.isMesh) obj.castShadow = true;
+    });
+    const light = new THREE.PointLight(0xffba48, 0, 3.2);
+    light.position.set(0, 0.46, 0.38);
+    group.add(light);
+    lights.push({ light, materials: [wood, glow] });
+    parent.add(group);
+  }
+}
+
+class MapleLeafSystem {
+  constructor(count) {
+    this.count = count;
+    this.geometry = this.createLeafGeometry();
+    this.materials = [0xc2410c, 0xdc2626, 0xf97316, 0xf59e0b].map(color => toon(color, {
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.92
+    }));
+    this.leaves = [];
+    for (let i = 0; i < count; i++) {
+      const mesh = new THREE.Mesh(this.geometry, this.materials[i % this.materials.length]);
+      mesh.userData = {};
+      this.reset(mesh, true);
+      scene.add(mesh);
+      this.leaves.push(mesh);
+    }
+  }
+
+  createLeafGeometry() {
+    const shape = new THREE.Shape();
+    const points = [
+      [0, 0.19], [0.05, 0.08], [0.16, 0.12], [0.08, 0.02],
+      [0.2, -0.01], [0.06, -0.04], [0.1, -0.18], [0, -0.08],
+      [-0.1, -0.18], [-0.06, -0.04], [-0.2, -0.01], [-0.08, 0.02],
+      [-0.16, 0.12], [-0.05, 0.08]
+    ];
+    shape.moveTo(points[0][0], points[0][1]);
+    for (let i = 1; i < points.length; i++) shape.lineTo(points[i][0], points[i][1]);
+    shape.closePath();
+    return new THREE.ShapeGeometry(shape);
+  }
+
+  reset(mesh, initial = false) {
+    const data = mesh.userData;
+    data.baseX = THREE.MathUtils.randFloatSpread(9);
+    data.baseZ = THREE.MathUtils.randFloatSpread(8);
+    data.speed = THREE.MathUtils.randFloat(0.35, 1.05);
+    data.swing = THREE.MathUtils.randFloat(0.18, 0.72);
+    data.phase = Math.random() * Math.PI * 2;
+    data.spin = new THREE.Vector3(
+      THREE.MathUtils.randFloat(-1.8, 1.8),
+      THREE.MathUtils.randFloat(-2.4, 2.4),
+      THREE.MathUtils.randFloat(-1.4, 1.4)
+    );
+    const y = initial ? THREE.MathUtils.randFloat(-0.8, 7.2) : THREE.MathUtils.randFloat(5.4, 7.4);
+    mesh.position.set(data.baseX, y, data.baseZ);
+    const scale = THREE.MathUtils.randFloat(0.45, 0.82);
+    mesh.scale.setScalar(scale);
+    mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+  }
+
+  update(dt, time) {
+    // Leaves are a fixed-size object pool: falling meshes are recycled to the
+    // top of the volume instead of allocating new particles during animation.
+    for (const leaf of this.leaves) {
+      const data = leaf.userData;
+      leaf.position.y -= data.speed * dt;
+      leaf.position.x = data.baseX + Math.sin(time * 1.8 + data.phase) * data.swing;
+      leaf.position.z += Math.sin(time * 1.15 + data.phase) * 0.16 * dt;
+      leaf.rotation.x += data.spin.x * dt;
+      leaf.rotation.y += data.spin.y * dt;
+      leaf.rotation.z += data.spin.z * dt;
+      if (leaf.position.y < -1.1) this.reset(leaf);
+    }
+  }
+}
+
+class DayNightCycle {
+  constructor(lightTargets) {
+    this.duration = 15;
+    this.phase = 0;
+    this.phaseName = "Day";
+    this.lightTargets = lightTargets;
+    this.keyframes = [
+      { t: 0, name: "Day", sky: 0x91d8ff, fog: 0xbfe9ff, amb: 1.35, sun: 3.4, moon: 0.0 },
+      { t: 0.25, name: "Dusk", sky: 0xffa45c, fog: 0xffc17f, amb: 0.88, sun: 1.55, moon: 0.18 },
+      { t: 0.5, name: "Night", sky: 0x111936, fog: 0x1d2d55, amb: 0.36, sun: 0.0, moon: 1.25 },
+      { t: 0.75, name: "Dawn", sky: 0xffc9a8, fog: 0xffdec2, amb: 0.72, sun: 1.0, moon: 0.32 },
+      { t: 1, name: "Day", sky: 0x91d8ff, fog: 0xbfe9ff, amb: 1.35, sun: 3.4, moon: 0.0 }
+    ];
+  }
+
+  update(dt, time) {
+    this.phase = (this.phase + dt / this.duration) % 1;
+    const frame = this.sample(this.phase);
+    scene.background.copy(frame.sky);
+    scene.fog.color.copy(frame.fog);
+    ambient.intensity = frame.amb;
+    sunLight.intensity = frame.sun;
+    moonLight.intensity = frame.moon;
+
+    const angle = this.phase * Math.PI * 2 - Math.PI * 0.42;
+    const sunY = Math.sin(angle) * 7.4 + 1.4;
+    sunLight.position.set(Math.cos(angle) * 8.8, sunY, -4.8);
+    sunDisc.position.copy(sunLight.position).multiplyScalar(1.08);
+    const moonAngle = angle + Math.PI;
+    moonLight.position.set(Math.cos(moonAngle) * 8.2, Math.sin(moonAngle) * 6.8 + 1.2, 4.5);
+    moonDisc.position.copy(moonLight.position).multiplyScalar(1.05);
+
+    // Landmark lights ramp on from dusk through night and fade before dawn,
+    // matching the same normalized 15-second cycle as the sky interpolation.
+    const lightAmount = THREE.MathUtils.smoothstep(this.phase, 0.22, 0.34) * (1 - THREE.MathUtils.smoothstep(this.phase, 0.68, 0.8));
+    for (const target of this.lightTargets) {
+      if (target instanceof TokyoTower) target.setLights(lightAmount);
+      else {
+        target.light.intensity = lightAmount * 1.7;
+        for (const material of target.materials) material.emissiveIntensity = lightAmount * 0.9;
+      }
+    }
+
+    sunDisc.visible = sunY > -0.6;
+    moonDisc.visible = moonLight.position.y > -0.6;
+    sunDisc.material.color.setHex(this.phase > 0.18 && this.phase < 0.38 ? 0xffb15f : 0xffdf74);
+    this.phaseName = frame.name;
+  }
+
+  sample(t) {
+    let a = this.keyframes[0];
+    let b = this.keyframes[1];
+    for (let i = 0; i < this.keyframes.length - 1; i++) {
+      if (t >= this.keyframes[i].t && t <= this.keyframes[i + 1].t) {
+        a = this.keyframes[i];
+        b = this.keyframes[i + 1];
+        break;
+      }
+    }
+    const local = THREE.MathUtils.smoothstep((t - a.t) / (b.t - a.t), 0, 1);
+    return {
+      name: local < 0.5 ? a.name : b.name,
+      sky: new THREE.Color(a.sky).lerp(new THREE.Color(b.sky), local),
+      fog: new THREE.Color(a.fog).lerp(new THREE.Color(b.fog), local),
+      amb: THREE.MathUtils.lerp(a.amb, b.amb, local),
+      sun: THREE.MathUtils.lerp(a.sun, b.sun, local),
+      moon: THREE.MathUtils.lerp(a.moon, b.moon, local)
+    };
+  }
+}
+
+function addClouds() {
+  const material = new THREE.MeshToonMaterial({ color: 0xffffff, transparent: true, opacity: 0.72 });
+  const groups = [];
+  for (const spec of [[-5, 3.4, -4.5, 1.1], [4.7, 4.05, -3.4, 0.9], [0.5, 4.8, -6.5, 1.28]]) {
+    const group = new THREE.Group();
+    group.position.set(spec[0], spec[1], spec[2]);
+    group.userData = { baseX: spec[0], speed: 0.08 + Math.random() * 0.06 };
+    for (let i = 0; i < 4; i++) {
+      const puff = new THREE.Mesh(new THREE.SphereGeometry((0.35 + i * 0.04) * spec[3], 16, 10), material);
+      puff.position.set((i - 1.5) * 0.42 * spec[3], Math.sin(i) * 0.12, Math.cos(i) * 0.09);
+      group.add(puff);
+    }
+    scene.add(group);
+    groups.push(group);
+  }
+  return groups;
+}
+
+function addBackdropMountains() {
+  const materialA = toon(0x7aa1bd);
+  const materialB = toon(0xf5f7fb);
+  for (let i = 0; i < 9; i++) {
+    const angle = (i / 9) * Math.PI * 2;
+    const mountain = new THREE.Mesh(new THREE.ConeGeometry(0.9 + Math.random() * 0.6, 1.7 + Math.random() * 0.8, 5), materialA);
+    mountain.position.set(Math.cos(angle) * 13, -1.55, Math.sin(angle) * 13);
+    mountain.rotation.y = angle;
+    scene.add(mountain);
+    const cap = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.38, 5), materialB);
+    cap.position.set(mountain.position.x, mountain.position.y + mountain.geometry.parameters.height * 0.45, mountain.position.z);
+    cap.rotation.y = angle;
+    scene.add(cap);
+  }
+}
+
+const island = new Island();
+const landmarkLights = [];
+const tower = new TokyoTower(island.group);
+Landmark.fuji(island.group);
+Landmark.torii(island.group, landmarkLights);
+Landmark.temple(island.group, landmarkLights);
+const mapleLeaves = new MapleLeafSystem(185);
+const cloudGroups = addClouds();
+addBackdropMountains();
+
+const cycle = new DayNightCycle([tower, ...landmarkLights]);
+const controls = new DragCamera(camera, renderer.domElement);
+
+function updateStatus() {
+  statusEl.innerHTML = `
+    <div class="pill"><span>Cycle</span><strong>${cycle.phaseName}</strong></div>
+    <div class="pill"><span>Leaves</span><strong>${mapleLeaves.count}</strong></div>
+    <div class="pill"><span>FPS</span><strong>${Math.round(fps)}</strong></div>
+    <div class="pill"><span>Drag</span><strong>${Math.round(THREE.MathUtils.radToDeg(controls.angle))} deg</strong></div>
+  `;
+}
+
+function animate() {
+  const dt = Math.min(0.05, clock.getDelta() || 0.016);
+  elapsed += dt;
+  fps += ((1 / dt) - fps) * 0.06;
+
+  cycle.update(dt, elapsed);
+  island.update(elapsed);
+  mapleLeaves.update(dt, elapsed);
+  controls.update(dt);
+  for (const group of cloudGroups) {
+    group.position.x = group.userData.baseX + Math.sin(elapsed * group.userData.speed) * 1.6;
+  }
+
+  renderer.render(scene, camera);
+  updateStatus();
+  requestAnimationFrame(animate);
+}
+
+addEventListener("resize", () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setPixelRatio(Math.min(2, devicePixelRatio || 1));
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+animate();
+</script>
+</body>
+</html>
