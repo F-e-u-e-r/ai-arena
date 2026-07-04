@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Savannah Ecosystem - GPT-5 Codex</title>
+<style>
+  :root {
+    color-scheme: dark;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  html,
+  body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background: #0f172a;
+  }
+
+  canvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+    touch-action: none;
+  }
+
+  .hud {
+    position: fixed;
+    inset: auto 16px 16px 16px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    align-items: end;
+    pointer-events: none;
+  }
+
+  .weatherBar,
+  .status {
+    pointer-events: auto;
+    background: rgba(18, 24, 38, 0.62);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+    backdrop-filter: blur(14px);
+    border-radius: 8px;
+  }
+
+  .weatherBar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px;
+  }
+
+  button {
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(255, 255, 255, 0.1);
+    color: #f8fafc;
+    min-height: 34px;
+    padding: 0 12px;
+    border-radius: 7px;
+    font-weight: 700;
+    letter-spacing: 0;
+    cursor: pointer;
+  }
+
+  button:hover {
+    background: rgba(255, 255, 255, 0.18);
+  }
+
+  button[aria-pressed="true"] {
+    background: #fbbf24;
+    border-color: rgba(255, 255, 255, 0.45);
+    color: #1f1300;
+  }
+
+  .status {
+    min-width: 190px;
+    padding: 10px 12px;
+    color: #f8fafc;
+    font-size: 12px;
+    line-height: 1.55;
+  }
+
+  .metricRow {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 760px) {
+    .hud {
+      grid-template-columns: 1fr;
+      inset: auto 10px 10px 10px;
+    }
+
+    .weatherBar {
+      gap: 6px;
+      padding: 8px;
+    }
+
+    button {
+      flex: 1 1 30%;
+      padding: 0 8px;
+      font-size: 12px;
+    }
+
+    .status {
+      min-width: 0;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 2px 14px;
+    }
+  }
+</style>
+</head>
+<body>
+<canvas id="scene" aria-label="Animated African savannah ecosystem"></canvas>
+<div class="hud">
+  <div class="weatherBar" role="group" aria-label="Weather">
+    <button type="button" data-weather="sunny" aria-pressed="true">Sunny</button>
+    <button type="button" data-weather="rain" aria-pressed="false">Rain</button>
+    <button type="button" data-weather="heavyRain" aria-pressed="false">Heavy Rain</button>
+    <button type="button" data-weather="snow" aria-pressed="false">Snow</button>
+    <button type="button" data-weather="thunderstorm" aria-pressed="false">Thunderstorm</button>
+    <button type="button" data-weather="tornado" aria-pressed="false">Tornado</button>
+    <button type="button" id="seasonToggle" aria-pressed="false">Wet Season</button>
+  </div>
+  <div class="status" id="status" aria-live="polite"></div>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById("scene");
+  const ctx = canvas.getContext("2d");
+  const statusEl = document.getElementById("status");
+  const weatherButtons = [...document.querySelectorAll("[data-weather]")];
+  const seasonButton = document.getElementById("seasonToggle");
+  const DPR_CAP = 2;
+
+  let width = 0;
+  let height = 0;
+  let dpr = 1;
+  let lastTime = performance.now();
+  let fps = 60;
+  let grassOffset = 0;
+
+  const rand = (min, max) => min + Math.random() * (max - min);
+  const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const smoothstep = t => t * t * (3 - 2 * t);
+
+  function hexToRgb(hex) {
+    const value = Number.parseInt(hex.slice(1), 16);
+    return { r: value >> 16, g: (value >> 8) & 255, b: value & 255 };
+  }
+
+  function mixColor(a, b, t) {
+    const ca = hexToRgb(a);
+    const cb = hexToRgb(b);
+    return `rgb(${Math.round(lerp(ca.r, cb.r, t))}, ${Math.round(lerp(ca.g, cb.g, t))}, ${Math.round(lerp(ca.b, cb.b, t))})`;
+  }
+
+  const palettes = {
+    dry: {
+      skyTop: "#7ec8ff",
+      skyBottom: "#f8d28b",
+      haze: "#f6b96c",
+      ground: "#caa249",
+      grassA: "#a98231",
+      grassB: "#e0bd62",
+      hillA: "#a27643",
+      hillB: "#d7a65b",
+      water: "#6eb8d7"
+    },
+    wet: {
+      skyTop: "#77bce8",
+      skyBottom: "#cdeba7",
+      haze: "#9ed6a1",
+      ground: "#5f9a42",
+      grassA: "#357d36",
+      grassB: "#86be5c",
+      hillA: "#548d5a",
+      hillB: "#83b45f",
+      water: "#4aa6c9"
+    }
+  };
+
+  class SeasonManager {
+    constructor() {
+      this.mode = "dry";
+      this.targetBlend = 0;
+      this.blend = 0;
+      this.elapsed = 0;
+      this.period = 60;
+    }
+
+    toggle() {
+      this.mode = this.mode === "dry" ? "wet" : "dry";
+      this.targetBlend = this.mode === "wet" ? 1 : 0;
+      this.elapsed = 0;
+      seasonButton.textContent = this.mode === "wet" ? "Dry Season" : "Wet Season";
+      seasonButton.setAttribute("aria-pressed", String(this.mode === "wet"));
+    }
+
+    update(dt) {
+      this.elapsed += dt;
+      if (this.elapsed >= this.period) this.toggle();
+      this.blend += (this.targetBlend - this.blend) * Math.min(1, dt * 1.35);
+    }
+
+    color(key) {
+      return mixColor(palettes.dry[key], palettes.wet[key], this.blend);
+    }
+
+    speedFactor() {
+      return lerp(0.88, 1.16, this.blend);
+    }
+
+    label() {
+      return this.mode === "wet" ? "Wet" : "Dry";
+    }
+  }
+
+  class ParticlePool {
+    constructor(size) {
+      this.items = Array.from({ length: size }, () => ({ active: false }));
+      this.activeCount = 0;
+    }
+
+    acquire() {
+      for (const item of this.items) {
+        if (!item.active) {
+          item.active = true;
+          this.activeCount++;
+          return item;
+        }
+      }
+      return null;
+    }
+
+    release(item) {
+      if (!item.active) return;
+      item.active = false;
+      this.activeCount--;
+    }
+
+    clear() {
+      for (const item of this.items) item.active = false;
+      this.activeCount = 0;
+    }
+
+    forEachActive(fn) {
+      for (const item of this.items) {
+        if (item.active) fn(item);
+      }
+    }
+  }
+
+  class WeatherManager {
+    constructor(pool) {
+      this.pool = pool;
+      this.type = "sunny";
+      this.spawnDebt = 0;
+      this.puddles = [];
+      this.lightning = null;
+      this.flash = 0;
+      this.nextLightning = 2.5;
+      this.tornado = { x: -160, y: 0, angle: 0 };
+    }
+
+    set(type) {
+      this.type = type;
+      this.pool.clear();
+      this.puddles.length = 0;
+      this.lightning = null;
+      this.flash = 0;
+      this.nextLightning = rand(1.2, 3.5);
+      if (type === "tornado") {
+        this.tornado.x = width * 0.18;
+        this.tornado.y = height * 0.64;
+      }
+    }
+
+    speedFactor() {
+      return {
+        sunny: 1,
+        rain: 0.88,
+        heavyRain: 0.72,
+        snow: 0.62,
+        thunderstorm: 0.76,
+        tornado: 1.08
+      }[this.type] || 1;
+    }
+
+    update(dt, animals, season) {
+      const wet = season.mode === "wet";
+      const rates = {
+        sunny: wet ? 18 : 6,
+        rain: 260,
+        heavyRain: 680,
+        snow: wet ? 36 : 120,
+        thunderstorm: 560,
+        tornado: 190
+      };
+
+      this.spawnDebt += (rates[this.type] || 0) * dt;
+      while (this.spawnDebt >= 1) {
+        this.spawnByWeather(season);
+        this.spawnDebt--;
+      }
+
+      this.pool.forEachActive(p => {
+        p.age += dt;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.rot += p.spin * dt;
+        if (p.type === "dust") {
+          p.vx += Math.sin(p.age * 9 + p.seed) * 18 * dt;
+          p.vy -= 10 * dt;
+          p.alpha *= 1 - dt * 0.35;
+        }
+        if (p.type === "rain" && p.y > height * 0.73) {
+          this.puddles.push({ x: p.x, y: height * rand(0.72, 0.91), r: rand(2, 7), life: 1.3 });
+          this.pool.release(p);
+          return;
+        }
+        if (p.age > p.life || p.x < -80 || p.x > width + 120 || p.y > height + 100) this.pool.release(p);
+      });
+
+      for (let i = this.puddles.length - 1; i >= 0; i--) {
+        this.puddles[i].life -= dt;
+        if (this.puddles[i].life <= 0) this.puddles.splice(i, 1);
+      }
+
+      if (this.type === "thunderstorm") this.updateLightning(dt, animals);
+      if (this.type === "tornado") this.updateTornado(dt, animals);
+      this.flash = Math.max(0, this.flash - dt * 2.8);
+    }
+
+    spawnByWeather(season) {
+      if (this.type === "sunny") {
+        this.spawnSeed();
+      } else if (this.type === "rain" || this.type === "heavyRain" || this.type === "thunderstorm") {
+        this.spawnRain(this.type === "heavyRain" || this.type === "thunderstorm");
+      } else if (this.type === "snow") {
+        this.spawnSnow(season.mode === "wet" ? 0.55 : 1);
+      } else if (this.type === "tornado") {
+        this.spawnDust();
+      }
+    }
+
+    spawnRain(heavy) {
+      const p = this.pool.acquire();
+      if (!p) return;
+      Object.assign(p, {
+        type: "rain",
+        x: rand(-80, width + 80),
+        y: rand(-height * 0.2, height * 0.15),
+        vx: heavy ? rand(-75, -45) : rand(-45, -20),
+        vy: heavy ? rand(760, 930) : rand(520, 700),
+        age: 0,
+        life: 1.8,
+        size: heavy ? rand(13, 18) : rand(8, 13),
+        alpha: heavy ? 0.6 : 0.45,
+        rot: 0,
+        spin: 0
+      });
+    }
+
+    spawnSnow(seasonFactor) {
+      const p = this.pool.acquire();
+      if (!p) return;
+      Object.assign(p, {
+        type: "snow",
+        x: rand(-30, width + 30),
+        y: rand(-40, 10),
+        vx: rand(-24, 24) * seasonFactor,
+        vy: rand(34, 76) * seasonFactor,
+        age: 0,
+        life: 9,
+        size: rand(1.8, 4.4),
+        alpha: rand(0.45, 0.85),
+        rot: rand(0, Math.PI * 2),
+        spin: rand(-2, 2)
+      });
+    }
+
+    spawnSeed() {
+      const p = this.pool.acquire();
+      if (!p) return;
+      Object.assign(p, {
+        type: "seed",
+        x: rand(-20, width + 20),
+        y: rand(height * 0.2, height * 0.68),
+        vx: rand(8, 30),
+        vy: rand(-8, 8),
+        age: 0,
+        life: rand(3, 6),
+        size: rand(1.2, 2.6),
+        alpha: rand(0.2, 0.52),
+        rot: rand(0, Math.PI * 2),
+        spin: rand(-1, 1)
+      });
+    }
+
+    spawnDust() {
+      const p = this.pool.acquire();
+      if (!p) return;
+      const radius = rand(8, 90);
+      Object.assign(p, {
+        type: "dust",
+        x: this.tornado.x + Math.cos(this.tornado.angle + radius) * radius,
+        y: this.tornado.y + rand(-130, 40),
+        vx: rand(-35, 35),
+        vy: rand(-35, 18),
+        age: 0,
+        life: rand(1.4, 2.5),
+        size: rand(2, 6),
+        alpha: rand(0.28, 0.68),
+        rot: rand(0, Math.PI * 2),
+        spin: rand(-6, 6),
+        seed: rand(0, 100)
+      });
+    }
+
+    updateLightning(dt, animals) {
+      this.nextLightning -= dt;
+      if (this.nextLightning > 0) return;
+      this.nextLightning = rand(2.2, 5.4);
+      const x = this.findSafeLightningX(animals);
+      const points = [{ x, y: -20 }];
+      const segments = 8;
+      for (let i = 1; i <= segments; i++) {
+        points.push({
+          x: x + rand(-28, 28) * (i / segments),
+          y: lerp(-20, height * 0.66, i / segments)
+        });
+      }
+      this.lightning = { points, life: 0.32 };
+      this.flash = 1;
+    }
+
+    findSafeLightningX(animals) {
+      let bestX = width * 0.5;
+      let bestScore = -Infinity;
+      // Lightning samples the skyline and picks the column with the largest
+      // closest-animal distance, so the bolt is recomputed from live positions.
+      for (let i = 1; i <= 18; i++) {
+        const x = (width * i) / 19;
+        let closest = Infinity;
+        for (const animal of animals) {
+          const pos = animal.position();
+          const dx = x - pos.x;
+          const dy = height * 0.66 - pos.y;
+          closest = Math.min(closest, Math.hypot(dx, dy));
+        }
+        const edgePenalty = Math.abs(x - width * 0.5) * 0.08;
+        const score = closest - edgePenalty;
+        if (score > bestScore) {
+          bestScore = score;
+          bestX = x;
+        }
+      }
+      return bestX;
+    }
+
+    updateTornado(dt, animals) {
+      if (!animals.length) return;
+      let target = animals[0];
+      let closest = Infinity;
+      for (const animal of animals) {
+        const pos = animal.position();
+        const dist = Math.abs(pos.x - this.tornado.x) + Math.abs(pos.y - this.tornado.y);
+        if (dist < closest) {
+          closest = dist;
+          target = animal;
+        }
+      }
+      const pos = target.position();
+      // The funnel pursues the nearest animal, but its capped velocity remains
+      // slower than wildlife movement so it feels threatening without catching.
+      const speed = 34;
+      this.tornado.x += clamp(pos.x - this.tornado.x, -speed * dt, speed * dt);
+      this.tornado.y += clamp(pos.y - 22 - this.tornado.y, -speed * 0.45 * dt, speed * 0.45 * dt);
+      if (this.tornado.x > width + 180) this.tornado.x = -120;
+      this.tornado.angle += dt * 5.5;
+    }
+
+    draw(ctx) {
+      for (const puddle of this.puddles) {
+        ctx.save();
+        ctx.globalAlpha = clamp(puddle.life / 1.3, 0, 1) * 0.34;
+        ctx.fillStyle = "#7dd3fc";
+        ctx.beginPath();
+        ctx.ellipse(puddle.x, puddle.y, puddle.r * 2.8, puddle.r * 0.55, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      if (this.type === "tornado") this.drawTornado(ctx);
+
+      this.pool.forEachActive(p => {
+        ctx.save();
+        ctx.globalAlpha = p.alpha;
+        if (p.type === "rain") {
+          ctx.strokeStyle = "#dbeafe";
+          ctx.lineWidth = 1.3;
+          ctx.beginPath();
+          ctx.moveTo(p.x, p.y);
+          ctx.lineTo(p.x + p.vx * 0.035, p.y + p.size);
+          ctx.stroke();
+        } else if (p.type === "snow") {
+          ctx.fillStyle = "#f8fafc";
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (p.type === "dust") {
+          ctx.fillStyle = "#c0843f";
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.rot);
+          ctx.fillRect(-p.size, -p.size * 0.45, p.size * 2, p.size * 0.9);
+        } else {
+          ctx.fillStyle = "#fff7c2";
+          ctx.beginPath();
+          ctx.ellipse(p.x, p.y, p.size * 1.8, p.size * 0.55, p.rot, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      });
+
+      if (this.lightning) {
+        this.lightning.life -= 1 / 60;
+        ctx.save();
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.shadowColor = "#e0f2fe";
+        ctx.shadowBlur = 24;
+        ctx.strokeStyle = "#f8fafc";
+        ctx.lineWidth = 3.4;
+        ctx.beginPath();
+        this.lightning.points.forEach((point, index) => {
+          if (index === 0) ctx.moveTo(point.x, point.y);
+          else ctx.lineTo(point.x, point.y);
+        });
+        ctx.stroke();
+        ctx.strokeStyle = "#7dd3fc";
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+        ctx.restore();
+        if (this.lightning.life <= 0) this.lightning = null;
+      }
+
+      if (this.type === "heavyRain" || this.type === "thunderstorm") {
+        ctx.save();
+        ctx.fillStyle = "rgba(12, 18, 32, 0.22)";
+        ctx.fillRect(0, 0, width, height);
+        ctx.restore();
+      }
+
+      if (this.flash > 0) {
+        ctx.save();
+        ctx.globalAlpha = this.flash * 0.26;
+        ctx.fillStyle = "#eff6ff";
+        ctx.fillRect(0, 0, width, height);
+        ctx.restore();
+      }
+    }
+
+    drawTornado(ctx) {
+      const { x, y, angle } = this.tornado;
+      ctx.save();
+      ctx.translate(x, y);
+      for (let i = 0; i < 12; i++) {
+        const t = i / 11;
+        const w = lerp(18, 92, t);
+        const yy = lerp(-12, -150, t);
+        ctx.globalAlpha = lerp(0.72, 0.16, t);
+        ctx.strokeStyle = i % 2 ? "#8b7358" : "#d6b47a";
+        ctx.lineWidth = lerp(7, 18, t);
+        ctx.beginPath();
+        ctx.ellipse(Math.sin(angle + t * 9) * 10, yy, w, 10, angle * 0.12, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
+
+  class Animal {
+    constructor({ x, lane, scale, baseSpeed, color }) {
+      this.x = x;
+      this.lane = lane;
+      this.scale = scale;
+      this.baseSpeed = baseSpeed;
+      this.color = color;
+      this.phase = rand(0, Math.PI * 2);
+      this.state = "walk";
+      this.stateTime = rand(2, 5);
+      this.yLift = 0;
+    }
+
+    groundY() {
+      return height * this.lane;
+    }
+
+    position() {
+      return { x: this.x, y: this.groundY() + this.yLift };
+    }
+
+    wrap() {
+      if (this.x > width + 110 * this.scale) this.x = rand(-260, -80);
+    }
+
+    leg(ctx, x, y, s, phase) {
+      ctx.strokeStyle = "#2b2118";
+      ctx.lineWidth = 3 * s;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + Math.sin(phase) * 5 * s, y + 23 * s);
+      ctx.stroke();
+    }
+  }
+
+  class Lion extends Animal {
+    update(dt, season, weather) {
+      this.stateTime -= dt;
+      if (this.stateTime <= 0) {
+        const dry = season.mode === "dry";
+        this.state = Math.random() < (dry ? 0.34 : 0.18) ? "rest" : "patrol";
+        this.stateTime = this.state === "rest" ? rand(2.5, 5.5) : rand(4, 8);
+      }
+      const restMod = this.state === "rest" ? 0.12 : 0.74;
+      const stormCaution = weather.type === "thunderstorm" ? 0.75 : 1;
+      this.x += this.baseSpeed * restMod * stormCaution * season.speedFactor() * weather.speedFactor() * dt;
+      this.phase += dt * (this.state === "rest" ? 1.5 : 5.2);
+      this.yLift = Math.sin(this.phase) * (this.state === "rest" ? 0.6 : 2.4);
+      this.wrap();
+    }
+
+    draw(ctx) {
+      const s = this.scale;
+      const y = this.groundY() + this.yLift;
+      const walk = this.phase;
+      ctx.save();
+      ctx.translate(this.x, y);
+      this.leg(ctx, -25 * s, 3 * s, s, walk);
+      this.leg(ctx, -6 * s, 4 * s, s, walk + Math.PI);
+      this.leg(ctx, 18 * s, 4 * s, s, walk + 0.7);
+      ctx.fillStyle = "#b7792c";
+      ctx.beginPath();
+      ctx.ellipse(0, -8 * s, 42 * s, 18 * s, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#4b2d16";
+      ctx.lineWidth = 3 * s;
+      ctx.beginPath();
+      ctx.moveTo(-39 * s, -11 * s);
+      ctx.quadraticCurveTo(-60 * s, -31 * s, -67 * s, -8 * s + Math.sin(walk) * 7 * s);
+      ctx.stroke();
+      ctx.fillStyle = "#5a2f15";
+      ctx.beginPath();
+      ctx.arc(38 * s, -18 * s, 21 * s, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#d79a3d";
+      ctx.beginPath();
+      ctx.arc(45 * s, -17 * s, 13 * s, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#171717";
+      ctx.beginPath();
+      ctx.arc(50 * s, -20 * s, 2.2 * s, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = this.state === "rest" ? "#fef3c7" : "#fde68a";
+      ctx.beginPath();
+      ctx.arc(17 * s, -31 * s, 4 * s, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  class Elephant extends Animal {
+    update(dt, season, weather) {
+      this.stateTime -= dt;
+      const waterX = width * 0.62;
+      if (this.stateTime <= 0) {
+        const nearWater = Math.abs(this.x - waterX) < 100;
+        this.state = nearWater && Math.random() < 0.56 ? "drink" : (Math.random() < 0.34 ? "trunk" : "walk");
+        this.stateTime = this.state === "drink" ? rand(2.2, 4.4) : rand(3, 6);
+      }
+      const actionMod = this.state === "drink" ? 0.04 : 0.52;
+      const rainComfort = season.mode === "wet" && weather.type !== "thunderstorm" ? 1.14 : 1;
+      this.x += this.baseSpeed * actionMod * rainComfort * season.speedFactor() * weather.speedFactor() * dt;
+      this.phase += dt * 3.2;
+      this.yLift = Math.sin(this.phase) * 1.3;
+      this.wrap();
+    }
+
+    draw(ctx) {
+      const s = this.scale;
+      const y = this.groundY() + this.yLift;
+      const walk = this.phase;
+      ctx.save();
+      ctx.translate(this.x, y);
+      this.leg(ctx, -31 * s, 1 * s, s, walk);
+      this.leg(ctx, -6 * s, 2 * s, s, walk + Math.PI);
+      this.leg(ctx, 20 * s, 2 * s, s, walk + 0.5);
+      ctx.fillStyle = "#7d8790";
+      ctx.beginPath();
+      ctx.ellipse(-2 * s, -22 * s, 55 * s, 31 * s, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#6c747d";
+      ctx.beginPath();
+      ctx.arc(45 * s, -29 * s, 25 * s, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#89939c";
+      ctx.beginPath();
+      ctx.ellipse(32 * s, -30 * s, 17 * s, 24 * s, -0.25, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#6c747d";
+      ctx.lineWidth = 8 * s;
+      ctx.lineCap = "round";
+      const trunkDrop = this.state === "drink" ? 30 : 18 + Math.sin(walk) * 8;
+      ctx.beginPath();
+      ctx.moveTo(64 * s, -20 * s);
+      ctx.quadraticCurveTo(75 * s, -2 * s, 60 * s, trunkDrop * s);
+      ctx.stroke();
+      if (this.state === "drink") {
+        ctx.strokeStyle = "rgba(191, 219, 254, 0.7)";
+        ctx.lineWidth = 2 * s;
+        ctx.beginPath();
+        ctx.moveTo(60 * s, 25 * s);
+        ctx.lineTo(69 * s, 39 * s);
+        ctx.stroke();
+      }
+      ctx.fillStyle = "#111827";
+      ctx.beginPath();
+      ctx.arc(53 * s, -36 * s, 2.4 * s, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  class Leopard extends Animal {
+    update(dt, season, weather) {
+      this.stateTime -= dt;
+      if (this.stateTime <= 0) {
+        this.state = Math.random() < 0.2 ? "climb" : (Math.random() < 0.54 ? "stealth" : "sprint");
+        this.stateTime = this.state === "climb" ? rand(2, 3.4) : rand(2.8, 5.5);
+      }
+      const speedMod = this.state === "sprint" ? 1.42 : (this.state === "climb" ? 0.18 : 0.86);
+      const weatherCaution = weather.type === "heavyRain" || weather.type === "thunderstorm" ? 0.78 : 1;
+      this.x += this.baseSpeed * speedMod * weatherCaution * season.speedFactor() * weather.speedFactor() * dt;
+      this.phase += dt * (this.state === "sprint" ? 9 : 5.4);
+      const climbWave = this.state === "climb" ? Math.sin((this.stateTime / 3.4) * Math.PI) : 0;
+      this.yLift = -Math.abs(climbWave) * 70 + Math.sin(this.phase) * 2.2;
+      this.wrap();
+    }
+
+    draw(ctx) {
+      const s = this.scale;
+      const y = this.groundY() + this.yLift;
+      const walk = this.phase;
+      ctx.save();
+      ctx.translate(this.x, y);
+      this.leg(ctx, -22 * s, -1 * s, s, walk);
+      this.leg(ctx, -3 * s, 0, s, walk + Math.PI);
+      this.leg(ctx, 20 * s, 0, s, walk + 0.8);
+      ctx.fillStyle = "#d99b35";
+      ctx.beginPath();
+      ctx.ellipse(0, -12 * s, 38 * s, 13 * s, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(38 * s, -17 * s, 12 * s, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#8a4f1d";
+      ctx.lineWidth = 4 * s;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(-36 * s, -14 * s);
+      ctx.quadraticCurveTo(-62 * s, -30 * s, -72 * s, -10 * s + Math.sin(walk) * 8 * s);
+      ctx.stroke();
+      ctx.fillStyle = "#3f2414";
+      for (let i = 0; i < 10; i++) {
+        const px = (-26 + i * 7 + Math.sin(i) * 2) * s;
+        const py = (-16 + Math.cos(i * 2) * 6) * s;
+        ctx.beginPath();
+        ctx.arc(px, py, 2.4 * s, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.beginPath();
+      ctx.arc(42 * s, -20 * s, 1.8 * s, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  const season = new SeasonManager();
+  const particles = new ParticlePool(1300);
+  const weather = new WeatherManager(particles);
+  const animals = [
+    new Lion({ x: -90, lane: 0.71, scale: 0.85, baseSpeed: 72, color: "#b7792c" }),
+    new Lion({ x: -160, lane: 0.735, scale: 0.78, baseSpeed: 68, color: "#b7792c" }),
+    new Elephant({ x: -260, lane: 0.79, scale: 0.9, baseSpeed: 54, color: "#7d8790" }),
+    new Elephant({ x: -360, lane: 0.82, scale: 0.82, baseSpeed: 50, color: "#7d8790" }),
+    new Elephant({ x: -455, lane: 0.765, scale: 0.72, baseSpeed: 48, color: "#7d8790" }),
+    new Leopard({ x: -140, lane: 0.665, scale: 0.74, baseSpeed: 118, color: "#d99b35" }),
+    new Leopard({ x: -360, lane: 0.695, scale: 0.66, baseSpeed: 128, color: "#d99b35" }),
+    new Leopard({ x: -600, lane: 0.635, scale: 0.62, baseSpeed: 122, color: "#d99b35" })
+  ];
+
+  function resize() {
+    dpr = Math.min(DPR_CAP, window.devicePixelRatio || 1);
+    width = Math.max(320, window.innerWidth);
+    height = Math.max(320, window.innerHeight);
+    canvas.width = Math.floor(width * dpr);
+    canvas.height = Math.floor(height * dpr);
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    weather.tornado.y = height * 0.64;
+  }
+
+  function drawBackground(dt) {
+    grassOffset += dt * 28;
+    const sky = ctx.createLinearGradient(0, 0, 0, height * 0.72);
+    sky.addColorStop(0, season.color("skyTop"));
+    sky.addColorStop(0.68, season.color("skyBottom"));
+    sky.addColorStop(1, season.color("haze"));
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, width, height);
+
+    const sunX = width * 0.82;
+    const sunY = height * 0.17;
+    ctx.save();
+    ctx.globalAlpha = weather.type === "thunderstorm" ? 0.28 : 0.78;
+    ctx.fillStyle = "#ffe08a";
+    ctx.shadowColor = "#fde68a";
+    ctx.shadowBlur = 34;
+    ctx.beginPath();
+    ctx.arc(sunX, sunY, Math.max(28, width * 0.035), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    drawCloud(width * 0.16 + Math.sin(grassOffset * 0.01) * 18, height * 0.16, 1.05);
+    drawCloud(width * 0.48 + Math.sin(grassOffset * 0.008) * 24, height * 0.1, 0.82);
+    drawCloud(width * 0.72 + Math.sin(grassOffset * 0.007) * 16, height * 0.22, 0.92);
+
+    ctx.fillStyle = season.color("hillA");
+    drawHill(height * 0.57, 0.0018, 52);
+    ctx.fillStyle = season.color("hillB");
+    drawHill(height * 0.64, 0.0025, 34);
+
+    ctx.fillStyle = season.color("ground");
+    ctx.fillRect(0, height * 0.62, width, height * 0.38);
+
+    ctx.fillStyle = season.color("water");
+    ctx.globalAlpha = 0.78;
+    ctx.beginPath();
+    ctx.ellipse(width * 0.63, height * 0.83, width * 0.16, height * 0.035, -0.05, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    drawTree(width * 0.27, height * 0.62, 1.1);
+    drawTree(width * 0.78, height * 0.64, 0.92);
+    drawGrass();
+  }
+
+  function drawHill(baseY, frequency, amplitude) {
+    ctx.beginPath();
+    ctx.moveTo(0, height);
+    for (let x = 0; x <= width + 8; x += 8) {
+      const y = baseY + Math.sin(x * frequency + grassOffset * 0.003) * amplitude + Math.cos(x * frequency * 1.7) * amplitude * 0.45;
+      ctx.lineTo(x, y);
+    }
+    ctx.lineTo(width, height);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function drawCloud(x, y, scale) {
+    ctx.save();
+    ctx.globalAlpha = weather.type === "sunny" ? 0.4 : 0.68;
+    ctx.fillStyle = weather.type === "thunderstorm" ? "#566170" : "#f8fafc";
+    ctx.beginPath();
+    ctx.arc(x, y, 25 * scale, 0, Math.PI * 2);
+    ctx.arc(x + 26 * scale, y - 7 * scale, 33 * scale, 0, Math.PI * 2);
+    ctx.arc(x + 62 * scale, y, 24 * scale, 0, Math.PI * 2);
+    ctx.rect(x - 7 * scale, y, 77 * scale, 22 * scale);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawTree(x, y, scale) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(scale, scale);
+    ctx.fillStyle = "#704214";
+    ctx.fillRect(-7, -92, 14, 92);
+    ctx.strokeStyle = "#704214";
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(0, -72);
+    ctx.lineTo(-44, -104);
+    ctx.moveTo(0, -66);
+    ctx.lineTo(46, -100);
+    ctx.stroke();
+    ctx.fillStyle = season.mode === "wet" ? "#386b35" : "#7c5f25";
+    ctx.beginPath();
+    ctx.ellipse(-48, -108, 44, 18, -0.2, 0, Math.PI * 2);
+    ctx.ellipse(3, -122, 55, 20, 0.05, 0, Math.PI * 2);
+    ctx.ellipse(51, -105, 42, 17, 0.25, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawGrass() {
+    ctx.save();
+    ctx.lineCap = "round";
+    for (let i = 0; i < 120; i++) {
+      const x = (i * 57 + (grassOffset * 0.28) % 57) % (width + 60) - 30;
+      const y = height * rand(0.66, 0.98);
+      const h = rand(10, 30) * (y / height);
+      ctx.strokeStyle = i % 2 ? season.color("grassA") : season.color("grassB");
+      ctx.globalAlpha = rand(0.34, 0.78);
+      ctx.lineWidth = rand(1, 2.4);
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.quadraticCurveTo(x + Math.sin(grassOffset * 0.04 + i) * 6, y - h * 0.5, x + rand(-3, 3), y - h);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function updateHud() {
+    statusEl.innerHTML = `
+      <div class="metricRow"><span>Season</span><strong>${season.label()}</strong></div>
+      <div class="metricRow"><span>Weather</span><strong>${labelWeather(weather.type)}</strong></div>
+      <div class="metricRow"><span>Animals</span><strong>${animals.length}</strong></div>
+      <div class="metricRow"><span>Particles</span><strong>${particles.activeCount}</strong></div>
+      <div class="metricRow"><span>FPS</span><strong>${Math.round(fps)}</strong></div>
+    `;
+  }
+
+  function labelWeather(type) {
+    return {
+      sunny: "Sunny",
+      rain: "Rain",
+      heavyRain: "Heavy",
+      snow: "Snow",
+      thunderstorm: "Storm",
+      tornado: "Tornado"
+    }[type];
+  }
+
+  function frame(now) {
+    const dt = Math.min(0.05, (now - lastTime) / 1000 || 0.016);
+    lastTime = now;
+    fps += ((1 / dt) - fps) * 0.06;
+
+    season.update(dt);
+    for (const animal of animals) animal.update(dt, season, weather);
+    weather.update(dt, animals, season);
+
+    ctx.clearRect(0, 0, width, height);
+    drawBackground(dt);
+    animals.slice().sort((a, b) => a.groundY() - b.groundY()).forEach(animal => animal.draw(ctx));
+    weather.draw(ctx);
+    updateHud();
+
+    requestAnimationFrame(frame);
+  }
+
+  weatherButtons.forEach(button => {
+    button.addEventListener("click", () => {
+      const type = button.dataset.weather;
+      weather.set(type);
+      weatherButtons.forEach(item => item.setAttribute("aria-pressed", String(item === button)));
+    });
+  });
+
+  seasonButton.addEventListener("click", () => season.toggle());
+
+  window.addEventListener("keydown", event => {
+    const order = ["sunny", "rain", "heavyRain", "snow", "thunderstorm", "tornado"];
+    if (/^[1-6]$/.test(event.key)) {
+      const type = order[Number(event.key) - 1];
+      weather.set(type);
+      weatherButtons.forEach(item => item.setAttribute("aria-pressed", String(item.dataset.weather === type)));
+    }
+    if (event.key.toLowerCase() === "s") season.toggle();
+  });
+
+  window.addEventListener("resize", resize);
+  resize();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
