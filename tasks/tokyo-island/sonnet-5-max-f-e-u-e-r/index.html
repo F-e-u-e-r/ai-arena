@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>漂浮東京島與楓葉 — Sonnet 5 max</title>
+<style>
+  html, body {
+    margin: 0; height: 100%; overflow: hidden; background: #0a0e1a;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  canvas { display: block; touch-action: none; }
+  #hud, #hint {
+    position: fixed; z-index: 2; color: #fff; opacity: .78;
+    text-shadow: 0 1px 3px rgba(0,0,0,.85); pointer-events: none;
+    font-size: 11px; line-height: 1.4; letter-spacing: .02em;
+  }
+  #hud { top: 6px; left: 8px; white-space: nowrap; }
+  #hint {
+    bottom: 6px; left: 50%; transform: translateX(-50%);
+    white-space: nowrap; max-width: 94%; overflow: hidden; text-overflow: ellipsis;
+  }
+  #audioBtn {
+    position: fixed; z-index: 2; top: 6px; right: 8px; width: 26px; height: 26px;
+    border-radius: 50%; border: none; background: rgba(10,14,26,.45); color: #fff;
+    font-size: 13px; line-height: 26px; text-align: center; cursor: pointer; padding: 0;
+  }
+  @media (max-height: 220px), (max-width: 360px) {
+    #hud, #hint { font-size: 9px; }
+    #audioBtn { width: 22px; height: 22px; font-size: 11px; line-height: 22px; }
+  }
+</style>
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+</script>
+</head>
+<body>
+<div id="hud"></div>
+<div id="hint">拖曳旋轉視角 · 滾輪縮放 · 按 T 加速日夜</div>
+<button id="audioBtn" title="環境音效開關">🔇</button>
+<script type="module">
+import * as THREE from 'three';
+
+/* =========================================================================
+ * 工具函式
+ * ========================================================================= */
+const TAU = Math.PI * 2;
+function lerp(a, b, t) { return a + (b - a) * t; }
+function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+function smoothstep(t) { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); }
+
+/* =========================================================================
+ * Renderer / Scene / Camera
+ * ========================================================================= */
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0xbfe6ff, 20, 95);
+
+const camera = new THREE.PerspectiveCamera(48, innerWidth / innerHeight, 0.1, 200);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+document.body.appendChild(renderer.domElement);
+
+/* =========================================================================
+ * 卡通漸層貼圖（MeshToonMaterial 用）
+ * ========================================================================= */
+function createToonGradient(steps) {
+  const canvas = document.createElement('canvas');
+  canvas.width = steps; canvas.height = 1;
+  const ctx = canvas.getContext('2d');
+  for (let i = 0; i < steps; i++) {
+    const v = Math.round((i / (steps - 1)) * 255);
+    ctx.fillStyle = `rgb(${v},${v},${v})`;
+    ctx.fillRect(i, 0, 1, 1);
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.minFilter = THREE.NearestFilter;
+  tex.magFilter = THREE.NearestFilter;
+  tex.generateMipmaps = false;
+  return tex;
+}
+const toonGradient = createToonGradient(4);
+
+/* =========================================================================
+ * 天空穹頂（垂直漸層 shader，取代單色 background，過場更自然）
+ * ========================================================================= */
+const skyUniforms = {
+  topColor: { value: new THREE.Color(0x4fa8ff) },
+  bottomColor: { value: new THREE.Color(0xbfe6ff) },
+  offset: { value: 12 },
+  exponent: { value: 0.6 }
+};
+const skyMat = new THREE.ShaderMaterial({
+  uniforms: skyUniforms,
+  vertexShader: `
+    varying vec3 vWorldPosition;
+    void main() {
+      vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+      vWorldPosition = worldPosition.xyz;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: `
+    uniform vec3 topColor;
+    uniform vec3 bottomColor;
+    uniform float offset;
+    uniform float exponent;
+    varying vec3 vWorldPosition;
+    void main() {
+      float h = normalize(vWorldPosition + vec3(0.0, offset, 0.0)).y;
+      float f = clamp(pow(max(h, 0.0), exponent), 0.0, 1.0);
+      gl_FragColor = vec4(mix(bottomColor, topColor, f), 1.0);
+    }
+  `,
+  side: THREE.BackSide,
+  fog: false,
+  depthWrite: false
+});
+const sky = new THREE.Mesh(new THREE.SphereGeometry(150, 24, 16), skyMat);
+scene.add(sky);
+
+/* 星星：夜晚才顯現，opacity 由 DayNightCycle 驅動 */
+function createStars(count) {
+  const positions = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    const r = 95 + Math.random() * 20;
+    const theta = Math.random() * TAU;
+    const phi = Math.acos(lerp(1, -0.15, Math.random()));
+    positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+    positions[i * 3 + 1] = r * Math.cos(phi) + 10;
+    positions[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const mat = new THREE.PointsMaterial({
+    color: 0xffffff, size: 1.1, sizeAttenuation: false,
+    transparent: true, opacity: 0, depthWrite: false, fog: false
+  });
+  return new THREE.Points(geo, mat);
+}
+const stars = createStars(500);
+scene.add(stars);
+
+/* 遠景雲層（bonus）：低多邊形球體簇，緩慢左右飄移 */
+function createCloud(scale) {
+  const group = new THREE.Group();
+  const mat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 });
+  const puffCount = 4 + Math.floor(Math.random() * 3);
+  for (let i = 0; i < puffCount; i++) {
+    const geo = new THREE.IcosahedronGeometry(0.6 + Math.random() * 0.5, 0);
+    const puff = new THREE.Mesh(geo, mat);
+    puff.position.set((Math.random() - 0.5) * 2.2, (Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 1.2);
+    group.add(puff);
+  }
+  group.scale.setScalar(scale);
+  return group;
+}
+const clouds = [];
+for (let i = 0; i < 7; i++) {
+  const cloud = createCloud(1.4 + Math.random() * 1.6);
+  cloud.position.set(lerp(-50, 50, Math.random()), 15 + Math.random() * 9, lerp(-50, -15, Math.random()));
+  cloud.userData.speed = 0.15 + Math.random() * 0.2;
+  scene.add(cloud);
+  clouds.push(cloud);
+}
+
+/* 遠景山脈（bonus）：靜態環狀山影，靠 fog 融入地平線 */
+function createMountains() {
+  const group = new THREE.Group();
+  const mat = new THREE.MeshLambertMaterial({ color: 0x3c4a6b });
+  const count = 14;
+  for (let i = 0; i < count; i++) {
+    const angle = (i / count) * TAU + Math.random() * 0.15;
+    const radius = 55 + Math.random() * 15;
+    const height = 10 + Math.random() * 14;
+    const geo = new THREE.ConeGeometry(10 + Math.random() * 6, height, 6);
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(Math.cos(angle) * radius, height / 2 - 7, Math.sin(angle) * radius);
+    m.rotation.y = Math.random() * TAU;
+    group.add(m);
+  }
+  return group;
+}
+scene.add(createMountains());
+
+/* =========================================================================
+ * 燈光 + 太陽 / 月亮
+ * ========================================================================= */
+const hemiLight = new THREE.HemisphereLight(0x8fc7ff, 0x6b8f5a, 0.95);
+scene.add(hemiLight);
+
+const LIGHT_R = 26;  // 光源（方向光）與場景中心的距離：刻意比視覺日月球體近很多，讓陰影相機的 near/far 可以抓得很緊
+const SUN_R = 85;    // 太陽／月亮球體視覺上的飛行半徑（純外觀，不影響光照方向）
+
+const sunLight = new THREE.DirectionalLight(0xfff3d6, 2.4);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.set(1024, 1024);
+sunLight.shadow.camera.near = LIGHT_R - 16;
+sunLight.shadow.camera.far = LIGHT_R + 16;
+sunLight.shadow.camera.left = -11;
+sunLight.shadow.camera.right = 11;
+sunLight.shadow.camera.top = 11;
+sunLight.shadow.camera.bottom = -11;
+sunLight.shadow.bias = -0.0025;
+sunLight.shadow.camera.updateProjectionMatrix(); // 手動改過 frustum 參數後必須重算，否則陰影相機仍用建構子預設值
+scene.add(sunLight);
+
+const moonLight = new THREE.DirectionalLight(0xaac4ff, 0);
+scene.add(moonLight);
+
+const sunMesh = new THREE.Mesh(
+  new THREE.SphereGeometry(3.0, 16, 16),
+  new THREE.MeshBasicMaterial({ color: 0xfff3d6, fog: false })
+);
+scene.add(sunMesh);
+
+const moonMesh = new THREE.Mesh(
+  new THREE.SphereGeometry(2.2, 16, 16),
+  new THREE.MeshBasicMaterial({ color: 0xdfe8ff, fog: false })
+);
+scene.add(moonMesh);
+
+/* =========================================================================
+ * Island：浮空島本體（岩石底座 + 草地 + 懸浮碎石 + 灌木），上下浮動動畫
+ * ========================================================================= */
+class Island {
+  constructor() {
+    this.group = new THREE.Group();
+
+    const rock = new THREE.Mesh(
+      new THREE.CylinderGeometry(4.8, 1.8, 4.2, 8, 1),
+      new THREE.MeshToonMaterial({ color: 0x8a6f52, gradientMap: toonGradient })
+    );
+    rock.position.y = -1.9;
+    rock.castShadow = true;
+    rock.receiveShadow = true;
+    this.group.add(rock);
+
+    // 懸浮在底座下方的破碎岩塊，加強「浮空」剪影感。
+    for (let i = 0; i < 8; i++) {
+      const s = 0.4 + Math.random() * 0.6;
+      const chunk = new THREE.Mesh(
+        new THREE.IcosahedronGeometry(s, 0),
+        new THREE.MeshToonMaterial({ color: 0x6e5640, gradientMap: toonGradient })
+      );
+      const a = (i / 8) * TAU + Math.random() * 0.3;
+      const r = 1.4 + Math.random() * 1.8;
+      chunk.position.set(Math.cos(a) * r, -3.6 - Math.random() * 2.0, Math.sin(a) * r);
+      chunk.castShadow = true;
+      this.group.add(chunk);
+    }
+
+    const grass = new THREE.Mesh(
+      new THREE.CylinderGeometry(6.8, 5.2, 0.6, 8, 1),
+      new THREE.MeshToonMaterial({ color: 0x6fae4c, gradientMap: toonGradient })
+    );
+    grass.position.y = 0.0;
+    grass.receiveShadow = true;
+    grass.castShadow = true;
+    this.group.add(grass);
+
+    // 邊緣灌木叢，補足草地細節。
+    for (let i = 0; i < 14; i++) {
+      const bush = new THREE.Mesh(
+        new THREE.IcosahedronGeometry(0.26 + Math.random() * 0.2, 0),
+        new THREE.MeshToonMaterial({ color: 0x4f9a45, gradientMap: toonGradient })
+      );
+      const a = Math.random() * TAU;
+      const r = 2.6 + Math.random() * 3.6;
+      bush.position.set(Math.cos(a) * r, 0.32, Math.sin(a) * r);
+      bush.castShadow = true;
+      bush.receiveShadow = true;
+      this.group.add(bush);
+    }
+
+    scene.add(this.group);
+  }
+
+  // 島體上下輕微浮動 + 極輕微翻滾，模擬漂浮於氣流中的感覺。
+  update(dt, elapsed) {
+    this.group.position.y = Math.sin(elapsed * 0.5) * 0.28;
+    this.group.rotation.z = Math.sin(elapsed * 0.3) * 0.01;
+    this.group.rotation.x = Math.cos(elapsed * 0.24) * 0.008;
+  }
+}
+
+/* 簡易楓樹（裝飾用，作為楓葉飄落的視覺起點） */
+function createMapleTree(scale) {
+  const group = new THREE.Group();
+  const trunk = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.09, 0.15, 1.5, 6),
+    new THREE.MeshToonMaterial({ color: 0x5b3d2b, gradientMap: toonGradient })
+  );
+  trunk.position.y = 0.75;
+  trunk.castShadow = true;
+  group.add(trunk);
+  const leafColors = [0xd94f3d, 0xe98a2e, 0xf0c33c];
+  for (let i = 0; i < 6; i++) {
+    const c = leafColors[i % leafColors.length];
+    const foliage = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(0.46 + Math.random() * 0.16, 0),
+      new THREE.MeshToonMaterial({ color: c, gradientMap: toonGradient })
+    );
+    foliage.position.set((Math.random() - 0.5) * 0.75, 1.55 + Math.random() * 0.65, (Math.random() - 0.5) * 0.75);
+    foliage.castShadow = true;
+    group.add(foliage);
+  }
+  group.scale.setScalar(scale);
+  return group;
+}
+
+/* =========================================================================
+ * TokyoTower：分層漸縮的紅白鐵塔，夜間頂端警示燈 + 暖色泛光
+ * ========================================================================= */
+class TokyoTower {
+  constructor(position) {
+    this.group = new THREE.Group();
+    this.group.position.copy(position);
+
+    const segs = 5;
+    const totalHeight = 6.4;
+    const segHeight = totalHeight / segs;
+    let topR = 1.05;
+    for (let i = 0; i < segs; i++) {
+      const botR = topR;
+      topR = botR * 0.62;
+      const color = i % 2 === 0 ? 0xd8452f : 0xf2f2f2;
+      const seg = new THREE.Mesh(
+        new THREE.CylinderGeometry(topR, botR, segHeight, 4),
+        new THREE.MeshToonMaterial({ color, gradientMap: toonGradient })
+      );
+      seg.position.y = segHeight * (i + 0.5);
+      seg.rotation.y = Math.PI / 4;
+      seg.castShadow = true;
+      seg.receiveShadow = true;
+      this.group.add(seg);
+
+      if (i < segs - 1) {
+        const ring = new THREE.Mesh(
+          new THREE.TorusGeometry(Math.max(botR * 0.62, 0.05), 0.045, 6, 4),
+          new THREE.MeshToonMaterial({ color: 0xffffff, gradientMap: toonGradient })
+        );
+        ring.position.y = segHeight * (i + 1);
+        ring.rotation.x = Math.PI / 2;
+        ring.rotation.z = Math.PI / 4;
+        this.group.add(ring);
+      }
+    }
+
+    const spire = new THREE.Mesh(
+      new THREE.ConeGeometry(topR * 0.55, 1.2, 4),
+      new THREE.MeshToonMaterial({ color: 0xd8452f, gradientMap: toonGradient })
+    );
+    spire.position.y = totalHeight + 0.6;
+    spire.rotation.y = Math.PI / 4;
+    spire.castShadow = true;
+    this.group.add(spire);
+
+    this.beacon = new THREE.Mesh(
+      new THREE.SphereGeometry(0.1, 8, 8),
+      new THREE.MeshStandardMaterial({ color: 0xff3b1f, emissive: 0xff3b1f, emissiveIntensity: 0 })
+    );
+    this.beacon.position.y = totalHeight + 1.25;
+    this.group.add(this.beacon);
+
+    this.nightLight = new THREE.PointLight(0xffb060, 0, 13, 2);
+    this.nightLight.position.y = totalHeight * 0.55;
+    this.group.add(this.nightLight);
+
+    scene.add(this.group); // 注意：實際掛載到 island.group 上是在下方組裝階段完成（見 island.group.add(tower.group)）
+  }
+
+  // 由 DayNightCycle 依日夜相位呼叫，f 為 0..1 的「夜燈強度」。
+  setNightFactor(f) {
+    this.beacon.material.emissiveIntensity = f * 2.2;
+    this.nightLight.intensity = f * 1.6;
+  }
+}
+
+/* =========================================================================
+ * Landmark：可配置的日本景點（富士山 / 鳥居 / 五重塔）
+ * ========================================================================= */
+class Landmark {
+  constructor(type, position, scale = 1) {
+    this.type = type;
+    this.group = new THREE.Group();
+    this.group.position.copy(position);
+    this.group.scale.setScalar(scale);
+    this.nightLight = null;
+    this.emissiveParts = [];
+
+    if (type === 'fuji') this.buildFuji();
+    else if (type === 'torii') this.buildTorii();
+    else this.buildPagoda();
+  }
+
+  buildFuji() {
+    const base = new THREE.Mesh(
+      new THREE.ConeGeometry(1.5, 2.2, 8),
+      new THREE.MeshToonMaterial({ color: 0x5a5f6e, gradientMap: toonGradient })
+    );
+    base.position.y = 1.1;
+    base.castShadow = true;
+    base.receiveShadow = true;
+    this.group.add(base);
+
+    const snow = new THREE.Mesh(
+      new THREE.ConeGeometry(0.78, 0.9, 8),
+      new THREE.MeshToonMaterial({ color: 0xf5f7fb, gradientMap: toonGradient })
+    );
+    snow.position.y = 2.05;
+    snow.castShadow = true;
+    this.group.add(snow);
+  }
+
+  buildTorii() {
+    const mat = new THREE.MeshToonMaterial({ color: 0xc23b2b, gradientMap: toonGradient });
+    const pillarGeo = new THREE.CylinderGeometry(0.09, 0.11, 1.6, 8);
+    [-0.55, 0.55].forEach((x) => {
+      const p = new THREE.Mesh(pillarGeo, mat);
+      p.position.set(x, 0.8, 0);
+      p.castShadow = true;
+      p.receiveShadow = true;
+      this.group.add(p);
+    });
+    const topBeam = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.11, 0.16), mat);
+    topBeam.position.y = 1.55;
+    topBeam.castShadow = true;
+    this.group.add(topBeam);
+    const underBeam = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.08, 0.1), mat);
+    underBeam.position.y = 1.32;
+    this.group.add(underBeam);
+
+    this.nightLight = new THREE.PointLight(0xffaa55, 0, 4.5, 2);
+    this.nightLight.position.set(0, 0.9, 0.3);
+    this.group.add(this.nightLight);
+  }
+
+  buildPagoda() {
+    const roofMat = new THREE.MeshToonMaterial({ color: 0x2f3a52, gradientMap: toonGradient });
+    const wallMat = new THREE.MeshToonMaterial({ color: 0xdba25a, gradientMap: toonGradient });
+    const tiers = 3;
+    let y = 0;
+    for (let i = 0; i < tiers; i++) {
+      const wallSize = 1.1 - i * 0.24;
+      const wall = new THREE.Mesh(new THREE.BoxGeometry(wallSize, 0.55, wallSize), wallMat);
+      wall.position.y = y + 0.275;
+      wall.castShadow = true;
+      wall.receiveShadow = true;
+      this.group.add(wall);
+
+      const glow = new THREE.Mesh(
+        new THREE.BoxGeometry(wallSize * 0.9, 0.14, 0.02),
+        new THREE.MeshStandardMaterial({ color: 0xfff0b8, emissive: 0xfff0b8, emissiveIntensity: 0 })
+      );
+      glow.position.set(0, y + 0.275, wallSize / 2 + 0.01);
+      this.group.add(glow);
+      this.emissiveParts.push(glow);
+
+      const roofSize = wallSize + 0.5;
+      const roof = new THREE.Mesh(new THREE.ConeGeometry(roofSize * 0.75, 0.4, 4), roofMat);
+      roof.position.y = y + 0.55 + 0.2;
+      roof.rotation.y = Math.PI / 4;
+      roof.castShadow = true;
+      this.group.add(roof);
+
+      y += 0.55 + 0.4;
+    }
+    const spireTip = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.02, 0.04, 0.5, 6),
+      new THREE.MeshToonMaterial({ color: 0xd8b23a, gradientMap: toonGradient })
+    );
+    spireTip.position.y = y + 0.25;
+    this.group.add(spireTip);
+
+    this.nightLight = new THREE.PointLight(0xffcf8a, 0, 5.5, 2);
+    this.nightLight.position.y = y * 0.5;
+    this.group.add(this.nightLight);
+  }
+
+  setNightFactor(f) {
+    if (this.nightLight) this.nightLight.intensity = f * 1.2;
+    for (const part of this.emissiveParts) part.material.emissiveIntensity = f * 1.6;
+  }
+}
+
+/* =========================================================================
+ * MapleLeafSystem：InstancedMesh + 物件池，大量楓葉飄落但零額外配置
+ * ========================================================================= */
+function createLeafGeometry() {
+  // 五裂葉狀楓葉輪廓，以二次貝茲曲線描出，僅用幾何體達成、不依賴外部貼圖。
+  const shape = new THREE.Shape();
+  shape.moveTo(0, 1);
+  shape.quadraticCurveTo(0.15, 0.75, 0.1, 0.55);
+  shape.quadraticCurveTo(0.45, 0.7, 0.55, 0.5);
+  shape.quadraticCurveTo(0.4, 0.3, 0.5, 0.15);
+  shape.quadraticCurveTo(0.25, 0.2, 0.18, 0.05);
+  shape.quadraticCurveTo(0.22, -0.25, 0.1, -0.45);
+  shape.quadraticCurveTo(0, -0.32, 0, -0.5);
+  shape.quadraticCurveTo(0, -0.32, -0.1, -0.45);
+  shape.quadraticCurveTo(-0.22, -0.25, -0.18, 0.05);
+  shape.quadraticCurveTo(-0.25, 0.2, -0.5, 0.15);
+  shape.quadraticCurveTo(-0.4, 0.3, -0.55, 0.5);
+  shape.quadraticCurveTo(-0.45, 0.7, -0.1, 0.55);
+  shape.quadraticCurveTo(-0.15, 0.75, 0, 1);
+  const geo = new THREE.ShapeGeometry(shape, 8);
+  geo.center();
+  geo.scale(0.45, 0.45, 0.45);
+  geo.computeVertexNormals();
+  return geo;
+}
+
+class MapleLeafSystem {
+  constructor(count, center, radius, topY, bottomY) {
+    this.count = count;
+    this.center = center;
+    this.radius = radius;
+    this.topY = topY;
+    this.bottomY = bottomY;
+
+    const geometry = createLeafGeometry();
+    const material = new THREE.MeshStandardMaterial({ roughness: 0.75, metalness: 0, side: THREE.DoubleSide });
+    this.mesh = new THREE.InstancedMesh(geometry, material, count);
+    this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    this.mesh.castShadow = false;   // 大量實例不投影／不接影，換取長時間運行的效能穩定
+    this.mesh.receiveShadow = false;
+    this.mesh.frustumCulled = false; // 實例散佈範圍遠大於幾何體本身的包圍球，避免被錯誤裁剪消失
+
+    // 物件池：以固定長度的 TypedArray 儲存每片葉子的狀態，全程式生命週期只有「重置」
+    // 沒有「新增/刪除」，落到地面以下就地重生到頂端，重複使用同一個陣列索引。
+    this.py = new Float32Array(count);
+    this.px = new Float32Array(count);
+    this.pz = new Float32Array(count);
+    this.vy = new Float32Array(count);
+    this.rot = new Float32Array(count);
+    this.rotSpeed = new Float32Array(count);
+    this.swayPhase = new Float32Array(count);
+    this.swaySpeed = new Float32Array(count);
+    this.swayAmp = new Float32Array(count);
+    this.scale = new Float32Array(count);
+    this.tilt = new Float32Array(count);
+
+    const leafColors = [0xd9432f, 0xe9772e, 0xf0b23c, 0xc4321f, 0xf2d24a];
+    const color = new THREE.Color();
+    for (let i = 0; i < count; i++) {
+      this.resetLeaf(i, true);
+      color.setHex(leafColors[i % leafColors.length]);
+      this.mesh.setColorAt(i, color);
+    }
+    this.mesh.instanceColor.needsUpdate = true;
+
+    // 每幀重複使用的暫存物件，避免在熱迴圈中配置新物件造成長時間運行後的 GC 壓力。
+    this._m = new THREE.Matrix4();
+    this._q = new THREE.Quaternion();
+    this._e = new THREE.Euler();
+    this._p = new THREE.Vector3();
+    this._s = new THREE.Vector3();
+
+    scene.add(this.mesh);
+  }
+
+  resetLeaf(i, initialSpread) {
+    const a = Math.random() * TAU;
+    const r = Math.random() * this.radius;
+    this.px[i] = this.center.x + Math.cos(a) * r;
+    this.pz[i] = this.center.z + Math.sin(a) * r;
+    this.py[i] = initialSpread ? lerp(this.bottomY, this.topY, Math.random()) : this.topY + Math.random() * 2.5;
+    this.vy[i] = 0.5 + Math.random() * 1.1;
+    this.rot[i] = Math.random() * TAU;
+    this.rotSpeed[i] = (Math.random() - 0.5) * 2.4;
+    this.swayPhase[i] = Math.random() * TAU;
+    this.swaySpeed[i] = 0.6 + Math.random() * 1.2;
+    this.swayAmp[i] = 0.3 + Math.random() * 0.5;
+    this.scale[i] = 0.55 + Math.random() * 0.55;
+    this.tilt[i] = Math.random() * 0.6;
+  }
+
+  update(dt) {
+    for (let i = 0; i < this.count; i++) {
+      // 粒子物理：垂直下落 + 正弦擺盪（左右＋前後）模擬空氣阻力造成的飄動，並持續自旋。
+      this.py[i] -= this.vy[i] * dt;
+      this.swayPhase[i] += this.swaySpeed[i] * dt;
+      this.rot[i] += this.rotSpeed[i] * dt;
+
+      if (this.py[i] < this.bottomY) {
+        this.resetLeaf(i, false); // 回收：直接重寫同一個 index 的狀態，而不是建立新物件
+      }
+
+      const sway = Math.sin(this.swayPhase[i]) * this.swayAmp[i];
+      const drift = Math.cos(this.swayPhase[i] * 0.7) * this.swayAmp[i] * 0.6;
+      this._p.set(this.px[i] + sway, this.py[i], this.pz[i] + drift);
+      this._e.set(this.tilt[i], this.rot[i], this.tilt[i] * 0.5);
+      this._q.setFromEuler(this._e);
+      this._s.setScalar(this.scale[i]);
+      this._m.compose(this._p, this._q, this._s);
+      this.mesh.setMatrixAt(i, this._m);
+    }
+    this.mesh.instanceMatrix.needsUpdate = true;
+  }
+}
+
+/* =========================================================================
+ * DayNightCycle：15 秒日夜循環（白天 → 黃昏 → 夜晚 → 黎明 → 白天）
+ * ========================================================================= */
+const CYCLE_LEN = 15; // 秒
+const CYCLE = {
+  DAY_END: 0.28,     // 穩定白天結束、開始轉黃昏
+  DUSK_PEAK: 0.40,    // 黃昏色調到頂，同時完成「亮燈」
+  NIGHT_END: 0.75,    // 穩定夜晚結束、開始轉黎明
+  DAWN_PEAK: 0.86,    // 黎明色調到頂，開始「熄燈」
+  LIGHTS_OFF: 0.93,   // 熄燈完成（早於白天完全回歸，符合「黎明前燈光自動關閉」）
+  DAY_START: 0.97     // 白天色調完全回歸
+};
+
+const PALETTE = {
+  day:      { top: 0x4fa8ff, bottom: 0xbfe6ff, hemiSky: 0x8fc7ff, hemiGround: 0x6b8f5a, hemiI: 0.95, sunColor: 0xfff3d6, sunI: 2.4, moonI: 0.0,  starOp: 0 },
+  dusk:     { top: 0xff7a4a, bottom: 0xffd08a, hemiSky: 0xffab7a, hemiGround: 0x5a4a3a, hemiI: 0.55, sunColor: 0xff8a4d, sunI: 0.9, moonI: 0.25, starOp: 0.2 },
+  // 暮光紫是黃昏(橘)與夜晚(深藍)之間的中繼關鍵影格：若直接讓橘色線性內插到深藍，
+  // RGB 空間會途經一段泥濘的灰棕色，加這一站讓色相路徑改走橘→紫→藍，過場更好看。
+  twilight: { top: 0x7a4a8a, bottom: 0xb3688a, hemiSky: 0x8a6aa8, hemiGround: 0x3a2f3a, hemiI: 0.4,  sunColor: 0x9a5a8a, sunI: 0.3, moonI: 0.5,  starOp: 0.55 },
+  night:    { top: 0x050818, bottom: 0x0c1230, hemiSky: 0x24365e, hemiGround: 0x11131c, hemiI: 0.28, sunColor: 0x223355, sunI: 0.02, moonI: 0.85, starOp: 1 },
+  dawn:     { top: 0xff9d7a, bottom: 0xffe3b8, hemiSky: 0xffc9a3, hemiGround: 0x4a3f3a, hemiI: 0.5,  sunColor: 0xffcf9d, sunI: 0.7, moonI: 0.3,  starOp: 0.25 }
+};
+
+class DayNightCycle {
+  constructor(landmarks, tower) {
+    this.landmarks = landmarks;
+    this.tower = tower;
+    this.phase = 0;
+
+    // 時間軸關鍵影格（phase 0..1）。每一段都用 smoothstep 往下一格漸變，
+    // 所以天空／霧氣／燈光沒有一處是「瞬間切換」的。
+    this.stops = [
+      { t: 0, p: PALETTE.day },
+      { t: CYCLE.DAY_END, p: PALETTE.day },
+      { t: CYCLE.DUSK_PEAK, p: PALETTE.dusk },
+      { t: 0.46, p: PALETTE.twilight },
+      { t: 0.56, p: PALETTE.night },
+      { t: CYCLE.NIGHT_END, p: PALETTE.night },
+      { t: 0.80, p: PALETTE.twilight },
+      { t: CYCLE.DAWN_PEAK, p: PALETTE.dawn },
+      { t: CYCLE.DAY_START, p: PALETTE.day },
+      { t: 1, p: PALETTE.day }
+    ];
+
+    // 每幀重複使用的暫存 Color，避免逐幀 new THREE.Color() 造成配置壓力。
+    this._top = new THREE.Color();
+    this._bottom = new THREE.Color();
+    this._hemiSky = new THREE.Color();
+    this._hemiGround = new THREE.Color();
+    this._sunColor = new THREE.Color();
+    this._tmp = new THREE.Color();
+  }
+
+  // 找出目前 phase 落在哪兩個關鍵影格之間，回傳兩端調色盤與已 smoothstep 過的局部 t。
+  sampleAt(phase) {
+    const stops = this.stops;
+    let i = 0;
+    while (i < stops.length - 2 && phase > stops[i + 1].t) i++;
+    const from = stops[i], to = stops[i + 1];
+    const span = to.t - from.t;
+    const localT = span > 0 ? smoothstep((phase - from.t) / span) : 0;
+    return { pa: from.p, pb: to.p, localT };
+  }
+
+  update(cycleSeconds) {
+    const phase = (((cycleSeconds % CYCLE_LEN) + CYCLE_LEN) % CYCLE_LEN) / CYCLE_LEN;
+    const { pa, pb, localT } = this.sampleAt(phase);
+
+    this._top.setHex(pa.top).lerp(this._tmp.setHex(pb.top), localT);
+    this._bottom.setHex(pa.bottom).lerp(this._tmp.setHex(pb.bottom), localT);
+    skyUniforms.topColor.value.copy(this._top);
+    skyUniforms.bottomColor.value.copy(this._bottom);
+    scene.fog.color.copy(this._bottom);
+
+    this._hemiSky.setHex(pa.hemiSky).lerp(this._tmp.setHex(pb.hemiSky), localT);
+    this._hemiGround.setHex(pa.hemiGround).lerp(this._tmp.setHex(pb.hemiGround), localT);
+    hemiLight.color.copy(this._hemiSky);
+    hemiLight.groundColor.copy(this._hemiGround);
+    hemiLight.intensity = lerp(pa.hemiI, pb.hemiI, localT);
+
+    this._sunColor.setHex(pa.sunColor).lerp(this._tmp.setHex(pb.sunColor), localT);
+    sunLight.color.copy(this._sunColor);
+    sunLight.intensity = lerp(pa.sunI, pb.sunI, localT);
+    moonLight.intensity = lerp(pa.moonI, pb.moonI, localT);
+    stars.material.opacity = lerp(pa.starOp, pb.starOp, localT);
+
+    // 太陽與月亮位於同一個大圓的兩端（相位差 180°），此消彼長、永遠只有一個在地平線之上。
+    const sunAngle = phase * TAU;
+    const moonAngle = sunAngle + Math.PI;
+    const sc = Math.cos(sunAngle), ss = Math.sin(sunAngle);
+    const mc = Math.cos(moonAngle), ms = Math.sin(moonAngle);
+
+    sunLight.position.set(sc * LIGHT_R, ss * LIGHT_R, -8);
+    moonLight.position.set(mc * LIGHT_R, ms * LIGHT_R, -8);
+    sunMesh.position.set(sc * SUN_R, ss * SUN_R, -30);
+    moonMesh.position.set(mc * SUN_R, ms * SUN_R, -30);
+    sunMesh.visible = sunMesh.position.y > -SUN_R * 0.15;
+    moonMesh.visible = moonMesh.position.y > -SUN_R * 0.15;
+
+    // 景點／鐵塔夜燈：黃昏開始後淡入，黎明結束前淡出完畢（見 CYCLE 常數註解）。
+    let lightsOn;
+    if (phase < CYCLE.DAY_END) lightsOn = 0;
+    else if (phase < CYCLE.DUSK_PEAK) lightsOn = smoothstep((phase - CYCLE.DAY_END) / (CYCLE.DUSK_PEAK - CYCLE.DAY_END));
+    else if (phase < CYCLE.DAWN_PEAK) lightsOn = 1;
+    else if (phase < CYCLE.LIGHTS_OFF) lightsOn = 1 - smoothstep((phase - CYCLE.DAWN_PEAK) / (CYCLE.LIGHTS_OFF - CYCLE.DAWN_PEAK));
+    else lightsOn = 0;
+
+    this.tower.setNightFactor(lightsOn);
+    for (const lm of this.landmarks) lm.setNightFactor(lightsOn);
+
+    this.phase = phase;
+    this.lightsOn = lightsOn;
+  }
+
+  get label() {
+    const p = this.phase;
+    if (p < CYCLE.DAY_END) return '白天';
+    if (p < 0.50) return '黃昏';
+    if (p < CYCLE.NIGHT_END) return '夜晚';
+    if (p < CYCLE.DAY_START) return '黎明';
+    return '白天';
+  }
+}
+
+/* =========================================================================
+ * OrbitLite：自行實作的拖曳旋轉相機控制（球座標 + 慣性回彈）
+ * ========================================================================= */
+class OrbitLite {
+  constructor(camera, dom, target) {
+    this.camera = camera;
+    this.dom = dom;
+    this.target = target;
+    this.radius = 19.5;
+    this.theta = 0.95;
+    this.phi = 1.18;
+    this.thetaVel = 0;
+    this.phiVel = 0;
+    this.dragging = false;
+    this.lastX = 0;
+    this.lastY = 0;
+    this.minRadius = 10;
+    this.maxRadius = 30;
+    this.minPhi = 0.55;
+    this.maxPhi = 1.5;
+
+    dom.style.touchAction = 'none';
+    dom.addEventListener('pointerdown', (e) => this.onDown(e));
+    dom.addEventListener('pointermove', (e) => this.onMove(e));
+    dom.addEventListener('pointerup', (e) => this.onUp(e));
+    dom.addEventListener('pointercancel', (e) => this.onUp(e));
+    dom.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
+
+    this.applyPosition();
+  }
+
+  onDown(e) {
+    this.dragging = true;
+    this.lastX = e.clientX;
+    this.lastY = e.clientY;
+    this.thetaVel = 0;
+    this.phiVel = 0;
+    try { this.dom.setPointerCapture(e.pointerId); } catch (err) { /* 極端情況下沒有對應的 active pointer，忽略即可 */ }
+  }
+
+  onMove(e) {
+    if (!this.dragging) return;
+    const dx = e.clientX - this.lastX;
+    const dy = e.clientY - this.lastY;
+    this.lastX = e.clientX;
+    this.lastY = e.clientY;
+    const s = 0.006;
+    this.thetaVel = -dx * s;
+    this.phiVel = -dy * s;
+    this.theta += this.thetaVel;
+    this.phi = clamp(this.phi + this.phiVel, this.minPhi, this.maxPhi);
+  }
+
+  onUp(e) {
+    this.dragging = false;
+    try { this.dom.releasePointerCapture(e.pointerId); } catch (err) { /* 已釋放或未捕捉，忽略 */ }
+  }
+
+  onWheel(e) {
+    e.preventDefault();
+    this.radius = clamp(this.radius + e.deltaY * 0.01, this.minRadius, this.maxRadius);
+  }
+
+  update(dt) {
+    if (!this.dragging) {
+      // 放開拖曳後讓最後一刻的速度帶一小段慣性，再逐漸阻尼收斂，手感更自然。
+      this.theta += this.thetaVel;
+      this.phi = clamp(this.phi + this.phiVel, this.minPhi, this.maxPhi);
+      const damping = Math.max(0, 1 - dt * 4);
+      this.thetaVel *= damping;
+      this.phiVel *= damping;
+    }
+    this.applyPosition();
+  }
+
+  applyPosition() {
+    const sinPhi = Math.sin(this.phi);
+    const x = this.target.x + this.radius * sinPhi * Math.sin(this.theta);
+    const y = this.target.y + this.radius * Math.cos(this.phi);
+    const z = this.target.z + this.radius * sinPhi * Math.cos(this.theta);
+    this.camera.position.set(x, y, z);
+    this.camera.lookAt(this.target);
+  }
+}
+
+/* =========================================================================
+ * 場景組裝
+ * ========================================================================= */
+const island = new Island();
+
+const tower = new TokyoTower(new THREE.Vector3(0, 0.3, 0));
+island.group.add(tower.group);
+
+const landmarkDefs = [
+  ['fuji', -4.4, -2.5, 0.85],
+  ['torii', 4.2, 2.2, 1.0],
+  ['pagoda', -3.0, 3.8, 0.85]
+];
+const landmarks = landmarkDefs.map(([type, x, z, s]) => {
+  const lm = new Landmark(type, new THREE.Vector3(x, 0.3, z), s);
+  island.group.add(lm.group);
+  return lm;
+});
+
+const tree1 = createMapleTree(1.15);
+tree1.position.set(3.0, 0.3, -3.2);
+island.group.add(tree1);
+const tree2 = createMapleTree(0.9);
+tree2.position.set(-1.4, 0.3, -4.4);
+island.group.add(tree2);
+
+const leaves = new MapleLeafSystem(260, new THREE.Vector3(0, 0, 0), 8.5, 12, -7);
+const dayNight = new DayNightCycle(landmarks, tower);
+const controls = new OrbitLite(camera, renderer.domElement, new THREE.Vector3(0, 2.4, 0));
+
+/* =========================================================================
+ * HUD / 音效 / 鍵盤加速 / RWD
+ * ========================================================================= */
+const hud = document.getElementById('hud');
+const audioBtn = document.getElementById('audioBtn');
+
+let cycleTime = Math.random() * CYCLE_LEN;
+let timeScale = 1;
+window.addEventListener('keydown', (e) => {
+  if (e.key === 't' || e.key === 'T') {
+    timeScale = timeScale === 1 ? 7 : 1;
+  }
+});
+
+// 環境音效（bonus）：預設關閉，需使用者主動點擊才會啟動 AudioContext（符合瀏覽器自動播放限制）。
+let audioCtx = null, audioNodes = null, audioOn = false;
+function ensureAudio() {
+  if (audioCtx) return;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return;
+  audioCtx = new AC();
+  const master = audioCtx.createGain();
+  master.gain.value = 0;
+  master.connect(audioCtx.destination);
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.value = 600;
+  filter.connect(master);
+  [110, 164.81].forEach((freq) => {
+    const osc = audioCtx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    osc.connect(filter);
+    osc.start();
+  });
+  audioNodes = { master, filter };
+}
+function setAudio(on) {
+  audioOn = on;
+  if (on) {
+    ensureAudio();
+    if (!audioCtx) return;
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    audioNodes.master.gain.linearRampToValueAtTime(0.045, audioCtx.currentTime + 0.8);
+  } else if (audioNodes) {
+    audioNodes.master.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.4);
+  }
+  audioBtn.textContent = on ? '🔊' : '🔇';
+}
+audioBtn.addEventListener('click', () => setAudio(!audioOn));
+
+let frameCount = 0, fpsAccum = 0, fps = 60;
+function updateHud(dt) {
+  frameCount++;
+  fpsAccum += dt;
+  if (fpsAccum >= 0.5) {
+    fps = Math.round(frameCount / fpsAccum);
+    frameCount = 0;
+    fpsAccum = 0;
+    hud.textContent = `FPS ${fps} · 楓葉 ${leaves.count} · ${dayNight.label}`;
+  }
+}
+
+function onResize() {
+  const w = innerWidth, h = innerHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+}
+window.addEventListener('resize', onResize);
+new ResizeObserver(() => onResize()).observe(document.documentElement);
+
+/* =========================================================================
+ * 主迴圈：requestAnimationFrame + deltaTime（THREE.Clock）
+ * ========================================================================= */
+const clock = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05); // 限制單幀最大 dt，避免分頁切走再切回時的巨幅跳動
+  const elapsed = clock.getElapsedTime();
+
+  cycleTime += dt * timeScale; // 只有日夜循環受 T 鍵加速影響，其餘動畫維持真實時間
+  controls.update(dt);
+  island.update(dt, elapsed);
+  leaves.update(dt);
+  dayNight.update(cycleTime);
+
+  for (const c of clouds) {
+    c.position.x += c.userData.speed * dt;
+    if (c.position.x > 60) c.position.x = -60;
+  }
+  if (audioNodes) {
+    const dayFactor = 1 - dayNight.lightsOn; // 白天濾波器更明亮，夜晚更低沉
+    const targetFreq = lerp(300, 1400, dayFactor);
+    audioNodes.filter.frequency.setTargetAtTime(targetFreq, audioCtx.currentTime, 0.5);
+  }
+
+  updateHud(dt);
+  renderer.render(scene, camera);
+}
+onResize();
+animate();
+</script>
+</body>
+</html>

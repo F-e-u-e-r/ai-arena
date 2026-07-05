@@ -105,7 +105,80 @@
     "description": "進階 Canvas 2D 挑戰：評比 OOP 架構、粒子 Object Pooling、狀態機與美術表現。6+ 動物依非洲習性循環、6 種天氣 × 乾濕季、閃電避開動物、龍捲風追逐。",
     "order": 30,
     "id": "savannah-ecosystem",
-    "submissions": []
+    "submissions": [
+      {
+        "provider": "openai",
+        "model": "GPT 5.5",
+        "modelId": "gpt-5.5",
+        "effort": "medium",
+        "client": "codex",
+        "author": "f-e-u-e-r",
+        "generatedAt": "2026-07-05T00:00:00Z",
+        "order": 10,
+        "id": "gpt-5.5-medium-f-e-u-e-r",
+        "path": "tasks/savannah-ecosystem/gpt-5.5-medium-f-e-u-e-r/"
+      },
+      {
+        "provider": "openai",
+        "model": "GPT-5.5",
+        "modelId": "openai/gpt-5.5",
+        "effort": "xhigh",
+        "client": "codex",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-07-05T04:00:00Z",
+        "order": 10,
+        "id": "openai-gpt-5.5-xhigh-codex",
+        "path": "tasks/savannah-ecosystem/openai-gpt-5.5-xhigh-codex/"
+      },
+      {
+        "provider": "anthropic",
+        "model": "Opus 4.6",
+        "modelId": "claude-opus-4-6",
+        "effort": "max",
+        "client": "claude-code",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-07-05T12:00:00Z",
+        "metrics": {
+          "durationMs": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cachedInputTokens": 0
+        },
+        "order": 10,
+        "id": "opus-4.6-max",
+        "path": "tasks/savannah-ecosystem/opus-4.6-max/"
+      },
+      {
+        "provider": "anthropic",
+        "model": "Opus 4.8",
+        "modelId": "claude-opus-4-8",
+        "effort": "max",
+        "client": "claude-code",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-07-05T06:05:00Z",
+        "order": 10,
+        "id": "opus-4.8-max",
+        "path": "tasks/savannah-ecosystem/opus-4.8-max/"
+      },
+      {
+        "provider": "anthropic",
+        "model": "Sonnet 5",
+        "modelId": "claude-sonnet-5",
+        "effort": "max",
+        "client": "claude-code",
+        "author": "f-e-u-e-r",
+        "generatedAt": "2026-07-05T06:32:00Z",
+        "metrics": {
+          "durationMs": 2346380,
+          "inputTokens": 146261,
+          "outputTokens": 64528,
+          "cachedInputTokens": 6083246
+        },
+        "order": 10,
+        "id": "sonnet-5-max-f-e-u-e-r",
+        "path": "tasks/savannah-ecosystem/sonnet-5-max-f-e-u-e-r/"
+      }
+    ]
   },
   {
     "title": "漂浮東京島與楓葉 (Three.js)",
@@ -115,6 +188,79 @@
     "description": "卡通風 3D 挑戰：評比 Three.js 場景/渲染管線、粒子效能、日夜循環與美術氛圍。浮空島 + 東京鐵塔 + 日本景點、楓葉飄落、15 秒日夜輪轉、滑鼠旋轉視角。",
     "order": 40,
     "id": "tokyo-island",
-    "submissions": []
+    "submissions": [
+      {
+        "provider": "openai",
+        "model": "GPT 5.5",
+        "modelId": "gpt-5.5",
+        "effort": "medium",
+        "client": "codex",
+        "author": "f-e-u-e-r",
+        "generatedAt": "2026-07-05T00:00:00Z",
+        "order": 10,
+        "id": "gpt-5.5-medium-f-e-u-e-r",
+        "path": "tasks/tokyo-island/gpt-5.5-medium-f-e-u-e-r/"
+      },
+      {
+        "provider": "openai",
+        "model": "GPT-5.5",
+        "modelId": "openai/gpt-5.5",
+        "effort": "xhigh",
+        "client": "codex",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-07-05T04:00:00Z",
+        "order": 10,
+        "id": "openai-gpt-5.5-xhigh-codex",
+        "path": "tasks/tokyo-island/openai-gpt-5.5-xhigh-codex/"
+      },
+      {
+        "provider": "anthropic",
+        "model": "Opus 4.6",
+        "modelId": "claude-opus-4-6",
+        "effort": "max",
+        "client": "claude-code",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-07-05T12:00:00Z",
+        "metrics": {
+          "durationMs": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cachedInputTokens": 0
+        },
+        "order": 10,
+        "id": "opus-4.6-max",
+        "path": "tasks/tokyo-island/opus-4.6-max/"
+      },
+      {
+        "provider": "anthropic",
+        "model": "Opus 4.8",
+        "modelId": "claude-opus-4-8",
+        "effort": "max",
+        "client": "claude-code",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-07-05T06:05:00Z",
+        "order": 10,
+        "id": "opus-4.8-max",
+        "path": "tasks/tokyo-island/opus-4.8-max/"
+      },
+      {
+        "provider": "anthropic",
+        "model": "Sonnet 5",
+        "modelId": "claude-sonnet-5",
+        "effort": "max",
+        "client": "claude-code",
+        "author": "f-e-u-e-r",
+        "generatedAt": "2026-07-05T05:50:00Z",
+        "metrics": {
+          "durationMs": 2346381,
+          "inputTokens": 146261,
+          "outputTokens": 64529,
+          "cachedInputTokens": 6083246
+        },
+        "order": 10,
+        "id": "sonnet-5-max-f-e-u-e-r",
+        "path": "tasks/tokyo-island/sonnet-5-max-f-e-u-e-r/"
+      }
+    ]
   }
 ]
