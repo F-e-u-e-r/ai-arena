@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Advanced Savannah Ecosystem</title>
+  <link rel="icon" href="../../../assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="scene" aria-label="Animated African savannah ecosystem"></canvas>
+
+  <section class="hud">
+    <div class="headline">
+      <p class="eyebrow">GPT 5.4 · xhigh</p>
+      <h1>Advanced Savannah Ecosystem</h1>
+      <p class="summary">Canvas-only wildlife simulation with pooled weather particles, season logic, lightning-safe storms, and tornado pursuit.</p>
+    </div>
+
+    <div class="controls">
+      <div class="group">
+        <span class="label">Weather</span>
+        <div class="buttons" id="weather-controls">
+          <button data-weather="sunny" class="is-active">Sunny</button>
+          <button data-weather="rain">Rain</button>
+          <button data-weather="heavy-rain">Heavy Rain</button>
+          <button data-weather="snow">Snow</button>
+          <button data-weather="thunderstorm">Thunderstorm</button>
+          <button data-weather="tornado">Tornado</button>
+        </div>
+      </div>
+
+      <div class="group season-group">
+        <span class="label">Season</span>
+        <div class="season-controls">
+          <button id="season-toggle">Switch To Wet Season</button>
+          <span id="season-status">Dry season · auto switch in 60.0s</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats" id="stats"></div>
+    <p class="hint">Keys: <kbd>1</kbd>-<kbd>6</kbd> weather, <kbd>S</kbd> season, <kbd>D</kbd> debug overlay.</p>
+  </section>
+
+  <script type="module" src="main.js"></script>
+</body>
+</html>

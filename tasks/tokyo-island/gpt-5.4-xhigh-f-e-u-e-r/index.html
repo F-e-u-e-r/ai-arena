@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Floating Tokyo Island</title>
+  <link rel="icon" href="../../../assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.170.0/build/three.module.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <canvas id="scene" aria-label="Animated floating Tokyo island rendered with Three.js"></canvas>
+
+  <section class="hud">
+    <p class="eyebrow">GPT 5.4 · xhigh · Three.js</p>
+    <h1>Floating Tokyo Island</h1>
+    <p class="summary">Cartoon WebGL scene with a floating island, Tokyo Tower, Mount Fuji, torii, temple lights, maple leaf pooling, and a 15-second day-night cycle.</p>
+    <div class="stats" id="stats"></div>
+    <p class="hint">Drag horizontally to orbit. Keys: <kbd>F</kbd> fast cycle, <kbd>R</kbd> reset camera, <kbd>D</kbd> debug.</p>
+  </section>
+
+  <script type="module" src="main.js"></script>
+</body>
+</html>
