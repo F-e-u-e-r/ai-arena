@@ -106,6 +106,10 @@ function computeCost(modelId, metrics) {
     if (modelId) missingPricing.add(modelId);
     return undefined;
   }
+  if (typeof rates.input !== 'number' || typeof rates.output !== 'number') {
+    if (modelId) missingPricing.add(modelId);
+    return undefined;
+  }
   const input = metrics.inputTokens || 0;
   const output = metrics.outputTokens || 0;
   const cached = metrics.cachedInputTokens || 0;

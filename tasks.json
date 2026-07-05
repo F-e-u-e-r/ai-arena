@@ -108,6 +108,30 @@
     "submissions": [
       {
         "provider": "openai",
+        "model": "GPT 5.4",
+        "modelId": "gpt-5.4",
+        "effort": "xhigh",
+        "client": "codex",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-07-05T00:00:00Z",
+        "order": 10,
+        "usageMetadata": {
+          "fields": [
+            "input_tokens",
+            "cached_input_tokens",
+            "output_tokens",
+            "reasoning_output_tokens"
+          ],
+          "durationSource": "structured log request duration or wrapper wall-clock timing",
+          "usageSource": "codex exec --json -> turn.completed.usage",
+          "status": "omitted",
+          "note": "This interactive Codex session did not expose reliable per-task metrics, so token counts and duration were intentionally left out instead of guessed."
+        },
+        "id": "gpt-5.4-xhigh-f-e-u-e-r",
+        "path": "tasks/savannah-ecosystem/gpt-5.4-xhigh-f-e-u-e-r/"
+      },
+      {
+        "provider": "openai",
         "model": "GPT-5.5",
         "modelId": "gpt-5.5",
         "effort": "xhigh",
@@ -141,6 +165,30 @@
     "order": 40,
     "id": "tokyo-island",
     "submissions": [
+      {
+        "provider": "openai",
+        "model": "GPT 5.4",
+        "modelId": "gpt-5.4",
+        "effort": "xhigh",
+        "client": "codex",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-07-05T00:00:00Z",
+        "order": 10,
+        "usageMetadata": {
+          "fields": [
+            "input_tokens",
+            "cached_input_tokens",
+            "output_tokens",
+            "reasoning_output_tokens"
+          ],
+          "durationSource": "structured log request duration or wrapper wall-clock timing",
+          "usageSource": "codex exec --json -> turn.completed.usage",
+          "status": "omitted",
+          "note": "This interactive Codex session did not expose reliable per-task metrics, so token counts and duration were intentionally left out instead of guessed."
+        },
+        "id": "gpt-5.4-xhigh-f-e-u-e-r",
+        "path": "tasks/tokyo-island/gpt-5.4-xhigh-f-e-u-e-r/"
+      },
       {
         "provider": "openai",
         "model": "GPT-5.5",

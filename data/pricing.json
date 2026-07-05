@@ -4,6 +4,8 @@
     "input": "每 1M 輸入(非快取) token 的 USD 價格",
     "output": "每 1M 輸出 token 的 USD 價格",
     "cachedInput": "每 1M 快取讀取 token 的 USD 價格 (選填)",
+    "context": "模型 context window token 數 (選填)",
+    "openRouterModel": "OpenRouter model id / route (選填)",
     "source": "價格來源",
     "verifiedAt": "最後查證日期 (YYYY-MM-DD)"
   },
@@ -35,6 +37,16 @@
       "cachedInput": 0.125,
       "source": "openrouter",
       "verifiedAt": null
+    },
+    "gpt-5.4": {
+      "input": null,
+      "output": null,
+      "context": 1000000,
+      "openRouterModel": "openrouter/fusion",
+      "displayName": "OpenRouter: Fusion",
+      "source": "openrouter",
+      "verifiedAt": "2026-07-05",
+      "note": "OpenRouter listed input/output pricing as unavailable; context listed as 1,000,000 tokens."
     },
     "gemini-2.5-pro": {
       "input": 1.25,
