@@ -1,0 +1,131 @@
+/* 漂浮東京島 — 全螢幕 WebGL canvas + 極簡 overlay HUD。
+   HUD 目標：在 320×200 iframe 預覽中可點擊、不重疊、不遮住場景。 */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: #10142e;
+  font-family: "PingFang TC", "Noto Sans TC", system-ui, -apple-system, sans-serif;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+#scene {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none; /* 交給自訂的拖曳/雙指縮放 */
+  cursor: grab;
+}
+#scene.dragging { cursor: grabbing; }
+
+/* ---- 標題與操作提示（左上，數秒後淡出） ---- */
+#title {
+  position: absolute;
+  top: 6px;
+  left: 8px;
+  color: rgba(255, 255, 255, 0.94);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
+  line-height: 1.3;
+  pointer-events: none;
+  transition: opacity 1.2s ease;
+}
+#title strong { display: block; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; }
+#title #hint { font-size: 11px; opacity: 0.85; }
+#title.dim { opacity: 0.35; }
+
+/* ---- 效能資訊（右上） ---- */
+#debug {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(8, 12, 24, 0.6);
+  color: #cfe0f2;
+  font: 10px/1.5 ui-monospace, "SF Mono", Menlo, monospace;
+  white-space: pre;
+  pointer-events: none;
+  backdrop-filter: blur(3px);
+}
+
+/* ---- 底部控制列 ---- */
+#controls {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border-radius: 12px;
+  background: rgba(8, 12, 24, 0.55);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* 相位指示：conic-gradient 進度環 + 圖示 */
+#phase {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+#phase-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    conic-gradient(#ffd76e calc(var(--p, 0) * 360deg), rgba(255, 255, 255, 0.16) 0deg);
+  -webkit-mask: radial-gradient(circle, transparent 58%, #000 62%);
+  mask: radial-gradient(circle, transparent 58%, #000 62%);
+}
+#phase-ico { font-style: normal; font-size: 14px; line-height: 1; }
+
+#controls button {
+  min-width: 32px;
+  height: 30px;
+  padding: 0 9px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #eef4ff;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+#controls button:hover { background: rgba(255, 255, 255, 0.13); }
+#controls button:focus-visible { outline: 2px solid #ffd76e; outline-offset: 1px; }
+#debug-btn[aria-pressed="true"] { background: rgba(140, 190, 255, 0.25); }
+
+#loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  pointer-events: none;
+  transition: opacity 0.6s ease;
+}
+#loading.done { opacity: 0; }
+
+/* ---- 小尺寸（gallery 卡片 320×200 預覽） ---- */
+@media (max-width: 520px), (max-height: 340px) {
+  #controls { gap: 4px; padding: 3px 6px; bottom: 5px; border-radius: 10px; }
+  #phase { width: 24px; height: 24px; }
+  #phase-ico { font-size: 11px; }
+  #controls button { min-width: 26px; height: 24px; padding: 0 6px; font-size: 10.5px; }
+  #title strong { font-size: 10px; }
+  #title #hint { font-size: 9px; }
+  #debug { font-size: 8px; padding: 3px 5px; }
+}

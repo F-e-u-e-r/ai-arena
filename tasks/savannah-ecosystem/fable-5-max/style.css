@@ -1,0 +1,154 @@
+/* 非洲大草原生態系統 — 版面：全螢幕 canvas + 極簡 overlay HUD。
+   HUD 設計目標：在 320×200 的 iframe 預覽中仍可點擊、不重疊、不遮住主場景。 */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: #24313d;
+  font-family: "PingFang TC", "Noto Sans TC", system-ui, -apple-system, sans-serif;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+#scene {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ---- 標題（左上，數秒後淡出，避免遮擋） ---- */
+#title {
+  position: absolute;
+  top: 6px;
+  left: 8px;
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+  line-height: 1.25;
+  pointer-events: none;
+  transition: opacity 1.2s ease;
+}
+#title strong { display: block; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; }
+#title #status-line { font-size: 11px; opacity: 0.9; }
+#title.dim { opacity: 0.38; }
+
+/* ---- 效能資訊（右上） ---- */
+#debug {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(12, 20, 26, 0.55);
+  color: #cfe6d2;
+  font: 10px/1.5 ui-monospace, "SF Mono", Menlo, monospace;
+  white-space: pre;
+  pointer-events: none;
+  backdrop-filter: blur(3px);
+}
+
+/* ---- toast 提示（上方置中） ---- */
+#toast {
+  position: absolute;
+  top: 34px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 86%;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(15, 25, 32, 0.72);
+  color: #fff;
+  font-size: 11px;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+#toast.show { opacity: 1; }
+
+/* ---- 底部控制列 ---- */
+#controls {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  max-width: calc(100% - 12px);
+  padding: 5px 7px;
+  border-radius: 12px;
+  background: rgba(15, 25, 32, 0.58);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+}
+#weather-group { display: flex; gap: 4px; }
+.sep { width: 1px; height: 20px; background: rgba(255, 255, 255, 0.22); flex: none; }
+
+#controls button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #eef6ee;
+  font-size: 12px;
+  cursor: pointer;
+  justify-content: center;
+  transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+#controls button .ico { font-size: 15px; line-height: 1; }
+#controls button .lbl { font-size: 11.5px; }
+#controls button:hover { background: rgba(255, 255, 255, 0.12); }
+#controls button:focus-visible { outline: 2px solid #ffd76e; outline-offset: 1px; }
+#controls button[aria-pressed="true"] {
+  background: rgba(255, 215, 110, 0.22);
+  border-color: rgba(255, 215, 110, 0.65);
+}
+#controls button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+#debug-btn[aria-pressed="true"] { background: rgba(140, 220, 160, 0.25); }
+
+/* 季節按鈕底部的自動輪轉進度條 */
+#season-progress {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: 3px;
+  height: 2px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.18);
+  overflow: hidden;
+}
+#season-progress::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: calc(var(--p, 0) * 100%);
+  background: #ffd76e;
+}
+
+/* ---- 小尺寸（gallery 卡片 320×200 預覽）：只留 icon，縮小一切 ---- */
+@media (max-width: 520px), (max-height: 340px) {
+  #controls { gap: 3px; padding: 3px 5px; bottom: 5px; border-radius: 10px; }
+  #controls button { min-width: 26px; height: 26px; padding: 0 4px; }
+  #controls button .ico { font-size: 13px; }
+  #controls button .lbl { display: none; }
+  .sep { height: 16px; }
+  #title strong { font-size: 10px; }
+  #title #status-line { font-size: 9px; }
+  #debug { font-size: 8px; padding: 3px 5px; }
+  #toast { font-size: 9px; top: 28px; padding: 3px 9px; }
+}
