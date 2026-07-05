@@ -157,9 +157,21 @@ body {
   letter-spacing: .5px;
 }
 .provider { color: #c4cad8; }
-.effort-high { color: #42e3a0; border-color: #1f5e44; }
-.effort-medium { color: #4f8cff; border-color: #244a8a; }
-.effort-low { color: #ffd23f; border-color: #6b5a14; }
+.badge.effort {
+  color: #fff;
+  border-color: transparent;
+  font-weight: 700;
+}
+.effort-low { background: #2f855a; }
+.effort-medium { background: #2563eb; }
+.effort-high { background: #d97706; }
+.effort-xhigh { background: #dc2626; }
+.effort-ultracode { background: #7c3aed; }
+.effort-max {
+  color: #111827;
+  background: linear-gradient(90deg, #ff4d4d, #f59e0b, #facc15, #22c55e, #38bdf8, #6366f1, #d946ef);
+  border-color: rgba(255, 255, 255, .35);
+}
 
 /* client badge：已知 client 給專屬色，未知值沿用預設 badge 樣式 */
 .badge.client { text-transform: none; letter-spacing: 0; }
