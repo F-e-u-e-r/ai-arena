@@ -1,0 +1,16 @@
+{
+  "provider": "anthropic",
+  "model": "Fable 5",
+  "modelId": "anthropic/claude-fable-5",
+  "effort": "high",
+  "client": "claude-code",
+  "author": "F-e-u-e-r",
+  "generatedAt": "2026-07-05T00:00:00Z",
+  "metrics": {
+    "durationMs": 420000,
+    "inputTokens": 4200,
+    "outputTokens": 21000,
+    "cachedInputTokens": 180000
+  },
+  "order": 10
+}

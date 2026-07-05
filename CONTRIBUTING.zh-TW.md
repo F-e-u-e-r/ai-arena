@@ -18,7 +18,7 @@
 
 ## `submission.json` 欄位
 
-只有 `provider` 與 `model` 是必填。缺少的選填值會在網站上顯示為 dash。
+只有 `provider` 與 `model` 是必填。缺少的選填值會在網站上顯示為 —。
 
 ```json
 {
@@ -66,17 +66,17 @@
 costUsd = (inputTokens * input price + outputTokens * output price + cachedInputTokens * cached-input price) / 1,000,000
 ```
 
-如果 `data/pricing.json` 不包含你的 `modelId`，成本會顯示為 dash。可以的話，請在同一個 PR 補上價格，包含 `source` 與 `verifiedAt`。
+如果 `data/pricing.json` 不包含你的 `modelId`，成本會顯示為 —。可以的話，請在同一個 PR 補上價格，包含 `source` 與 `verifiedAt`。
 
 ## 如何取得時間與 Token Metrics
 
 | Client | Tokens | Time | 取得方式 |
 | --- | --- | --- | --- |
-| Claude Code | Yes | Yes | 執行 `node scripts/metrics-from-claude-code.mjs <session.jsonl>`，或使用 `/cost`。Session logs 通常在 `~/.claude/projects/<project>/*.jsonl`。 |
-| Codex CLI | Yes | Yes | CLI 會在結束時印出 token usage。API responses 包含 `usage` 欄位。 |
-| opencode | Yes | Yes | 內建 per-session usage 與 cost statistics。 |
-| Cursor | Manual | Manual | 沒有簡單的官方 token export；可從 dashboard data 估算，或留空。 |
-| Kiro | Manual | Manual | 使用 AWS-side data，如果沒有可留空。 |
+| Claude Code | 自動 | 自動 | 執行 `node scripts/metrics-from-claude-code.mjs <session.jsonl>`，或使用 `/cost`。Session logs 通常在 `~/.claude/projects/<project>/*.jsonl`。 |
+| Codex CLI | 自動 | 自動 | CLI 會在結束時印出 token usage。API responses 包含 `usage` 欄位。 |
+| opencode | 自動 | 自動 | 內建 per-session 的 usage 與 cost 統計。 |
+| Cursor | 需手動 | 需手動 | 沒有簡單的官方 token 匯出；可從後台 dashboard 估算，或留空。 |
+| Kiro | 需手動 | 需手動 | 從 AWS 後台取得，若無則留空。 |
 
 Metrics 是選填。沒有 metrics 的 submissions 仍然歡迎。
 
