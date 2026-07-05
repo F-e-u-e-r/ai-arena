@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>非洲大草原生態系統 — Fable 5 (max)</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦁</text></svg>">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="scene" aria-label="非洲大草原生態系統動畫：獅群、象群與花豹在不同天氣與季節下活動"></canvas>
+
+<div id="title" aria-hidden="true">
+  <strong>非洲大草原生態系</strong>
+  <span id="status-line">☀️ 晴 · 🌾 乾季</span>
+</div>
+
+<div id="debug" hidden></div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<div id="controls" role="toolbar" aria-label="天氣與季節控制">
+  <div id="weather-group" role="group" aria-label="天氣">
+    <button class="wbtn" data-weather="sunny"   aria-pressed="true"  title="晴天（快捷鍵 1）"><span class="ico">☀️</span><span class="lbl">晴</span></button>
+    <button class="wbtn" data-weather="rain"    aria-pressed="false" title="下雨（快捷鍵 2）"><span class="ico">🌦️</span><span class="lbl">雨</span></button>
+    <button class="wbtn" data-weather="heavy"   aria-pressed="false" title="豪雨（快捷鍵 3）"><span class="ico">🌧️</span><span class="lbl">豪雨</span></button>
+    <button class="wbtn" data-weather="snow"    aria-pressed="false" title="下雪（快捷鍵 4，僅乾季可用）"><span class="ico">❄️</span><span class="lbl">雪</span></button>
+    <button class="wbtn" data-weather="storm"   aria-pressed="false" title="雷暴（快捷鍵 5）"><span class="ico">⛈️</span><span class="lbl">雷暴</span></button>
+    <button class="wbtn" data-weather="tornado" aria-pressed="false" title="龍捲風（快捷鍵 6）"><span class="ico">🌪️</span><span class="lbl">龍捲風</span></button>
+  </div>
+  <div class="sep" aria-hidden="true"></div>
+  <button id="season-btn" title="切換季節（快捷鍵 S），每 60 秒自動輪轉">
+    <span class="ico">🌾</span><span class="lbl">乾季</span>
+    <i id="season-progress" aria-hidden="true"></i>
+  </button>
+  <button id="debug-btn" title="效能資訊（快捷鍵 D）" aria-pressed="false"><span class="ico">ⓘ</span></button>
+</div>
+
+<script src="main.js"></script>
+</body>
+</html>

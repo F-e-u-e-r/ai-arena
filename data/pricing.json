@@ -455,12 +455,34 @@
       "cachedInput": 0.1,
       "context": 128000
     },
+    "claude-fable-5": {
+      "input": 10,
+      "output": 50,
+      "source": "openrouter",
+      "verifiedAt": "2026-07-05",
+      "openRouterModel": "anthropic/claude-fable-5",
+      "displayName": "Anthropic: Claude Fable 5",
+      "cachedInput": 1,
+      "context": 1000000,
+      "aliasFor": "anthropic/claude-fable-5"
+    },
     "claude-haiku-4-5": {
       "input": 1,
       "output": 5,
       "cachedInput": 0.1,
       "source": "bedrock",
       "verifiedAt": null
+    },
+    "claude-opus-4-6": {
+      "input": 5,
+      "output": 25,
+      "source": "openrouter",
+      "verifiedAt": "2026-07-05",
+      "openRouterModel": "anthropic/claude-opus-4.6",
+      "displayName": "Anthropic: Claude Opus 4.6",
+      "cachedInput": 0.5,
+      "context": 1000000,
+      "aliasFor": "anthropic/claude-opus-4.6"
     },
     "claude-opus-4-8": {
       "input": 15,
@@ -475,6 +497,17 @@
       "cachedInput": 0.3,
       "source": "bedrock",
       "verifiedAt": null
+    },
+    "claude-sonnet-5": {
+      "input": 2,
+      "output": 10,
+      "source": "openrouter",
+      "verifiedAt": "2026-07-05",
+      "openRouterModel": "anthropic/claude-sonnet-5",
+      "displayName": "Anthropic: Claude Sonnet 5",
+      "cachedInput": 0.2,
+      "context": 1000000,
+      "aliasFor": "anthropic/claude-sonnet-5"
     },
     "cognitivecomputations/dolphin-mistral-24b-venice-edition:free": {
       "input": 0,

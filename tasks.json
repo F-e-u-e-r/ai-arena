@@ -107,6 +107,25 @@
     "id": "savannah-ecosystem",
     "submissions": [
       {
+        "provider": "anthropic",
+        "model": "Fable 5",
+        "modelId": "claude-fable-5",
+        "effort": "max",
+        "client": "claude-code",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-07-05T08:55:45Z",
+        "metrics": {
+          "durationMs": 12867813,
+          "inputTokens": 1833557,
+          "outputTokens": 136880,
+          "cachedInputTokens": 44968776
+        },
+        "order": 10,
+        "id": "fable-5-max",
+        "costUsd": 70.148346,
+        "path": "tasks/savannah-ecosystem/fable-5-max/"
+      },
+      {
         "provider": "openai",
         "model": "GPT 5.5",
         "modelId": "gpt-5.5",
@@ -146,6 +165,7 @@
         },
         "order": 10,
         "id": "opus-4.6-max",
+        "costUsd": 0,
         "path": "tasks/savannah-ecosystem/opus-4.6-max/"
       },
       {
@@ -176,6 +196,7 @@
         },
         "order": 10,
         "id": "sonnet-5-max-f-e-u-e-r",
+        "costUsd": 2.154451,
         "path": "tasks/savannah-ecosystem/sonnet-5-max-f-e-u-e-r/"
       }
     ]
@@ -189,6 +210,25 @@
     "order": 40,
     "id": "tokyo-island",
     "submissions": [
+      {
+        "provider": "anthropic",
+        "model": "Fable 5",
+        "modelId": "claude-fable-5",
+        "effort": "max",
+        "client": "claude-code",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-07-05T09:48:09Z",
+        "metrics": {
+          "durationMs": 3048467,
+          "inputTokens": 73682,
+          "outputTokens": 48423,
+          "cachedInputTokens": 27462775
+        },
+        "order": 10,
+        "id": "fable-5-max",
+        "costUsd": 30.620745,
+        "path": "tasks/tokyo-island/fable-5-max/"
+      },
       {
         "provider": "openai",
         "model": "GPT 5.5",
@@ -229,6 +269,7 @@
         },
         "order": 10,
         "id": "opus-4.6-max",
+        "costUsd": 0,
         "path": "tasks/tokyo-island/opus-4.6-max/"
       },
       {
@@ -259,6 +300,7 @@
         },
         "order": 10,
         "id": "sonnet-5-max-f-e-u-e-r",
+        "costUsd": 2.154461,
         "path": "tasks/tokyo-island/sonnet-5-max-f-e-u-e-r/"
       }
     ]
