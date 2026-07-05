@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Savannah Ecosystem - GPT-5.5 xhigh</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<canvas id="savannah" aria-label="Animated African savannah ecosystem"></canvas>
+
+<section class="hud" aria-live="polite">
+  <strong>Savannah System</strong>
+  <span id="status">Dry Season - Sunny</span>
+  <span id="debug">-- fps - 0 particles</span>
+</section>
+
+<button id="seasonToggle" class="season-toggle" type="button">Wet Season</button>
+
+<nav class="weather-controls" aria-label="Weather controls">
+  <button type="button" data-weather="sunny" class="active">Sunny</button>
+  <button type="button" data-weather="rain">Rain</button>
+  <button type="button" data-weather="heavy-rain">Heavy</button>
+  <button type="button" data-weather="snow">Snow</button>
+  <button type="button" data-weather="thunderstorm">Storm</button>
+  <button type="button" data-weather="tornado">Tornado</button>
+</nav>
+
+<script src="./main.js"></script>
+</body>
+</html>

@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>非洲大草原生態系統 — Opus 4.8 max</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #10131a; }
+  #app { position: fixed; inset: 0; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: manipulation; }
+
+  .overlay {
+    position: absolute; z-index: 5; pointer-events: none;
+    font-family: "Hiragino Sans", "Noto Sans TC", system-ui, sans-serif;
+    color: #fff; -webkit-user-select: none; user-select: none;
+    text-shadow: 0 1px 3px rgba(0,0,0,.6);
+  }
+
+  /* 左上：季節 + 天氣狀態 */
+  #status { top: 10px; left: 12px; font-size: 13px; line-height: 1.5; }
+  #status .season { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 6px; }
+  #status .bar { width: 96px; height: 5px; border-radius: 3px; background: rgba(255,255,255,.22); overflow: hidden; margin-top: 3px; }
+  #status .bar > i { display: block; height: 100%; background: #ffd36b; width: 0%; }
+  #status .wx { opacity: .9; margin-top: 2px; }
+
+  /* 右上：除錯資訊（預設隱藏） */
+  #debug { top: 10px; right: 12px; text-align: right; font-size: 11px; line-height: 1.5; display: none; font-variant-numeric: tabular-nums; }
+  #debug.on { display: block; }
+
+  /* 底部控制列：天氣（單選）+ 季節 + 除錯 */
+  #dock {
+    position: absolute; z-index: 6; left: 50%; bottom: 10px; transform: translateX(-50%);
+    display: flex; gap: 5px; align-items: center; flex-wrap: nowrap;
+    padding: 6px 8px; border-radius: 12px; max-width: calc(100vw - 12px);
+    background: rgba(18,22,30,.55); backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,.12); pointer-events: auto;
+    font-family: "Hiragino Sans","Noto Sans TC",system-ui,sans-serif;
+  }
+  #dock button {
+    pointer-events: auto; cursor: pointer; position: relative;
+    width: 36px; height: 34px; padding: 0; display: grid; place-items: center;
+    font-size: 16px; line-height: 1; color: #fff;
+    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14);
+    border-radius: 9px; transition: background .15s, transform .1s;
+  }
+  #dock button:hover { background: rgba(255,255,255,.2); }
+  #dock button:active { transform: scale(.92); }
+  #dock button.active { background: rgba(120,180,255,.4); border-color: rgba(150,200,255,.65); }
+  #dock button:disabled { opacity: .32; cursor: not-allowed; }
+  #dock .sep { width: 1px; height: 22px; background: rgba(255,255,255,.16); margin: 0 2px; flex: none; }
+
+  #toast {
+    left: 50%; bottom: 54px; transform: translateX(-50%);
+    font-size: 12px; opacity: 0; transition: opacity .35s; white-space: nowrap;
+    background: rgba(0,0,0,.4); padding: 3px 10px; border-radius: 10px;
+  }
+  #toast.show { opacity: .85; }
+
+  /* 極小預覽（如 320x200）：縮小按鈕、維持單排不溢出 */
+  @media (max-width: 520px) {
+    #status { font-size: 11px; top: 6px; left: 8px; }
+    #status .season { font-size: 12px; }
+    #status .bar { width: 70px; }
+    #dock { gap: 3px; padding: 4px 5px; bottom: 6px; border-radius: 10px; }
+    #dock button { width: 29px; height: 28px; font-size: 13px; border-radius: 7px; }
+    #dock .sep { display: none; }
+    #toast { display: none; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="c"></canvas>
+  <div id="status" class="overlay">
+    <div class="season"><span id="seasonIcon">☀️</span><span id="seasonName">乾季</span></div>
+    <div class="bar"><i id="seasonBar"></i></div>
+    <div class="wx"><span id="wxIcon">☀️</span> <span id="wxName">晴天</span></div>
+  </div>
+  <div id="debug" class="overlay">
+    <div>FPS <b id="fps">–</b></div>
+    <div>粒子 <b id="pcount">–</b> / 池 <b id="ppool">–</b></div>
+    <div>動物 <b id="acount">–</b></div>
+    <div>活躍度 <b id="activity">–</b></div>
+  </div>
+  <div id="toast" class="overlay"></div>
+  <div id="dock">
+    <button data-wx="sunny" title="晴天 (1)">☀️</button>
+    <button data-wx="rain" title="下雨 (2)">🌦️</button>
+    <button data-wx="heavy" title="大雨 (3)">🌧️</button>
+    <button data-wx="snow" title="下雪 (4)">❄️</button>
+    <button data-wx="storm" title="雷暴 (5)">⛈️</button>
+    <button data-wx="tornado" title="龍捲風 (6)">🌪️</button>
+    <span class="sep"></span>
+    <button id="btnSeason" title="切換季節 (S)">🌿</button>
+    <button id="btnMood" title="動物狀態 (M)">💭</button>
+    <button id="btnHud" title="除錯資訊 (D)">📊</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* =========================================================================
+ * 非洲大草原生態系統 — 原生 Canvas 2D，無任何框架 / 函式庫
+ *
+ * 架構總覽
+ *   ObjectPool ......... 通用物件池（粒子回收，避免 GC）
+ *   ParticleSystem ..... 以池為基礎的粒子系統（雨/雪/塵/水花…）
+ *   SeasonManager ...... 乾/濕季，每 60 秒自動輪轉，控制配色/亮度/天氣可用性/活躍度
+ *   WeatherManager ..... 6 種天氣、平滑過渡、閃電安全區、龍捲風
+ *   Tornado ............ 追逐最近動物 + 捲起粒子
+ *   Animal / Lion / Elephant / Leopard ... 依非洲習性行動的角色系統（狀態機）
+ *   Herd ............... 獅群 / 象群的群體行為（共同前進、一起休息、季節性聚散）
+ *   Environment ........ 背景視差、草原、水塘、金合歡樹、雲、草叢
+ *   Game ............... 場景組裝、requestAnimationFrame + deltaTime 主迴圈、UI
+ * =======================================================================*/
+
+/* ---------- 小工具 ---------- */
+const clamp = (v,a,b)=>Math.min(b,Math.max(a,v));
+const lerp = (a,b,t)=>a+(b-a)*t;
+const rand = (a,b)=>a+Math.random()*(b-a);
+const randi = (a,b)=>Math.floor(rand(a,b+1));
+const pick = arr=>arr[(Math.random()*arr.length)|0];
+const smooth = (e0,e1,x)=>{const t=clamp((x-e0)/(e1-e0),0,1);return t*t*(3-2*t);};
+// 十六進位色的線性混合（回傳 rgb 字串）
+function mix(c1,c2,t){
+  const r1=(c1>>16)&255,g1=(c1>>8)&255,b1=c1&255;
+  const r2=(c2>>16)&255,g2=(c2>>8)&255,b2=c2&255;
+  return `rgb(${Math.round(lerp(r1,r2,t))},${Math.round(lerp(g1,g2,t))},${Math.round(lerp(b1,b2,t))})`;
+}
+
+/* =========================================================================
+ * ObjectPool — 通用物件池
+ *   以工廠函式預先配置一批物件；acquire() 取用（用完再補），release() 歸還。
+ *   粒子系統用它把「每幀大量生滅的粒子」重複利用，避免 new/GC 造成長時間卡頓。
+ * =======================================================================*/
+class ObjectPool {
+  constructor(factory, initial=256){
+    this._factory=factory;
+    this._free=[];
+    this._created=0;
+    for(let i=0;i<initial;i++){ this._free.push(factory()); this._created++; }
+  }
+  acquire(){
+    const o = this._free.length ? this._free.pop() : (this._created++, this._factory());
+    return o;
+  }
+  release(o){ this._free.push(o); }
+  get size(){ return this._created; }
+  get free(){ return this._free.length; }
+}
+
+/* =========================================================================
+ * ParticleSystem — 以物件池為基礎的粒子系統
+ *   支援類型：raindrop / heavy / snow / splash / dust / debris / vapor
+ *   update() 依類型套用不同物理；落地產生水花；壽命到就歸還池中。
+ *   clear() 於天氣切換時把所有活躍粒子一次回收（正確清理，不外洩）。
+ * =======================================================================*/
+class ParticleSystem {
+  constructor(){
+    // 粒子的欄位固定，工廠只負責配置一個空殼，reset 由 emit 完成
+    this.pool = new ObjectPool(()=>({active:false,type:0,x:0,y:0,vx:0,vy:0,life:0,maxLife:1,size:1,rot:0,vr:0,seed:0}), 400);
+    this.active = [];
+  }
+  emit(type, cfg){
+    const p = this.pool.acquire();
+    p.active=true; p.type=type;
+    p.x=cfg.x; p.y=cfg.y; p.vx=cfg.vx||0; p.vy=cfg.vy||0;
+    p.life=0; p.maxLife=cfg.maxLife||1; p.size=cfg.size||1;
+    p.rot=cfg.rot||0; p.vr=cfg.vr||0; p.seed=Math.random()*6.283;
+    this.active.push(p);
+    return p;
+  }
+  clear(){ // 天氣切換：全部歸還池中
+    for(const p of this.active){ p.active=false; this.pool.release(p); }
+    this.active.length=0;
+  }
+  get count(){ return this.active.length; }
+
+  update(dt, world){
+    const groundY = world.groundY, W = world.W;
+    const tornado = world.tornado;
+    for(let i=this.active.length-1;i>=0;i--){
+      const p=this.active[i];
+      p.life+=dt;
+      // 龍捲風把附近粒子往漩渦中心吸並上捲（次要效果：捲起粒子）
+      if(tornado && (p.type===T_DUST||p.type===T_DEBRIS||p.type===T_RAIN||p.type===T_HEAVY)){
+        const dx=tornado.x-p.x, dy=(tornado.y-60)-p.y, d=Math.hypot(dx,dy);
+        if(d<tornado.reach){
+          const pull=(1-d/tornado.reach);
+          p.vx+=(dx/d)*pull*900*dt;         // 向中心吸
+          p.vy+=(-260*pull - dy*0.4)*dt;    // 往上捲
+          p.vx+=-dy/d*pull*260*dt;          // 切向 → 旋轉
+        }
+      }
+      switch(p.type){
+        case T_RAIN: case T_HEAVY:
+          p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=1200*dt;
+          if(p.y>=groundY){ this._land(p,world); this._kill(i); }
+          break;
+        case T_SNOW:
+          p.x+=(p.vx+Math.sin(p.life*1.6+p.seed)*22)*dt; p.y+=p.vy*dt;
+          p.rot+=p.vr*dt;
+          if(p.y>=groundY){ world.snowAccum=clamp(world.snowAccum+0.0016,0,1); this._kill(i); }
+          break;
+        case T_SPLASH:
+          p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=900*dt;
+          if(p.life>=p.maxLife||p.y>groundY+2) this._kill(i);
+          break;
+        case T_DUST: case T_DEBRIS:
+          p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=(p.type===T_DEBRIS?520:120)*dt;
+          p.vx*=(1-0.4*dt); p.rot+=p.vr*dt;
+          if(p.life>=p.maxLife||p.y>groundY+4) this._kill(i);
+          break;
+        case T_VAPOR:
+          p.x+=p.vx*dt; p.y+=p.vy*dt; p.size+=8*dt;
+          if(p.life>=p.maxLife) this._kill(i);
+          break;
+      }
+    }
+  }
+  _land(p,world){
+    // 雨滴落地 → 濺起水花 + 累積地面積水（次要效果）
+    world.wetness=clamp(world.wetness+0.0009,0,1);
+    if(Math.random()<0.5){
+      const n=p.type===T_HEAVY?2:1;
+      for(let k=0;k<n;k++)
+        this.emit(T_SPLASH,{x:p.x,y:world.groundY,vx:rand(-40,40),vy:rand(-140,-60),maxLife:0.35,size:rand(1,2.2)});
+    }
+  }
+  _kill(i){ const p=this.active[i]; p.active=false; this.pool.release(p); this.active.splice(i,1); }
+
+  draw(ctx,world){
+    const rain=world.season.tintRain;
+    ctx.lineCap='round';
+    for(const p of this.active){
+      switch(p.type){
+        case T_RAIN:
+          ctx.strokeStyle=rain; ctx.globalAlpha=0.5; ctx.lineWidth=1.4;
+          ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(p.x-p.vx*0.012,p.y-p.vy*0.012); ctx.stroke();
+          break;
+        case T_HEAVY:
+          ctx.strokeStyle=rain; ctx.globalAlpha=0.6; ctx.lineWidth=2;
+          ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(p.x-p.vx*0.014,p.y-p.vy*0.014); ctx.stroke();
+          break;
+        case T_SNOW:
+          ctx.globalAlpha=0.9; ctx.fillStyle='#fff';
+          ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,6.283); ctx.fill();
+          break;
+        case T_SPLASH:
+          ctx.globalAlpha=clamp(1-p.life/p.maxLife,0,1)*0.7; ctx.strokeStyle=rain; ctx.lineWidth=1.2;
+          ctx.beginPath(); ctx.arc(p.x,p.y,2+p.life*30,0,6.283); ctx.stroke();
+          break;
+        case T_DUST:
+          ctx.globalAlpha=clamp(1-p.life/p.maxLife,0,1)*0.5; ctx.fillStyle=world.season.tintDust;
+          ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,6.283); ctx.fill();
+          break;
+        case T_DEBRIS:
+          ctx.globalAlpha=clamp(1-p.life/p.maxLife,0,1)*0.85; ctx.fillStyle=pick(DEBRIS_COLORS);
+          ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot);
+          ctx.fillRect(-p.size,-p.size*0.5,p.size*2,p.size); ctx.restore();
+          break;
+        case T_VAPOR:
+          ctx.globalAlpha=clamp(1-p.life/p.maxLife,0,1)*0.12; ctx.fillStyle='#fff';
+          ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,6.283); ctx.fill();
+          break;
+      }
+    }
+    ctx.globalAlpha=1;
+  }
+}
+// 粒子類型常數
+const T_RAIN=0,T_HEAVY=1,T_SNOW=2,T_SPLASH=3,T_DUST=4,T_DEBRIS=5,T_VAPOR=6;
+const DEBRIS_COLORS=['#8a6b45','#6f5738','#9c8452','#5c7a3a'];
+
+/* =========================================================================
+ * SeasonManager — 乾季 / 濕季
+ *   每 60 秒自動輪轉（也可手動），以 seasonBlend(0..1) 做 2.5 秒平滑過渡。
+ *   對外提供：天空/草地配色、亮度、天氣可用性、動物活躍度。
+ * =======================================================================*/
+class SeasonManager {
+  constructor(){
+    this.period=60;          // 秒 / 每季
+    this.timer=0;
+    this.isWet=false;        // 由乾季開始
+    this.blend=0;            // 0=乾 1=濕（過渡用）
+    this.autoRotate=true;
+    // 兩季配色（十六進位）
+    this.dry ={skyTop:0x6fa8d8, skyBot:0xf3d9a0, grassFar:0xbfa25c, grassNear:0xc9a758, grassBlade:0x9c8038, sun:0xfff2c8, bright:1.0};
+    this.wet ={skyTop:0x4f93c9, skyBot:0xbfe6b0, grassFar:0x6fae54, grassNear:0x5e9e46, grassBlade:0x4f8a3a, sun:0xfff6dd, bright:1.06};
+  }
+  toggle(){ this.isWet=!this.isWet; this.timer=0; }
+  update(dt){
+    if(this.autoRotate){ this.timer+=dt; if(this.timer>=this.period){ this.timer-=this.period; this.isWet=!this.isWet; } }
+    // blend 平滑趨近目標（2.5s 過渡）
+    const target=this.isWet?1:0;
+    this.blend=lerp(this.blend,target,1-Math.pow(0.02,dt/2.5));
+    // 內插出當前配色與衍生值
+    const t=this.blend, d=this.dry, w=this.wet;
+    this.skyTop=mix(d.skyTop,w.skyTop,t);
+    this.skyBot=mix(d.skyBot,w.skyBot,t);
+    this.grassFar=mix(d.grassFar,w.grassFar,t);
+    this.grassNear=mix(d.grassNear,w.grassNear,t);
+    this.grassBlade=mix(d.grassBlade,w.grassBlade,t);
+    this.sun=mix(d.sun,w.sun,t);
+    this.bright=lerp(d.bright,w.bright,t);
+    this.tintRain=mix(0x9fb6d0,0xbfe0f0,t);
+    this.tintDust=mix(0xd8c088,0xb9a878,t);
+    // 活躍度：濕季動物更活躍、乾季偏靜（群聚）
+    this.activity=lerp(0.5,0.95,t);
+    this.cohesion=lerp(1.0,0.55,t); // 乾季群體更緊密
+  }
+  // 天氣可用性：雪只在濕季出現（乾季較少 → 這裡設為停用）
+  allows(wx){ if(wx==='snow') return this.blend>0.5; return true; }
+  get name(){ return this.blend>0.5?'濕季':'乾季'; }
+  get progress(){ return this.timer/this.period; }
+}
+
+/* =========================================================================
+ * Tornado — 龍捲風：追逐最近動物（速度較慢，追而不上）+ 捲起粒子
+ * =======================================================================*/
+class Tornado {
+  constructor(world){ this.world=world; this.x=-80; this.y=world.groundY; this.phase=0; this.reach=150; this.speed=70; }
+  update(dt){
+    const w=this.world;
+    this.y=w.groundY; this.phase+=dt*6;
+    // 找最近的動物作為追逐目標
+    let best=null,bd=1e9;
+    for(const a of w.animals){ const d=Math.abs(a.x-this.x); if(d<bd){bd=d;best=a;} }
+    if(best){
+      // 朝目標移動，但速度刻意低於動物逃跑速度 → 形成「追逐但追不上」
+      const dir=Math.sign(best.x-this.x)||1;
+      this.x+=dir*this.speed*dt;
+    }
+    // 邊界回捲，避免跑出畫面
+    if(this.x<-100) this.x=-100; if(this.x>w.W+100) this.x=w.W+100;
+    // 從地面捲起塵土與碎屑（次要效果）
+    if(Math.random()<0.9) w.particles.emit(T_DUST,{x:this.x+rand(-30,30),y:w.groundY-rand(0,6),vx:rand(-30,30),vy:rand(-40,-10),maxLife:rand(0.6,1.3),size:rand(2,5)});
+    if(Math.random()<0.3) w.particles.emit(T_DEBRIS,{x:this.x+rand(-24,24),y:w.groundY-rand(0,4),vx:rand(-60,60),vy:rand(-260,-120),maxLife:rand(0.8,1.6),size:rand(2,4),vr:rand(-8,8)});
+  }
+  draw(ctx){
+    const h=180*this.world.scaleY, topW=64, botW=12;
+    ctx.save(); ctx.translate(this.x,this.y);
+    // 由下往上疊多層旋轉橢圓，形成漏斗
+    for(let i=0;i<14;i++){
+      const f=i/13;
+      const y=-f*h, w=lerp(botW,topW,f), a=this.phase*(1+f*0.4);
+      ctx.globalAlpha=0.16+0.05*Math.sin(a);
+      ctx.fillStyle= i%2? '#6b5a48':'#5a4a3a';
+      ctx.beginPath();
+      ctx.ellipse(Math.sin(a)*w*0.28, y, w*(0.5+0.12*Math.sin(a*1.3)), 10, 0,0,6.283);
+      ctx.fill();
+    }
+    // 底部塵霧
+    ctx.globalAlpha=0.4; ctx.fillStyle='#4a3d2f';
+    ctx.beginPath(); ctx.ellipse(0,0,topW*0.7,16,0,0,6.283); ctx.fill();
+    ctx.restore(); ctx.globalAlpha=1;
+  }
+}
+
+/* =========================================================================
+ * WeatherManager — 天氣狀態機 + 平滑過渡 + 閃電安全區
+ * =======================================================================*/
+class WeatherManager {
+  constructor(world){
+    this.world=world;
+    this.current='sunny';
+    this.intensity=0;        // 目前天氣強度（過渡用；晴天=0）
+    this.darkness=0;         // 天空壓暗程度（過渡用）
+    this.emitAcc=0;
+    this.lightTimer=rand(1.5,3.5);
+    this.flash=0;            // 閃電全螢幕亮度
+    this.bolts=[];           // 閃電折線（含壽命）
+    this.lastStrike=null;    // 供除錯視覺化：{x, danger:[...]}
+  }
+  set(wx){
+    if(wx===this.current) return;
+    this.current=wx;
+    // 切換天氣 → 立即回收所有降水粒子（正確清理）
+    this.world.particles.clear();
+    this.world.snowAccum=0;
+    if(wx!=='tornado') this.world.tornado=null;
+    if(wx==='tornado' && !this.world.tornado) this.world.tornado=new Tornado(this.world);
+    this.bolts.length=0;
+  }
+  // 目標強度 / 壓暗（依天氣種類）
+  _targets(){
+    switch(this.current){
+      case 'sunny': return [0,0];
+      case 'rain': return [0.5,0.28];
+      case 'heavy': return [1.0,0.5];
+      case 'snow': return [0.55,0.18];
+      case 'storm': return [1.0,0.62];
+      case 'tornado': return [0.85,0.45];
+    }
+    return [0,0];
+  }
+  update(dt){
+    const w=this.world;
+    const [ti,td]=this._targets();
+    // 平滑過渡（強度與壓暗都用時間常數趨近）
+    const k=1-Math.pow(0.01,dt/1.2);
+    this.intensity=lerp(this.intensity,ti,k);
+    this.darkness=lerp(this.darkness,td,k);
+
+    // 依天氣發射粒子（發射率隨強度縮放）
+    this.emitAcc+=dt;
+    const step=1/60; // 固定發射步進，避免高刷新率狂噴
+    while(this.emitAcc>=step){
+      this.emitAcc-=step;
+      this._emit();
+    }
+    // 地面濕度 / 積雪隨無雨慢慢回復
+    if(this.current!=='rain'&&this.current!=='heavy'&&this.current!=='storm') w.wetness=clamp(w.wetness-dt*0.05,0,1);
+    if(this.current!=='snow') w.snowAccum=clamp(w.snowAccum-dt*0.03,0,1);
+
+    // 雷暴：閃電
+    if(this.current==='storm'){
+      this.lightTimer-=dt;
+      if(this.lightTimer<=0){ this.lightTimer=rand(1.8,4.5); this._strike(); }
+    }
+    this.flash=Math.max(0,this.flash-dt*3.2);
+    for(let i=this.bolts.length-1;i>=0;i--){ this.bolts[i].life-=dt; if(this.bolts[i].life<=0) this.bolts.splice(i,1); }
+
+    if(w.tornado) w.tornado.update(dt);
+  }
+  _emit(){
+    const w=this.world, W=w.W, gy=w.groundY, I=this.intensity;
+    if(this.current==='rain'||this.current==='storm'){
+      const n=Math.round((this.current==='storm'?7:4)*I);
+      for(let i=0;i<n;i++) w.particles.emit(T_RAIN,{x:rand(-40,W+40),y:rand(-40,gy*0.5),vx:-120,vy:rand(650,780),maxLife:2});
+    } else if(this.current==='heavy'){
+      const n=Math.round(9*I);
+      for(let i=0;i<n;i++) w.particles.emit(T_HEAVY,{x:rand(-60,W+60),y:rand(-40,gy*0.5),vx:-220,vy:rand(820,980),maxLife:2});
+    } else if(this.current==='snow'){
+      const n=Math.round(4*I);
+      for(let i=0;i<n;i++) w.particles.emit(T_SNOW,{x:rand(-20,W+20),y:-10,vx:rand(-20,10),vy:rand(50,95),size:rand(1.4,3),vr:rand(-2,2),maxLife:12});
+    }
+  }
+
+  /* ---------------------------------------------------------------------
+   * 閃電安全區演算法（核心）：閃電永不擊中任何動物
+   *   1) 蒐集所有動物的 x 與危險半徑（體寬 + 安全邊界）
+   *   2) 在畫面寬度上取多個候選落點（等距 + 少量隨機）
+   *   3) 每個候選點計算「到所有動物危險區的最小間隙」 gap = min(|cx-ax| - dangerR)
+   *   4) 取 gap 最大的候選點作為落點；只有當 gap>0（確定落在所有動物危險區之外）
+   *      才真的擊發，否則本次跳過 → 從構造上保證絕不打到動物
+   * ------------------------------------------------------------------- */
+  _strike(){
+    const w=this.world, W=w.W;
+    // 1) 動物危險區
+    const danger=w.animals.map(a=>({x:a.x, r:a.bodyWidth()*0.5+46}));
+    // 2) 候選落點
+    const cands=[];
+    const N=18;
+    for(let i=0;i<N;i++) cands.push((i+0.5)/N*W);
+    for(let i=0;i<6;i++) cands.push(rand(0,W));
+    // 3) 每個候選的最小間隙
+    let bestX=null,bestGap=-1e9;
+    for(const cx of cands){
+      let gap=1e9;
+      for(const d of danger) gap=Math.min(gap,Math.abs(cx-d.x)-d.r);
+      if(gap>bestGap){ bestGap=gap; bestX=cx; }
+    }
+    this.lastStrike={x:bestX, danger, gap:bestGap};
+    // 4) 只有確定安全（gap>0）才擊發
+    if(bestGap<=0) return;
+    this.flash=Math.min(1,this.flash+0.9);
+    this.bolts.push({points:this._boltPath(bestX,w.groundY), life:0.32, x:bestX});
+  }
+  // 產生上到下的鋸齒閃電折線（含分支）
+  _boltPath(x, groundY){
+    const pts=[{x, y:-10}]; let cx=x, cy=-10;
+    const seg=randi(6,9), stepY=(groundY-10)/seg;
+    for(let i=0;i<seg;i++){ cy+=stepY; cx+=rand(-26,26); pts.push({x:cx,y:cy}); }
+    return pts;
+  }
+
+  drawSky(ctx){ // 閃電全螢幕閃光疊在天空上
+    if(this.flash>0.001){ ctx.globalAlpha=this.flash*0.6; ctx.fillStyle='#eaf2ff'; ctx.fillRect(0,0,this.world.W,this.world.H); ctx.globalAlpha=1; }
+  }
+  drawBolts(ctx){
+    for(const b of this.bolts){
+      const a=clamp(b.life/0.32,0,1);
+      ctx.globalAlpha=a; ctx.strokeStyle='#f2f7ff'; ctx.lineWidth=3; ctx.lineJoin='round';
+      ctx.shadowColor='#bcd4ff'; ctx.shadowBlur=16;
+      ctx.beginPath(); ctx.moveTo(b.points[0].x,b.points[0].y);
+      for(const p of b.points) ctx.lineTo(p.x,p.y); ctx.stroke();
+      ctx.shadowBlur=0; ctx.globalAlpha=1;
+    }
+  }
+  drawDebug(ctx){ // 除錯：顯示動物危險區與所選落點
+    if(!this.lastStrike) return;
+    ctx.save(); ctx.globalAlpha=0.5;
+    for(const d of this.lastStrike.danger){
+      ctx.strokeStyle='rgba(255,80,80,.7)'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(d.x-d.r,this.world.groundY); ctx.lineTo(d.x+d.r,this.world.groundY); ctx.stroke();
+      ctx.beginPath(); ctx.arc(d.x,this.world.groundY,4,0,6.283); ctx.stroke();
+    }
+    ctx.strokeStyle='rgba(120,255,120,.9)'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(this.lastStrike.x,0); ctx.lineTo(this.lastStrike.x,this.world.groundY); ctx.stroke();
+    ctx.restore(); ctx.globalAlpha=1;
+  }
+  get displayName(){ return {sunny:'晴天',rain:'下雨',heavy:'大雨',snow:'下雪',storm:'雷暴',tornado:'龍捲風'}[this.current]; }
+  get icon(){ return {sunny:'☀️',rain:'🌦️',heavy:'🌧️',snow:'❄️',storm:'⛈️',tornado:'🌪️'}[this.current]; }
+}
+
+/* =========================================================================
+ * Animal — 角色基底（狀態機 + 走路循環 + 陰影 + 心情圖示）
+ *   由左側進入、抵達右側後由左重現（無縫循環）。
+ *   子類覆寫 palette / drawBody / 專屬行為。
+ * =======================================================================*/
+class Animal {
+  constructor(world, x, depth){
+    this.world=world;
+    this.x=x; this.depth=depth;         // depth 0(遠)→1(近)：決定 y、縮放、速度
+    this.state='walk'; this.stateT=rand(2,6);
+    this.walk=Math.random()*6.283;      // 走路相位
+    this.baseSpeed=40;                   // px/s（子類覆寫）
+    this.sizeScale=1;                    // 物種體型（子類覆寫）
+    this.fleeing=false; this.mood='🐾';
+    this.moodY=-80;                      // 心情圖示相對動物腳底的高度（子類覆寫）
+    this.bob=0;
+  }
+  get y(){ const w=this.world; return lerp(w.groundY+(w.H-w.groundY)*0.03, w.H*0.96, this.depth); }
+  get scale(){ return lerp(0.55,1.15,this.depth)*this.sizeScale*this.world.uiScale; }
+  bodyWidth(){ return 120*this.scale; }
+
+  // 速度受季節活躍度、天氣、逃跑狀態影響
+  speedFactor(){
+    const env=this.world.env;
+    let f=lerp(0.7,1.15,env.activity);                 // 濕季更快
+    if(env.wx==='heavy'||env.wx==='storm') f*=1.25;    // 大雨/雷暴：躁動加速
+    if(env.wx==='snow') f*=0.6;                        // 雪：變慢
+    if(env.wx==='tornado') f*=1.1;
+    if(this.fleeing) f*=1.8;                            // 逃離龍捲風
+    return f;
+  }
+  // 龍捲風威脅 → 逃跑（遠離龍捲風、加速）
+  _threat(dt){
+    const tor=this.world.tornado; this.fleeing=false;
+    if(tor){
+      const d=this.x-tor.x;
+      if(Math.abs(d)<190){ this.fleeing=true; this.x+=Math.sign(d||1)*this.baseSpeed*this.speedFactor()*0.6*dt; }
+    }
+  }
+  advance(dt, extra=1){
+    this.x += this.baseSpeed*this.speedFactor()*extra*dt;
+    this.walk += dt*this.baseSpeed*this.speedFactor()*extra*0.045;
+    // 無縫循環：出右界 → 回左界
+    const m=this.bodyWidth();
+    if(this.x-m > this.world.W){ this.x=-m; this.depth=clamp(this.depth+rand(-0.12,0.12),0.35,0.92); }
+  }
+  setMood(m){ this.mood=m; }
+  update(dt){ this.advance(dt); } // 子類覆寫
+
+  draw(ctx){
+    const s=this.scale;
+    ctx.save(); ctx.translate(this.x,this.y); ctx.scale(s,s);
+    // 陰影
+    ctx.globalAlpha=0.22; ctx.fillStyle='#000';
+    ctx.beginPath(); ctx.ellipse(0,2,54,10,0,0,6.283); ctx.fill(); ctx.globalAlpha=1;
+    this.drawBody(ctx);
+    ctx.restore();
+    // 心情圖示（螢幕空間，避免被縮放拉扁）；小螢幕或遠景不畫，避免雜亂
+    if(this.world.showMood && s>0.5) this._drawMood(ctx, this.x, this.y+this.moodY*s-6);
+  }
+  // 頭頂上的狀態小標籤：半透明圓角底 + emoji，讀起來是刻意的 UI 指示而非散落雜物
+  _drawMood(ctx, mx, my){
+    ctx.save(); ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.globalAlpha=0.4; ctx.fillStyle='#12141c';
+    ctx.beginPath(); ctx.roundRect(mx-13,my-11,26,22,7); ctx.fill();
+    ctx.globalAlpha=1; ctx.font='15px system-ui';
+    ctx.fillText(this.mood, mx, my+1); ctx.restore();
+  }
+  drawBody(ctx){}
+  // 走路時四肢擺動角度
+  legSwing(o){ return Math.sin(this.walk+o); }
+}
+
+/* ---------- 獅子：群體、慢速、偶爾休息/巡邏；公獅有鬃毛 ---------- */
+class Lion extends Animal {
+  constructor(world,x,depth,male){
+    super(world,x,depth);
+    this.baseSpeed=34; this.sizeScale=1.0; this.male=male; this.moodY=-72;
+  }
+  update(dt){
+    this._threat(dt);
+    // 休息 / 行走由 Herd 統一控制（見 Herd）；這裡只推進動畫
+  }
+  drawBody(ctx){
+    const rest=this.state==='rest';
+    const bodyY=rest?6:0, legS=rest?0:1;
+    // 尾巴
+    ctx.strokeStyle='#b07d3e'; ctx.lineWidth=5; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(-46,-24+bodyY);
+    ctx.quadraticCurveTo(-70,-30+Math.sin(this.walk*0.6)*6,-64,-4+bodyY); ctx.stroke();
+    ctx.fillStyle='#7a5326'; ctx.beginPath(); ctx.arc(-64,-2+bodyY,5,0,6.283); ctx.fill();
+    // 後腿 / 前腿（走路擺動；休息時收起）
+    this._legs(ctx,'#c69a55',bodyY,legS);
+    // 身體
+    ctx.fillStyle='#d9ab63';
+    ctx.beginPath(); ctx.ellipse(-6,-30+bodyY,44,26,0,0,6.283); ctx.fill();
+    // 頸 / 頭
+    ctx.beginPath(); ctx.ellipse(34,-40+bodyY,20,18,0,0,6.283); ctx.fill();
+    if(this.male){ // 鬃毛
+      ctx.fillStyle='#8a5a2a';
+      ctx.beginPath(); ctx.arc(30,-40+bodyY,26,0,6.283); ctx.fill();
+      ctx.fillStyle='#d9ab63'; ctx.beginPath(); ctx.ellipse(40,-40+bodyY,17,16,0,0,6.283); ctx.fill();
+    }
+    // 耳 / 口鼻 / 眼
+    ctx.fillStyle='#c69a55'; ctx.beginPath(); ctx.arc(30,-56+bodyY,5,0,6.283); ctx.fill();
+    ctx.fillStyle='#e9c88a'; ctx.beginPath(); ctx.ellipse(50,-36+bodyY,9,7,0,0,6.283); ctx.fill();
+    ctx.fillStyle='#3a2a18'; ctx.beginPath(); ctx.arc(54,-38+bodyY,2.2,0,6.283); ctx.fill();
+    ctx.beginPath(); ctx.arc(41,-44+bodyY,2,0,6.283); ctx.fill();
+  }
+  _legs(ctx,color,bodyY,legS){
+    ctx.strokeStyle=color; ctx.lineWidth=8; ctx.lineCap='round';
+    const set=[[-30,0.0],[-18,3.14],[18,1.4],[30,4.6]];
+    for(const [lx,ph] of set){
+      const sw=this.legSwing(ph)*legS*10;
+      ctx.beginPath(); ctx.moveTo(lx,-14+bodyY); ctx.lineTo(lx+sw,6+bodyY*0.2); ctx.stroke();
+    }
+  }
+}
+
+/* ---------- 大象：龐大、緩慢、成群；偶爾喝水 / 抬鼻 ---------- */
+class Elephant extends Animal {
+  constructor(world,x,depth){
+    super(world,x,depth);
+    this.baseSpeed=26; this.sizeScale=1.5; this.moodY=-100;
+    this.trunk=0;         // 0 平放 → 1 捲下喝水；-1 抬起
+    this.earFlap=Math.random()*6.283;
+  }
+  update(dt){
+    this._threat(dt);
+    this.earFlap+=dt*2;
+    // 喝水：靠近水塘時停下低頭捲鼻
+    const wh=this.world.waterhole;
+    const near=Math.abs(this.x-wh.x)<wh.r*0.8 && this.depth>0.5;
+    if(this.state==='walk'){
+      this.advance(dt);
+      if(near && Math.random()<0.004){ this.state='drink'; this.stateT=rand(2.5,4.5); }
+      else if(Math.random()<0.0016){ this.state='trunk'; this.stateT=rand(1.5,2.5); } // 抬鼻
+    } else if(this.state==='drink'){
+      this.trunk=lerp(this.trunk,1,1-Math.pow(0.01,dt/0.6));
+      this.stateT-=dt; if(this.stateT<=0){ this.state='walk'; }
+      if(Math.random()<0.1) this.world.particles.emit(T_SPLASH,{x:this.x+38*this.scale,y:this.world.groundY,vx:rand(-30,30),vy:rand(-120,-50),maxLife:0.4,size:rand(1.5,2.5)});
+      this.setMood('💧');
+    } else if(this.state==='trunk'){
+      this.trunk=lerp(this.trunk,-1,1-Math.pow(0.01,dt/0.5));
+      this.stateT-=dt; if(this.stateT<=0){ this.state='walk'; }
+      this.setMood('🌿');
+    }
+    if(this.state==='walk'){ this.trunk=lerp(this.trunk,0,1-Math.pow(0.01,dt/0.5)); this.setMood(this.fleeing?'😰':'🐾'); }
+  }
+  drawBody(ctx){
+    const drink=this.state==='drink';
+    const headDip=drink?10:0;
+    // 腿
+    ctx.fillStyle='#8f8f96';
+    const legS=(this.state==='walk')?1:0;
+    for(const [lx,ph] of [[-34,0],[-16,3.14],[20,1.4],[38,4.6]]){
+      const sw=this.legSwing(ph)*legS*7;
+      ctx.save(); ctx.translate(lx,-6); ctx.rotate(sw*0.02);
+      ctx.beginPath(); ctx.roundRect(-9,0,18,34,5); ctx.fill(); ctx.restore();
+    }
+    // 身體
+    ctx.fillStyle='#9a9aa2';
+    ctx.beginPath(); ctx.ellipse(-4,-40,58,40,0,0,6.283); ctx.fill();
+    // 頭
+    ctx.beginPath(); ctx.ellipse(44,-46+headDip,30,30,0,0,6.283); ctx.fill();
+    // 耳（拍動）
+    ctx.fillStyle='#8a8a92';
+    const ear=Math.sin(this.earFlap)*6;
+    ctx.beginPath(); ctx.ellipse(40,-46+headDip,20,24+ear*0.2,0.3,0,6.283); ctx.fill();
+    // 象牙
+    ctx.strokeStyle='#f2ecd8'; ctx.lineWidth=5; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(58,-30+headDip); ctx.quadraticCurveTo(74,-16+headDip,72,-6+headDip); ctx.stroke();
+    // 鼻子（依 trunk 狀態彎曲）
+    ctx.strokeStyle='#9a9aa2'; ctx.lineWidth=12; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(62,-40+headDip);
+    if(this.trunk>0.1){ // 喝水：捲下到地面
+      ctx.quadraticCurveTo(84,-10,80,18+headDip);
+    } else if(this.trunk<-0.1){ // 抬起
+      ctx.quadraticCurveTo(88,-52,74,-72);
+    } else {
+      ctx.quadraticCurveTo(82,-20,78,4);
+    }
+    ctx.stroke();
+    // 眼
+    ctx.fillStyle='#2a2a2a'; ctx.beginPath(); ctx.arc(50,-50+headDip,2.6,0,6.283); ctx.fill();
+    // 尾
+    ctx.strokeStyle='#8a8a92'; ctx.lineWidth=4;
+    ctx.beginPath(); ctx.moveTo(-60,-40); ctx.lineTo(-70,-14); ctx.stroke();
+  }
+}
+
+/* ---------- 豹：單獨、快速隱密；偶爾爬樹（垂直動畫） ---------- */
+class Leopard extends Animal {
+  constructor(world,x,depth){
+    super(world,x,depth);
+    this.baseSpeed=88; this.sizeScale=0.82; this.moodY=-62;
+    this.climb=0;            // 0 地面 → 1 樹上
+    this.tree=null; this.climbDir=1;
+    this.spots=Array.from({length:10},()=>({x:rand(-40,30),y:rand(-46,-20),r:rand(2,3.4)}));
+  }
+  update(dt){
+    this._threat(dt);
+    const env=this.world.env;
+    if(this.state==='walk'){
+      // 隱密：略微壓低、半透明感（繪製時處理）
+      this.advance(dt);
+      // 偶爾找最近的樹爬（乾季/晴天較常見，濕季忙著活動）
+      const p=(env.wx==='sunny'?0.004:0.002)*(1.3-env.activity);
+      if(Math.random()<p){
+        const tree=this.world.nearestTree(this.x);
+        if(tree){ this.tree=tree; this.state='toTree'; this.setMood('🌳'); }
+      } else this.setMood(this.fleeing?'😰':'🐆');
+    } else if(this.state==='toTree'){
+      // 走向樹幹底部
+      const dx=this.tree.x-this.x;
+      this.x+=clamp(dx,-1,1)*this.baseSpeed*0.6*dt;
+      this.walk+=dt*6;
+      if(Math.abs(dx)<4){ this.state='climbUp'; this.depth=this.tree.depth; }
+    } else if(this.state==='climbUp'){
+      this.climb=lerp(this.climb,1,1-Math.pow(0.01,dt/1.2));
+      if(this.climb>0.96){ this.state='perch'; this.stateT=rand(2.5,5); this.setMood('😼'); }
+    } else if(this.state==='perch'){
+      this.stateT-=dt; if(this.stateT<=0) this.state='climbDown';
+    } else if(this.state==='climbDown'){
+      this.climb=lerp(this.climb,0,1-Math.pow(0.01,dt/1.2));
+      if(this.climb<0.04){ this.climb=0; this.tree=null; this.state='walk'; }
+    }
+  }
+  draw(ctx){
+    // 爬樹時垂直定位在樹上（覆寫 draw 以套用攀爬位移）
+    if(this.tree && this.climb>0.01){
+      const treeTopY=this.tree.y - this.tree.h*0.72;
+      const px=this.tree.x+6, py=lerp(this.tree.y, treeTopY, this.climb);
+      const s=this.scale;
+      ctx.save(); ctx.translate(px,py); ctx.scale(s,s); ctx.rotate(-1.3); // 身體貼樹幹（近垂直）
+      this.drawBody(ctx,true); ctx.restore();
+      if(this.world.showMood && s>0.5) this._drawMood(ctx, px, treeTopY-18);
+      return;
+    }
+    // 隱密感：移動時略降不透明度
+    const a=(this.state==='walk')?0.9:1;
+    ctx.globalAlpha=a; super.draw(ctx); ctx.globalAlpha=1;
+  }
+  drawBody(ctx,climbing){
+    const legS=(this.state==='walk'||this.state==='toTree')?1:0.3;
+    // 長尾
+    ctx.strokeStyle='#e0b25a'; ctx.lineWidth=4; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(-40,-26);
+    ctx.quadraticCurveTo(-72,-34+Math.sin(this.walk*0.5)*8,-78,-8); ctx.stroke();
+    // 腿
+    ctx.strokeStyle='#e6bd66'; ctx.lineWidth=6;
+    for(const [lx,ph] of [[-26,0],[-14,3.14],[16,1.4],[26,4.6]]){
+      const sw=this.legSwing(ph)*legS*12;
+      ctx.beginPath(); ctx.moveTo(lx,-16); ctx.lineTo(lx+sw,4); ctx.stroke();
+    }
+    // 身體（細長）
+    ctx.fillStyle='#e9c06a';
+    ctx.beginPath(); ctx.ellipse(-4,-28,40,18,0,0,6.283); ctx.fill();
+    // 頭
+    ctx.beginPath(); ctx.ellipse(34,-34,15,13,0,0,6.283); ctx.fill();
+    ctx.fillStyle='#d9ad55'; ctx.beginPath(); ctx.arc(30,-46,4,0,6.283); ctx.fill(); // 耳
+    ctx.beginPath(); ctx.arc(40,-46,4,0,6.283); ctx.fill();
+    // 斑點（玫瑰紋）
+    ctx.fillStyle='rgba(60,40,20,.7)';
+    for(const sp of this.spots){ ctx.beginPath(); ctx.arc(sp.x,sp.y,sp.r,0,6.283); ctx.fill(); }
+    // 眼
+    ctx.fillStyle='#2a2a1a'; ctx.beginPath(); ctx.arc(42,-36,2,0,6.283); ctx.fill();
+  }
+}
+
+/* =========================================================================
+ * Herd — 群體行為（獅群 / 象群）
+ *   共用一個群體推進速度與「行走 / 休息」狀態；成員各自附著在群體附近的槽位，
+ *   乾季 cohesion 高 → 更緊密聚集；濕季鬆散。整群無縫循環。
+ * =======================================================================*/
+class Herd {
+  constructor(world, members, opts){
+    this.world=world; this.members=members;
+    this.canRest=opts.canRest; this.restBias=opts.restBias||0;
+    this.memberDriven=opts.memberDriven||false; // true：成員各自跑自己的狀態機（如象群的喝水/抬鼻）
+    this.state='walk'; this.stateT=rand(4,9);
+    this.speed=opts.speed;
+  }
+  update(dt){
+    const env=this.world.env;
+    if(this.memberDriven){
+      // 象群：整群一起前進，但每隻大象各自決定喝水／抬鼻（跑自己的 update 狀態機）
+      for(const m of this.members) m.update(dt);
+    } else {
+      // 獅群：群體統一「行走 / 休息」狀態切換（偶爾整群休息；乾季更常休息聚集）
+      this.stateT-=dt;
+      if(this.stateT<=0){
+        if(this.canRest){
+          const restProb=(0.35+this.restBias)*(1.4-env.activity); // 乾季更常休息
+          this.state=(this.state==='walk'&&Math.random()<restProb)?'rest':'walk';
+        }
+        this.stateT=this.state==='rest'?rand(3,6):rand(6,12);
+      }
+      // 成員推進：休息時原地微動，行走時整群前進
+      const walking=this.state==='walk';
+      for(const m of this.members){
+        m.state=this.state;
+        m._threat(dt);
+        if(walking && !m.fleeing){
+          m.advance(dt);
+        } else if(m.fleeing){
+          // 逃跑已在 _threat 內位移，這裡補動畫相位
+          m.walk+=dt*8;
+        }
+        m.setMood(m.fleeing?'😰':(this.state==='rest'?'😴':'🐾'));
+      }
+    }
+    // 乾季聚攏：把成員 depth 往群體平均靠攏（cohesion 越大靠越緊）
+    const avgD=this.members.reduce((s,m)=>s+m.depth,0)/this.members.length;
+    const pull=(1-env.cohesion)*dt*0.4;
+    for(const m of this.members) m.depth=clamp(lerp(m.depth,avgD,pull*(this.world.season.blend<0.5?1:0.3)),0.05,1);
+  }
+}
+
+/* =========================================================================
+ * Environment — 背景視差、草原、水塘、金合歡樹、雲、前景草叢
+ * =======================================================================*/
+class Environment {
+  constructor(world){
+    this.world=world;
+    this.clouds=Array.from({length:6},()=>({x:rand(0,1),y:rand(0.06,0.3),s:rand(0.6,1.3),v:rand(0.004,0.012)}));
+    // 遠/中/近三層金合歡樹（視差）；近層較大、豹可攀爬
+    this.trees=[];
+    this.rebuild();
+    this.grassOffset=0;
+  }
+  rebuild(){
+    const w=this.world;
+    this.trees=[];
+    const layers=[{depth:0.2,n:3,scale:0.6},{depth:0.55,n:2,scale:0.9},{depth:0.85,n:2,scale:1.2}];
+    for(const L of layers){
+      for(let i=0;i<L.n;i++){
+        this.trees.push({ nx:rand(0.05,0.95), depth:L.depth, scale:L.scale });
+      }
+    }
+    // 水塘位置（近景）
+    this.world.waterhole={x:w.W*0.5, r:120*w.uiScale};
+    this._layout();
+  }
+  _layout(){ // 依畫面寬把樹的 nx 轉成實際 x，並算出 y/h（供豹攀爬定位）
+    const w=this.world;
+    const baseY=(d)=>lerp(w.groundY+(w.H-w.groundY)*0.03, w.H*0.96, d);
+    for(const t of this.trees){
+      t.x=t.nx*w.W;
+      t.y=baseY(t.depth);
+      t.h=150*t.scale*w.uiScale*lerp(0.7,1.2,t.depth);
+    }
+    this.world.waterhole.x=w.W*0.5; this.world.waterhole.r=120*w.uiScale;
+    this.world.waterhole.y=baseY(0.7);
+  }
+  onResize(){ this._layout(); }
+
+  update(dt){
+    for(const c of this.clouds){ c.x+=c.v*dt; if(c.x>1.2) c.x=-0.2; }
+    this.grassOffset+=dt;
+  }
+
+  drawSky(ctx){
+    const w=this.world, s=w.season;
+    const g=ctx.createLinearGradient(0,0,0,w.groundY);
+    g.addColorStop(0,s.skyTop); g.addColorStop(1,s.skyBot);
+    ctx.fillStyle=g; ctx.fillRect(0,0,w.W,w.groundY);
+    // 太陽（雷暴/大雨時被壓暗遮蔽）
+    const sunVis=1-w.weather.darkness;
+    if(sunVis>0.05){
+      ctx.globalAlpha=sunVis; ctx.fillStyle=s.sun;
+      ctx.beginPath(); ctx.arc(w.W*0.8,w.groundY*0.32,26*w.uiScale,0,6.283); ctx.fill();
+      ctx.globalAlpha=sunVis*0.18;
+      ctx.beginPath(); ctx.arc(w.W*0.8,w.groundY*0.32,46*w.uiScale,0,6.283); ctx.fill();
+      ctx.globalAlpha=1;
+    }
+    // 雲（視差：緩慢橫移）
+    for(const c of this.clouds){
+      const x=c.x*w.W, y=c.y*w.groundY, sc=c.s*w.uiScale;
+      ctx.globalAlpha=0.85*(0.5+0.5*sunVis); ctx.fillStyle='#ffffff';
+      this._cloud(ctx,x,y,sc);
+    }
+    ctx.globalAlpha=1;
+  }
+  _cloud(ctx,x,y,s){
+    ctx.beginPath();
+    ctx.ellipse(x,y,34*s,18*s,0,0,6.283);
+    ctx.ellipse(x+26*s,y+4*s,24*s,15*s,0,0,6.283);
+    ctx.ellipse(x-26*s,y+5*s,22*s,13*s,0,0,6.283);
+    ctx.fill();
+  }
+
+  drawGround(ctx){
+    const w=this.world, s=w.season;
+    const g=ctx.createLinearGradient(0,w.groundY,0,w.H);
+    g.addColorStop(0,s.grassFar); g.addColorStop(1,s.grassNear);
+    ctx.fillStyle=g; ctx.fillRect(0,w.groundY,w.W,w.H-w.groundY);
+    // 積雪覆蓋（下雪時）
+    if(w.snowAccum>0.01){ ctx.globalAlpha=clamp(w.snowAccum,0,0.85); ctx.fillStyle='#f4f8ff'; ctx.fillRect(0,w.groundY,w.W,w.H-w.groundY); ctx.globalAlpha=1; }
+    // 水塘
+    const wh=w.waterhole;
+    ctx.fillStyle=mix(0x3a7ca5,0x2f6f9a,0.5); ctx.globalAlpha=0.92;
+    ctx.beginPath(); ctx.ellipse(wh.x,wh.y,wh.r,wh.r*0.34,0,0,6.283); ctx.fill();
+    ctx.globalAlpha=0.25; ctx.fillStyle='#bfe0f0';
+    ctx.beginPath(); ctx.ellipse(wh.x-wh.r*0.2,wh.y-wh.r*0.06,wh.r*0.5,wh.r*0.12,0,0,6.283); ctx.fill();
+    ctx.globalAlpha=1;
+    // 地面積水反光（下雨累積）
+    if(w.wetness>0.02){
+      ctx.globalAlpha=w.wetness*0.3; ctx.fillStyle='#cfe4f2';
+      for(let i=0;i<5;i++){ const px=(i*0.19+0.05)*w.W; ctx.beginPath(); ctx.ellipse(px,lerp(w.groundY,w.H,0.5+i*0.08),40*w.uiScale,7*w.uiScale,0,0,6.283); ctx.fill(); }
+      ctx.globalAlpha=1;
+    }
+  }
+  drawTrees(ctx, minDepth, maxDepth){
+    const w=this.world;
+    for(const t of this.trees){
+      if(t.depth<minDepth||t.depth>=maxDepth) continue;
+      this._acacia(ctx,t);
+    }
+  }
+  _acacia(ctx,t){
+    const w=this.world, s=t.scale*w.uiScale;
+    ctx.save(); ctx.translate(t.x,t.y);
+    // 陰影
+    ctx.globalAlpha=0.18; ctx.fillStyle='#000'; ctx.beginPath(); ctx.ellipse(0,2,50*s,10*s,0,0,6.283); ctx.fill(); ctx.globalAlpha=1;
+    // 樹幹
+    ctx.strokeStyle='#6f5334'; ctx.lineWidth=9*s; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,-t.h*0.7); ctx.stroke();
+    ctx.lineWidth=5*s;
+    ctx.beginPath(); ctx.moveTo(0,-t.h*0.5); ctx.lineTo(-22*s,-t.h*0.66); ctx.moveTo(0,-t.h*0.55); ctx.lineTo(24*s,-t.h*0.7); ctx.stroke();
+    // 傘狀樹冠（金合歡特徵）
+    const cy=-t.h*0.74;
+    ctx.fillStyle=mix(0x5c7a3a,0x6f9147,this.world.season.blend);
+    ctx.beginPath(); ctx.ellipse(0,cy,64*s,20*s,0,0,6.283); ctx.fill();
+    ctx.fillStyle=mix(0x6b8c44,0x7ea355,this.world.season.blend);
+    ctx.beginPath(); ctx.ellipse(-10*s,cy-8*s,44*s,15*s,0,0,6.283); ctx.fill();
+    ctx.restore();
+  }
+
+  drawGrass(ctx){ // 前景草叢（sway 動畫），畫在最上層增加景深
+    const w=this.world, s=w.season, n=Math.round(w.W/26);
+    ctx.strokeStyle=s.grassBlade; ctx.lineWidth=2.4*w.uiScale; ctx.lineCap='round';
+    for(let i=0;i<n;i++){
+      const x=(i/n)*w.W+((i*37)%26);
+      const baseY=w.H- ((i*53)%16);
+      const h=(16+((i*29)%20))*w.uiScale;
+      const sway=Math.sin(this.grassOffset*1.6+i*0.7)*4*w.uiScale;
+      ctx.beginPath(); ctx.moveTo(x,baseY); ctx.quadraticCurveTo(x+sway*0.5,baseY-h*0.6,x+sway,baseY-h); ctx.stroke();
+    }
+  }
+}
+
+/* =========================================================================
+ * Game — 場景組裝 + 主迴圈 + UI
+ * =======================================================================*/
+class Game {
+  constructor(){
+    this.canvas=document.getElementById('c');
+    this.ctx=this.canvas.getContext('2d');
+    this.appEl=document.getElementById('app');
+    this.dpr=Math.min(devicePixelRatio||1,2);
+
+    this.world={
+      W:0,H:0,groundY:0,uiScale:1,scaleY:1,
+      season:null, weather:null, particles:new ParticleSystem(),
+      animals:[], tornado:null, waterhole:{x:0,r:0,y:0},
+      wetness:0, snowAccum:0, showMood:true,
+      env:{wx:'sunny',season:'dry',activity:0.5,cohesion:1},
+      nearestTree:(x)=>this._nearestTree(x),
+    };
+    const w=this.world;
+    w.season=new SeasonManager();
+    w.weather=new WeatherManager(w);
+    this.env=new Environment(w);
+
+    this._resize();
+    this._spawnAnimals();
+    this.env.rebuild();
+
+    this._bindUI();
+    window.addEventListener('resize',()=>{ this._resize(); this.env.onResize(); });
+
+    this.last=performance.now(); this.frames=0; this.fpsT=0; this.fps=0;
+    this._loop=this._loop.bind(this);
+    requestAnimationFrame(this._loop);
+    this._toast('乾季 · 晴天 — 點下方切換天氣與季節');
+  }
+
+  _resize(){
+    const w=this.world;
+    const cw=this.appEl.clientWidth, ch=this.appEl.clientHeight;
+    this.canvas.width=Math.round(cw*this.dpr); this.canvas.height=Math.round(ch*this.dpr);
+    this.ctx.setTransform(this.dpr,0,0,this.dpr,0,0);
+    w.W=cw; w.H=ch; w.groundY=ch*0.44;
+    w.uiScale=clamp(Math.min(cw/900, ch/560),0.42,1.25);
+    w.scaleY=clamp(ch/560,0.5,1.3);
+  }
+
+  _spawnAnimals(){
+    const w=this.world;
+    w.animals.length=0;
+    // 獅群（1 公 2 母）
+    const lions=[ new Lion(w,-140,0.55,true), new Lion(w,-220,0.62,false), new Lion(w,-300,0.5,false) ];
+    this.lionHerd=new Herd(w,lions,{canRest:true,restBias:0.1,speed:34});
+    // 象群（3 隻）
+    const eles=[ new Elephant(w,w.W*0.5,0.7), new Elephant(w,w.W*0.5-160,0.78), new Elephant(w,w.W*0.5-320,0.64) ];
+    this.eleHerd=new Herd(w,eles,{memberDriven:true,speed:26}); // 大象各自跑喝水/抬鼻狀態機
+    // 豹（2 隻單獨行動）
+    this.leopards=[ new Leopard(w,w.W*0.3,0.85), new Leopard(w,w.W*0.7,0.45) ];
+    w.animals=[...lions,...eles,...this.leopards];
+  }
+  _nearestTree(x){
+    let best=null,bd=1e9;
+    for(const t of this.env.trees){ if(t.depth<0.5) continue; const d=Math.abs(t.x-x); if(d<bd){bd=d;best=t;} }
+    return best;
+  }
+
+  _bindUI(){
+    const w=this.world;
+    this.wxButtons=[...document.querySelectorAll('#dock button[data-wx]')];
+    for(const b of this.wxButtons) b.onclick=()=>this._setWeather(b.dataset.wx);
+    this._syncWxButtons();
+
+    document.getElementById('btnSeason').onclick=()=>{ w.season.toggle(); this._toast('季節 → '+w.season.name); };
+    document.getElementById('btnMood').onclick=(e)=>{ w.showMood=!w.showMood; e.currentTarget.classList.toggle('active',w.showMood); };
+    document.getElementById('btnMood').classList.add('active');
+    const hud=document.getElementById('debug');
+    document.getElementById('btnHud').onclick=(e)=>{ hud.classList.toggle('on'); e.currentTarget.classList.toggle('active'); };
+
+    window.addEventListener('keydown',e=>{
+      const map={'1':'sunny','2':'rain','3':'heavy','4':'snow','5':'storm','6':'tornado'};
+      if(map[e.key]) this._setWeather(map[e.key]);
+      else if(e.key==='s'||e.key==='S') document.getElementById('btnSeason').click();
+      else if(e.key==='m'||e.key==='M') document.getElementById('btnMood').click();
+      else if(e.key==='d'||e.key==='D') document.getElementById('btnHud').click();
+    });
+    // UI 元素快取
+    this.ui={
+      seasonIcon:document.getElementById('seasonIcon'),seasonName:document.getElementById('seasonName'),
+      seasonBar:document.getElementById('seasonBar'),wxIcon:document.getElementById('wxIcon'),wxName:document.getElementById('wxName'),
+      fps:document.getElementById('fps'),pcount:document.getElementById('pcount'),ppool:document.getElementById('ppool'),
+      acount:document.getElementById('acount'),activity:document.getElementById('activity'),
+    };
+  }
+  _setWeather(wx){
+    if(!this.world.season.allows(wx)){ this._toast('雪只在濕季出現'); return; }
+    this.world.weather.set(wx);
+    this._syncWxButtons();
+    this._toast('天氣 → '+this.world.weather.displayName);
+  }
+  _syncWxButtons(){
+    const w=this.world;
+    for(const b of this.wxButtons){
+      b.classList.toggle('active', b.dataset.wx===w.weather.current);
+      b.disabled=!w.season.allows(b.dataset.wx);
+    }
+  }
+  _toast(msg){
+    const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+    clearTimeout(this._tt); this._tt=setTimeout(()=>t.classList.remove('show'),1800);
+  }
+
+  _loop(now){
+    let dt=(now-this.last)/1000; this.last=now;
+    dt=Math.min(dt,0.05); // 夾住大跳幀
+    const w=this.world;
+
+    // ---- 更新 ----
+    w.season.update(dt);
+    w.env.wx=w.weather.current; w.env.activity=w.season.activity; w.env.cohesion=w.season.cohesion;
+    w.weather.update(dt);
+    this.env.update(dt);
+    this.lionHerd.update(dt);
+    this.eleHerd.update(dt);
+    for(const lp of this.leopards) lp.update(dt);
+    w.particles.update(dt,w);
+    // 依 y 排序（遠先近後）讓前後遮擋正確
+    w.animals.sort((a,b)=>a.y-b.y);
+
+    // ---- 繪製 ----
+    const ctx=this.ctx;
+    this.env.drawSky(ctx);
+    w.weather.drawSky(ctx);            // 閃電閃光
+    this.env.drawTrees(ctx,0,0.5);      // 遠層樹（地平線後）
+    this.env.drawGround(ctx);
+    this.env.drawTrees(ctx,0.5,2);      // 近層樹（地面上，豹可攀爬）
+    // 動物
+    for(const a of w.animals) a.draw(ctx);
+    if(w.tornado) w.tornado.draw(ctx);
+    w.particles.draw(ctx,w);
+    this.env.drawGrass(ctx);            // 前景草叢
+    w.weather.drawBolts(ctx);           // 閃電折線（最上層）
+
+    // 天氣壓暗（統一陰雨氛圍）
+    if(w.weather.darkness>0.01){ ctx.globalAlpha=w.weather.darkness*0.5; ctx.fillStyle='#10131f'; ctx.fillRect(0,0,w.W,w.H); ctx.globalAlpha=1; }
+
+    // 除錯：閃電安全區視覺化
+    if(document.getElementById('debug').classList.contains('on') && w.weather.current==='storm') w.weather.drawDebug(ctx);
+
+    // ---- HUD ----
+    this.frames++; this.fpsT+=dt;
+    if(this.fpsT>=0.25){
+      this.fps=Math.round(this.frames/this.fpsT); this.frames=0; this.fpsT=0;
+      const s=w.season;
+      this.ui.seasonIcon.textContent=s.name==='濕季'?'🌿':'☀️';
+      this.ui.seasonName.textContent=s.name;
+      this.ui.seasonBar.style.width=Math.round(s.progress*100)+'%';
+      this.ui.wxIcon.textContent=w.weather.icon; this.ui.wxName.textContent=w.weather.displayName;
+      if(document.getElementById('debug').classList.contains('on')){
+        this.ui.fps.textContent=this.fps;
+        this.ui.pcount.textContent=w.particles.count;
+        this.ui.ppool.textContent=w.particles.pool.size;
+        this.ui.acount.textContent=w.animals.length;
+        this.ui.activity.textContent=s.activity.toFixed(2);
+      }
+    }
+    requestAnimationFrame(this._loop);
+  }
+}
+
+window.game=new Game();
+</script>
+</body>
+</html>

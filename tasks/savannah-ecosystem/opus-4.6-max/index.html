@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<title>非洲大草原生態系統 — Opus 4.6 max</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#222}
+canvas{display:block;width:100%;height:100%}
+#hud{position:fixed;top:3px;right:5px;font:9px/1.3 monospace;color:rgba(255,255,255,.5);pointer-events:none;z-index:20}
+#controls{position:fixed;bottom:3px;left:50%;transform:translateX(-50%);display:flex;gap:2px;z-index:20;flex-wrap:nowrap}
+#controls button{font-size:11px;line-height:1;padding:3px 5px;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.45);color:#eee;cursor:pointer;border-radius:3px;white-space:nowrap;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+#controls button:hover{background:rgba(255,255,255,.15)}
+#controls button.active{background:rgba(255,180,50,.5);border-color:rgba(255,200,80,.6)}
+#season-btn{margin-left:4px;font-weight:bold}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud"></div>
+<div id="controls">
+  <button data-w="sunny" class="active">☀</button>
+  <button data-w="rain">🌧</button>
+  <button data-w="heavy">⛈</button>
+  <button data-w="snow">❄</button>
+  <button data-w="thunder">⚡</button>
+  <button data-w="tornado">🌪</button>
+  <button id="season-btn">🏜 乾</button>
+</div>
+<script>
+(()=>{
+'use strict';
+
+const GROUND = 0.72;
+const PARTICLE_MAX = 2000;
+const SEASON_DURATION = 60;
+
+const DRY = {
+  skyTop:'#F0D8A0',skyMid:'#E8C478',skyBot:'#D8B068',
+  farMtn:'#9B8B7B',nearHill:'#A09060',
+  ground:'#C4A830',groundDark:'#A08820',
+  grass:'#B8A028',treeTrunk:'#6B4226',treeLeaf:'#7B8B3B'
+};
+const WET = {
+  skyTop:'#7BC8E8',skyMid:'#A0D4E8',skyBot:'#C8DCD0',
+  farMtn:'#6B8B7B',nearHill:'#5B8B4B',
+  ground:'#5CB85C',groundDark:'#3A8A3A',
+  grass:'#4CAF50',treeTrunk:'#5C4033',treeLeaf:'#3A7A2E'
+};
+
+const WEATHER_SKY = {
+  sunny:  { topMul:[1,1,1], opacity:0 },
+  rain:   { topMul:[.7,.75,.85], opacity:.15 },
+  heavy:  { topMul:[.5,.55,.65], opacity:.3 },
+  snow:   { topMul:[.9,.92,.95], opacity:.1 },
+  thunder:{ topMul:[.4,.42,.5], opacity:.35 },
+  tornado:{ topMul:[.45,.4,.35], opacity:.4 },
+};
+
+function lerpColor(a,b,t){
+  const pa=parseInt,s=a.slice(1),e=b.slice(1);
+  const r=pa(s.substring(0,2),16),g=pa(s.substring(2,4),16),bl=pa(s.substring(4,6),16);
+  const r2=pa(e.substring(0,2),16),g2=pa(e.substring(2,4),16),b2=pa(e.substring(4,6),16);
+  const ri=Math.round(r+(r2-r)*t),gi=Math.round(g+(g2-g)*t),bi=Math.round(bl+(b2-bl)*t);
+  return `rgb(${ri},${gi},${bi})`;
+}
+
+function hexToRgb(h){
+  if(h.startsWith('rgb')){
+    const m=h.match(/(\d+)/g);
+    return [+m[0],+m[1],+m[2]];
+  }
+  const v=parseInt(h.slice(1),16);
+  return [(v>>16)&255,(v>>8)&255,v&255];
+}
+
+// ==================== PARTICLE POOL (Object Pooling) ====================
+class ParticlePool{
+  constructor(max){
+    this.pool=new Array(max);
+    this.activeCount=0;
+    for(let i=0;i<max;i++){
+      this.pool[i]={x:0,y:0,vx:0,vy:0,size:1,life:0,alpha:1,active:false};
+    }
+  }
+  acquire(){
+    for(let i=0;i<this.pool.length;i++){
+      if(!this.pool[i].active){
+        this.pool[i].active=true;
+        this.activeCount++;
+        return this.pool[i];
+      }
+    }
+    return null;
+  }
+  release(p){if(p.active){p.active=false;this.activeCount--;}}
+  clear(){
+    for(let i=0;i<this.pool.length;i++) this.pool[i].active=false;
+    this.activeCount=0;
+  }
+  forEach(fn){
+    for(let i=0;i<this.pool.length;i++){
+      if(this.pool[i].active) fn(this.pool[i]);
+    }
+  }
+}
+
+// ==================== BACKGROUND ====================
+class Background{
+  constructor(){
+    this.mountains1=this.genMountainProfile(0.38,0.08,1.1);
+    this.mountains2=this.genMountainProfile(0.32,0.06,2.7);
+    this.hills=this.genMountainProfile(0.52,0.10,4.3);
+    this.treePositions=[0.12,0.28,0.45,0.62,0.78,0.91];
+  }
+  genMountainProfile(yBase,amp,seed){
+    const pts=[];
+    for(let i=0;i<=200;i++){
+      const x=i/200;
+      const y=yBase-(
+        Math.sin(x*6.28*2+seed)*amp*0.5+
+        Math.sin(x*6.28*4+seed*2.1)*amp*0.3+
+        Math.sin(x*6.28*7+seed*3.3)*amp*0.15
+      );
+      pts.push({x,y});
+    }
+    return pts;
+  }
+  draw(ctx,w,h,seasonT,weatherDim){
+    const pal=this.blendPalette(seasonT);
+    const wm=WEATHER_SKY[weatherDim]||WEATHER_SKY.sunny;
+
+    // Sky gradient
+    const skyGrad=ctx.createLinearGradient(0,0,0,h*GROUND);
+    const st=hexToRgb(pal.skyTop),sm=hexToRgb(pal.skyMid),sb=hexToRgb(pal.skyBot);
+    skyGrad.addColorStop(0,`rgb(${Math.round(st[0]*wm.topMul[0])},${Math.round(st[1]*wm.topMul[1])},${Math.round(st[2]*wm.topMul[2])})`);
+    skyGrad.addColorStop(0.5,`rgb(${Math.round(sm[0]*wm.topMul[0])},${Math.round(sm[1]*wm.topMul[1])},${Math.round(sm[2]*wm.topMul[2])})`);
+    skyGrad.addColorStop(1,`rgb(${Math.round(sb[0]*wm.topMul[0])},${Math.round(sb[1]*wm.topMul[1])},${Math.round(sb[2]*wm.topMul[2])})`);
+    ctx.fillStyle=skyGrad;
+    ctx.fillRect(0,0,w,h*GROUND+2);
+
+    // Weather overlay
+    if(wm.opacity>0){
+      ctx.fillStyle=`rgba(40,40,50,${wm.opacity})`;
+      ctx.fillRect(0,0,w,h);
+    }
+
+    // Far mountains
+    this.drawProfile(ctx,w,h,this.mountains1,pal.farMtn,0.9);
+    this.drawProfile(ctx,w,h,this.mountains2,pal.nearHill,0.85);
+
+    // Background trees (behind ground)
+    for(const tx of this.treePositions){
+      this.drawAcacia(ctx,tx*w,h*GROUND-h*0.02,h*0.0015,pal);
+    }
+
+    // Ground
+    const gGrad=ctx.createLinearGradient(0,h*GROUND,0,h);
+    gGrad.addColorStop(0,pal.ground);
+    gGrad.addColorStop(1,pal.groundDark);
+    ctx.fillStyle=gGrad;
+    ctx.fillRect(0,h*GROUND,w,h*(1-GROUND));
+
+    // Grass tufts
+    ctx.strokeStyle=pal.grass;
+    ctx.lineWidth=1;
+    for(let i=0;i<40;i++){
+      const gx=(i/40+0.01)*w;
+      const gy=h*GROUND+2+Math.random()*h*0.05;
+      ctx.beginPath();
+      ctx.moveTo(gx,gy);
+      ctx.lineTo(gx-3,gy-6-Math.random()*4);
+      ctx.moveTo(gx,gy);
+      ctx.lineTo(gx+2,gy-5-Math.random()*4);
+      ctx.stroke();
+    }
+  }
+  drawProfile(ctx,w,h,pts,color){
+    ctx.fillStyle=color;
+    ctx.beginPath();
+    ctx.moveTo(0,h);
+    for(const p of pts) ctx.lineTo(p.x*w,p.y*h);
+    ctx.lineTo(w,h);
+    ctx.closePath();
+    ctx.fill();
+  }
+  drawAcacia(ctx,x,y,s,pal){
+    const sc=s*40;
+    ctx.fillStyle=pal.treeTrunk;
+    ctx.fillRect(x-sc*0.05,y-sc*0.5,sc*0.1,sc*0.5);
+    ctx.fillStyle=pal.treeLeaf;
+    ctx.beginPath();
+    ctx.ellipse(x,y-sc*0.55,sc*0.4,sc*0.12,0,0,Math.PI*2);
+    ctx.fill();
+  }
+  blendPalette(t){
+    const r={};
+    for(const k of Object.keys(DRY)){
+      r[k]=lerpColor(DRY[k],WET[k],t);
+    }
+    return r;
+  }
+}
+
+// ==================== ANIMALS ====================
+const STATES={WALK:'walk',REST:'rest',PATROL:'patrol',DRINK:'drink',TRUNK:'trunk',STALK:'stalk',CLIMB:'climb'};
+
+class Animal{
+  constructor(type,x,lane,id){
+    this.type=type;
+    this.x=x;
+    this.id=id;
+    this.lane=lane;
+    this.scale=lane===0?0.55:lane===1?0.75:0.95;
+    this.yOff=lane===0?-0.08:lane===1?0:0.06;
+    this.state=STATES.WALK;
+    this.stateTimer=2+Math.random()*4;
+    this.baseSpeed=this.getBaseSpeed();
+    this.speed=this.baseSpeed;
+    this.legPhase=Math.random()*Math.PI*2;
+    this.actionAnim=0;
+    this.facing=1;
+  }
+  getBaseSpeed(){
+    if(this.type==='lion') return 25+Math.random()*15;
+    if(this.type==='elephant') return 15+Math.random()*12;
+    return 40+Math.random()*20;
+  }
+  getY(h){return h*(GROUND+this.yOff);}
+  update(dt,weather,seasonT,w,h,trees,tornado){
+    this.stateTimer-=dt;
+    if(this.stateTimer<=0) this.transitionState(weather,seasonT);
+    const wMod=this.weatherSpeedMod(weather);
+    const sMod=seasonT>0.5?1.15:0.85;
+    const tornadoFlee=this.fleeTornado(tornado,w);
+    this.speed=this.baseSpeed*wMod*sMod;
+
+    if(this.state===STATES.REST||this.state===STATES.DRINK||this.state===STATES.TRUNK){
+      this.speed=0;
+    }else if(this.state===STATES.STALK){
+      this.speed*=0.3;
+    }else if(this.state===STATES.PATROL){
+      this.speed*=0.7;
+    }
+
+    if(tornadoFlee!==0){
+      this.speed=Math.max(this.speed,this.baseSpeed*1.5);
+      this.facing=tornadoFlee>0?1:-1;
+    }
+
+    this.x+=this.speed*this.facing*dt;
+    if(this.x>w+80) this.x=-80;
+    if(this.x<-80) this.x=w+80;
+
+    if(this.speed>0) this.legPhase+=dt*this.speed*0.12;
+    this.actionAnim+=dt;
+  }
+  fleeTornado(tornado,w){
+    if(!tornado||!tornado.active) return 0;
+    const dist=tornado.x-this.x;
+    if(Math.abs(dist)<150) return dist>0?-1:1;
+    return 0;
+  }
+  weatherSpeedMod(w){
+    const mods={sunny:1,rain:0.85,heavy:0.6,snow:0.5,thunder:1.2,tornado:1.4};
+    return mods[w]||1;
+  }
+  transitionState(weather,seasonT){
+    const probs=this.getTransitionProbs(weather,seasonT);
+    let r=Math.random(),cum=0;
+    let next=STATES.WALK;
+    for(const[st,p] of probs){
+      cum+=p;
+      if(r<cum){next=st;break;}
+    }
+    this.state=next;
+    this.stateTimer=1.5+Math.random()*5;
+    this.actionAnim=0;
+  }
+  getTransitionProbs(weather,seasonT){
+    if(this.type==='lion'){
+      const restBonus=(weather==='rain'||weather==='heavy')?0.15:0;
+      const dryBonus=seasonT<0.5?0.1:0;
+      return [[STATES.WALK,0.5-restBonus],[STATES.REST,0.25+restBonus+dryBonus],[STATES.PATROL,0.25-dryBonus]];
+    }
+    if(this.type==='elephant'){
+      const drinkBonus=(weather==='rain'||seasonT>0.5)?0.1:0;
+      return [[STATES.WALK,0.45-drinkBonus],[STATES.DRINK,0.2+drinkBonus],[STATES.TRUNK,0.15],[STATES.REST,0.2]];
+    }
+    // leopard
+    const stalkBonus=(weather==='sunny')?0.1:0;
+    return [[STATES.WALK,0.35],[STATES.STALK,0.25+stalkBonus],[STATES.CLIMB,0.15],[STATES.REST,0.25-stalkBonus]];
+  }
+  draw(ctx,h){
+    const y=this.getY(h);
+    const s=this.scale;
+    ctx.save();
+    ctx.translate(this.x,y);
+    ctx.scale(this.facing*s,s);
+    if(this.type==='lion') this.drawLion(ctx);
+    else if(this.type==='elephant') this.drawElephant(ctx);
+    else this.drawLeopard(ctx);
+
+    if(this.state===STATES.REST){
+      ctx.fillStyle='rgba(255,255,255,0.6)';
+      ctx.font='bold 10px sans-serif';
+      ctx.fillText('z',5,-30-Math.sin(this.actionAnim*3)*4);
+    }
+    ctx.restore();
+  }
+  drawLion(ctx){
+    const lp=this.legPhase;
+    const isRest=this.state===STATES.REST;
+    // Tail
+    ctx.strokeStyle='#A08835';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(-26,-3);
+    ctx.bezierCurveTo(-36,-16,-40,-20,-34,-24);ctx.stroke();
+    ctx.fillStyle='#7B5B14';ctx.beginPath();ctx.arc(-34,-24,3,0,6.28);ctx.fill();
+    // Legs
+    ctx.fillStyle='#B09030';
+    const legAmp=isRest?0:5;
+    for(let i=0;i<4;i++){
+      const lx=-16+i*11;
+      const off=Math.sin(lp+i*1.57)*legAmp;
+      ctx.fillRect(lx,10,5,12+off);
+    }
+    // Body
+    ctx.fillStyle='#C4A84D';ctx.beginPath();ctx.ellipse(0,0,26,14,0,0,6.28);ctx.fill();
+    // Mane (even-ID = male)
+    if(this.id%3!==2){
+      ctx.fillStyle='#8B6914';ctx.beginPath();ctx.arc(22,-5,15,0,6.28);ctx.fill();
+    }
+    // Head
+    ctx.fillStyle='#C4A84D';ctx.beginPath();ctx.arc(26,-4,9,0,6.28);ctx.fill();
+    // Ears
+    ctx.fillStyle='#B09030';
+    ctx.beginPath();ctx.arc(24,-13,3.5,0,6.28);ctx.fill();
+    ctx.beginPath();ctx.arc(30,-13,3.5,0,6.28);ctx.fill();
+    // Eye
+    ctx.fillStyle='#222';ctx.beginPath();ctx.arc(31,-5,1.8,0,6.28);ctx.fill();
+    // Nose
+    ctx.fillStyle='#6B4014';ctx.beginPath();ctx.arc(34,-2,2.2,0,6.28);ctx.fill();
+  }
+  drawElephant(ctx){
+    const lp=this.legPhase;
+    const isRest=this.state===STATES.REST;
+    const isDrink=this.state===STATES.DRINK;
+    const isTrunk=this.state===STATES.TRUNK;
+    // Tail
+    ctx.strokeStyle='#606060';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(-38,0);ctx.lineTo(-48,8);ctx.stroke();
+    // Legs
+    ctx.fillStyle='#6B6B6B';
+    const legAmp=isRest?0:4;
+    for(let i=0;i<4;i++){
+      const lx=-25+i*16;
+      const off=Math.sin(lp+i*1.57)*legAmp;
+      ctx.fillRect(lx,14,9,16+off);
+    }
+    // Body
+    ctx.fillStyle='#888';ctx.beginPath();ctx.ellipse(0,0,38,20,0,0,6.28);ctx.fill();
+    // Head
+    ctx.fillStyle='#7A7A7A';ctx.beginPath();ctx.arc(32,-4,14,0,6.28);ctx.fill();
+    // Ear
+    ctx.fillStyle='#6A6A6A';
+    ctx.beginPath();ctx.ellipse(22,-2,10,16,-0.2,0,6.28);ctx.fill();
+    // Trunk
+    ctx.strokeStyle='#7A7A7A';ctx.lineWidth=5;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(42,2);
+    if(isDrink){
+      ctx.bezierCurveTo(50,12,48,22,42,28);
+    }else if(isTrunk){
+      ctx.bezierCurveTo(50,-8,48,-22,44,-30);
+    }else{
+      ctx.bezierCurveTo(50,8,52,14,48,20);
+    }
+    ctx.stroke();
+    // Tusks
+    ctx.strokeStyle='#F5F0E0';ctx.lineWidth=2.5;
+    ctx.beginPath();ctx.moveTo(38,6);ctx.lineTo(46,2);ctx.stroke();
+    // Eye
+    ctx.fillStyle='#222';ctx.beginPath();ctx.arc(38,-8,2,0,6.28);ctx.fill();
+  }
+  drawLeopard(ctx){
+    const lp=this.legPhase;
+    const isRest=this.state===STATES.REST;
+    const isClimb=this.state===STATES.CLIMB;
+    const crouch=this.state===STATES.STALK?0.7:1;
+    ctx.save();
+    if(isClimb) ctx.translate(0,-Math.sin(this.actionAnim*2)*8-10);
+    ctx.scale(1,crouch);
+    // Tail
+    ctx.strokeStyle='#C89520';ctx.lineWidth=2.5;
+    ctx.beginPath();ctx.moveTo(-22,0);
+    ctx.bezierCurveTo(-34,-14,-40,-8,-44,-18);ctx.stroke();
+    // Legs
+    ctx.fillStyle='#B08818';
+    const legAmp=isRest?0:4;
+    for(let i=0;i<4;i++){
+      const lx=-14+i*9;
+      const off=Math.sin(lp+i*1.57)*legAmp;
+      ctx.fillRect(lx,7,4,10+off);
+    }
+    // Body
+    ctx.fillStyle='#DAA520';ctx.beginPath();ctx.ellipse(0,0,22,10,0,0,6.28);ctx.fill();
+    // Spots
+    ctx.fillStyle='#6B4520';
+    const spots=[[-10,-4],[-4,3],[4,-5],[10,2],[0,-7],[8,-2],[-8,4],[14,-4],[-14,1]];
+    for(const[sx,sy] of spots){ctx.beginPath();ctx.arc(sx,sy,1.8,0,6.28);ctx.fill();}
+    // Head
+    ctx.fillStyle='#DAA520';ctx.beginPath();ctx.arc(20,-3,7,0,6.28);ctx.fill();
+    // Ears
+    ctx.fillStyle='#C89520';
+    ctx.beginPath();ctx.arc(18,-10,3,0,6.28);ctx.fill();
+    ctx.beginPath();ctx.arc(24,-10,3,0,6.28);ctx.fill();
+    // Eye
+    ctx.fillStyle='#222';ctx.beginPath();ctx.arc(24,-4,1.5,0,6.28);ctx.fill();
+    ctx.restore();
+  }
+}
+
+// ==================== LIGHTNING (safe-zone algorithm) ====================
+class LightningSystem{
+  constructor(){
+    this.bolts=[];
+    this.timer=0;
+    this.flashAlpha=0;
+  }
+  update(dt,active,animals,w,h){
+    this.flashAlpha=Math.max(0,this.flashAlpha-dt*4);
+    if(!active){this.bolts=[];return;}
+    this.timer-=dt;
+    if(this.timer<=0){
+      this.timer=0.8+Math.random()*2;
+      const safeX=this.findSafeX(animals,w);
+      if(safeX!==null){
+        this.bolts.push(this.generateBolt(safeX,0,safeX,h*GROUND,6));
+        this.flashAlpha=0.3;
+        setTimeout(()=>{if(this.bolts.length>3)this.bolts.shift();},400);
+      }
+    }
+    for(let i=this.bolts.length-1;i>=0;i--){
+      this.bolts[i].life-=dt;
+      if(this.bolts[i].life<=0) this.bolts.splice(i,1);
+    }
+  }
+  // Safe-zone: lightning must NEVER hit any animal. Find X with maximum clearance.
+  findSafeX(animals,w){
+    const MARGIN=60;
+    const animalXs=animals.map(a=>a.x).sort((a,b)=>a-b);
+    // Try to find the widest gap
+    let bestX=null,bestDist=0;
+    const candidates=[0,...animalXs,w];
+    for(let i=0;i<candidates.length-1;i++){
+      const mid=(candidates[i]+candidates[i+1])/2;
+      let minDist=Infinity;
+      for(const ax of animalXs) minDist=Math.min(minDist,Math.abs(mid-ax));
+      if(minDist>bestDist){bestDist=minDist;bestX=mid;}
+    }
+    if(bestDist<MARGIN) return null;
+    return bestX;
+  }
+  generateBolt(x1,y1,x2,y2,detail){
+    const segments=[];
+    this.subdivide(segments,x1,y1,x2,y2,detail);
+    return{segments,life:0.35};
+  }
+  subdivide(segs,x1,y1,x2,y2,d){
+    if(d<=0){segs.push({x1,y1,x2,y2});return;}
+    const mx=(x1+x2)/2+(Math.random()-0.5)*40*d/6;
+    const my=(y1+y2)/2;
+    this.subdivide(segs,x1,y1,mx,my,d-1);
+    this.subdivide(segs,mx,my,x2,y2,d-1);
+    if(d>3&&Math.random()<0.3){
+      const bx=mx+(Math.random()-0.5)*30;
+      const by=my+(y2-y1)*0.2;
+      this.subdivide(segs,mx,my,bx,by,d-2);
+    }
+  }
+  draw(ctx,w,h){
+    if(this.flashAlpha>0){
+      ctx.fillStyle=`rgba(255,255,240,${this.flashAlpha})`;
+      ctx.fillRect(0,0,w,h);
+    }
+    for(const bolt of this.bolts){
+      const a=Math.min(1,bolt.life/0.15);
+      ctx.strokeStyle=`rgba(220,220,255,${a})`;
+      ctx.lineWidth=2.5;ctx.lineCap='round';
+      ctx.beginPath();
+      for(const s of bolt.segments){
+        ctx.moveTo(s.x1,s.y1);ctx.lineTo(s.x2,s.y2);
+      }
+      ctx.stroke();
+      ctx.strokeStyle=`rgba(180,180,255,${a*0.5})`;
+      ctx.lineWidth=5;
+      ctx.beginPath();
+      for(const s of bolt.segments){
+        ctx.moveTo(s.x1,s.y1);ctx.lineTo(s.x2,s.y2);
+      }
+      ctx.stroke();
+    }
+  }
+}
+
+// ==================== TORNADO (chase behavior) ====================
+class TornadoEntity{
+  constructor(){
+    this.x=0;this.y=0;this.active=false;
+    this.rotation=0;this.speed=30;
+  }
+  activate(w,h){
+    this.active=true;
+    this.x=w*0.5;
+    this.y=h*GROUND;
+  }
+  deactivate(){this.active=false;}
+  update(dt,animals,w,h){
+    if(!this.active) return;
+    this.rotation+=dt*5;
+    // Chase nearest animal (slow approach)
+    let nearest=null,minD=Infinity;
+    for(const a of animals){
+      const d=Math.abs(a.x-this.x);
+      if(d<minD){minD=d;nearest=a;}
+    }
+    if(nearest){
+      const dir=nearest.x>this.x?1:-1;
+      this.x+=dir*this.speed*dt;
+    }
+    this.y=h*GROUND;
+    if(this.x<-50) this.x=w+50;
+    if(this.x>w+50) this.x=-50;
+  }
+  draw(ctx,h){
+    if(!this.active) return;
+    ctx.save();
+    ctx.translate(this.x,this.y);
+    // Funnel
+    const grad=ctx.createLinearGradient(0,0,0,-h*0.5);
+    grad.addColorStop(0,'rgba(90,80,60,0.7)');
+    grad.addColorStop(0.5,'rgba(70,60,50,0.5)');
+    grad.addColorStop(1,'rgba(50,45,40,0.2)');
+    ctx.fillStyle=grad;
+    ctx.beginPath();
+    ctx.moveTo(-8,0);
+    ctx.bezierCurveTo(-12,-h*0.15,-30,-h*0.35,-35,-h*0.5);
+    ctx.lineTo(35,-h*0.5);
+    ctx.bezierCurveTo(30,-h*0.35,12,-h*0.15,8,0);
+    ctx.closePath();
+    ctx.fill();
+    // Debris
+    for(let i=0;i<18;i++){
+      const angle=this.rotation+i/18*6.28;
+      const yOff=-i/18*h*0.45;
+      const radius=6+i*1.2+Math.sin(angle*3)*3;
+      ctx.fillStyle=`rgba(100,80,50,${0.6-i*0.025})`;
+      ctx.beginPath();
+      ctx.arc(Math.cos(angle)*radius,yOff+Math.sin(angle*2)*2,1.5+Math.random(),0,6.28);
+      ctx.fill();
+    }
+    // Ground dust
+    for(let i=0;i<8;i++){
+      const a=this.rotation*0.8+i*0.785;
+      const r=15+Math.sin(a)*8;
+      ctx.fillStyle='rgba(160,140,100,0.3)';
+      ctx.beginPath();
+      ctx.arc(Math.cos(a)*r,Math.sin(a)*3+2,3+Math.random()*2,0,6.28);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+}
+
+// ==================== WEATHER PARTICLES ====================
+class WeatherSystem{
+  constructor(){
+    this.pool=new ParticlePool(PARTICLE_MAX);
+    this.weather='sunny';
+    this.spawnAccum=0;
+  }
+  setWeather(w){
+    if(w===this.weather) return;
+    this.weather=w;
+    if(w==='sunny'||w==='tornado') this.pool.clear();
+  }
+  update(dt,w,h){
+    const rates={sunny:0,rain:300,heavy:600,snow:80,thunder:350,tornado:0};
+    const rate=rates[this.weather]||0;
+    this.spawnAccum+=rate*dt;
+    while(this.spawnAccum>=1){
+      this.spawnAccum--;
+      this.spawnParticle(w,h);
+    }
+    this.pool.forEach(p=>{
+      p.x+=p.vx*dt;
+      p.y+=p.vy*dt;
+      p.life-=dt;
+      if(p.life<=0||p.y>h+10){this.pool.release(p);}
+    });
+  }
+  spawnParticle(w,h){
+    const p=this.pool.acquire();
+    if(!p) return;
+    const wt=this.weather;
+    p.x=Math.random()*w*1.2-w*0.1;
+    p.y=-Math.random()*20;
+    p.life=3+Math.random()*2;
+    if(wt==='rain'||wt==='thunder'){
+      p.vx=-20-Math.random()*30;
+      p.vy=250+Math.random()*150;
+      p.size=1;
+    }else if(wt==='heavy'){
+      p.vx=-40-Math.random()*40;
+      p.vy=350+Math.random()*200;
+      p.size=1.5;
+    }else if(wt==='snow'){
+      p.vx=(Math.random()-0.5)*20;
+      p.vy=30+Math.random()*30;
+      p.size=2+Math.random()*2;
+    }
+  }
+  draw(ctx){
+    const wt=this.weather;
+    if(wt==='sunny'||wt==='tornado') return;
+    if(wt==='rain'||wt==='thunder'){
+      ctx.strokeStyle='rgba(150,180,220,0.5)';ctx.lineWidth=1;
+      this.pool.forEach(p=>{
+        ctx.beginPath();
+        ctx.moveTo(p.x,p.y);
+        ctx.lineTo(p.x+p.vx*0.02,p.y+p.vy*0.02);
+        ctx.stroke();
+      });
+    }else if(wt==='heavy'){
+      ctx.strokeStyle='rgba(130,160,200,0.6)';ctx.lineWidth=1.5;
+      this.pool.forEach(p=>{
+        ctx.beginPath();
+        ctx.moveTo(p.x,p.y);
+        ctx.lineTo(p.x+p.vx*0.025,p.y+p.vy*0.025);
+        ctx.stroke();
+      });
+    }else if(wt==='snow'){
+      ctx.fillStyle='rgba(255,255,255,0.8)';
+      this.pool.forEach(p=>{
+        ctx.beginPath();
+        ctx.arc(p.x,p.y,p.size,0,6.28);
+        ctx.fill();
+      });
+    }
+  }
+}
+
+// ==================== SEASON MANAGER ====================
+class SeasonManager{
+  constructor(){
+    this.timer=0;
+    this.isDry=true;
+    this.transition=0;
+    this.manual=false;
+  }
+  update(dt){
+    this.timer+=dt;
+    if(this.timer>=SEASON_DURATION&&!this.manual){
+      this.timer=0;
+      this.isDry=!this.isDry;
+    }
+    const target=this.isDry?0:1;
+    this.transition+=(target-this.transition)*Math.min(1,dt*1.5);
+  }
+  toggle(){
+    this.isDry=!this.isDry;
+    this.timer=0;
+    this.manual=true;
+    setTimeout(()=>{this.manual=false;},SEASON_DURATION*1000);
+  }
+  get t(){return this.transition;}
+}
+
+// ==================== GROUND PUDDLES ====================
+function drawPuddles(ctx,w,h,weather){
+  if(weather!=='rain'&&weather!=='heavy'&&weather!=='thunder') return;
+  const count=weather==='heavy'?12:6;
+  ctx.fillStyle='rgba(100,130,170,0.2)';
+  for(let i=0;i<count;i++){
+    const px=(i/count+0.03)*w;
+    const py=h*GROUND+h*0.04+i*3;
+    const rw=8+i*2;
+    ctx.beginPath();
+    ctx.ellipse(px,py,rw,3,0,0,6.28);
+    ctx.fill();
+  }
+}
+
+// ==================== APP ====================
+class App{
+  constructor(){
+    this.canvas=document.getElementById('c');
+    this.ctx=this.canvas.getContext('2d');
+    this.resize();
+
+    this.bg=new Background();
+    this.weatherSys=new WeatherSystem();
+    this.lightningSys=new LightningSystem();
+    this.tornado=new TornadoEntity();
+    this.season=new SeasonManager();
+
+    this.animals=this.createAnimals();
+    this.weather='sunny';
+
+    this.lastTime=0;
+    this.frames=0;this.fpsTime=0;this.fps=0;
+    this.hudEl=document.getElementById('hud');
+    this.seasonBtn=document.getElementById('season-btn');
+
+    this.setupUI();
+    window.addEventListener('resize',()=>this.resize());
+    window.addEventListener('keydown',e=>{
+      const map={1:'sunny',2:'rain',3:'heavy',4:'snow',5:'thunder',6:'tornado',s:null};
+      if(map[e.key]!==undefined){
+        if(e.key==='s'){this.season.toggle();this.updateSeasonBtn();}
+        else this.setWeather(map[e.key]);
+      }
+    });
+
+    requestAnimationFrame(t=>this.loop(t));
+  }
+  createAnimals(){
+    const a=[];
+    const w=this.canvas.width;
+    // Lions (3, group in mid lane)
+    a.push(new Animal('lion',w*0.15,1,0));
+    a.push(new Animal('lion',w*0.22,1,1));
+    a.push(new Animal('lion',w*0.18,1,2));
+    // Elephants (3, herd in far lane)
+    a.push(new Animal('elephant',w*0.5,0,3));
+    a.push(new Animal('elephant',w*0.6,0,4));
+    a.push(new Animal('elephant',w*0.55,0,5));
+    // Leopards (2, solo in near lane)
+    a.push(new Animal('leopard',w*0.8,2,6));
+    a.push(new Animal('leopard',w*0.35,2,7));
+    return a;
+  }
+  setupUI(){
+    const btns=document.querySelectorAll('[data-w]');
+    btns.forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        this.setWeather(btn.dataset.w);
+        btns.forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+    this.seasonBtn.addEventListener('click',()=>{
+      this.season.toggle();
+      this.updateSeasonBtn();
+    });
+  }
+  setWeather(w){
+    this.weather=w;
+    this.weatherSys.setWeather(w);
+    if(w==='tornado') this.tornado.activate(this.canvas.width,this.canvas.height);
+    else this.tornado.deactivate();
+    document.querySelectorAll('[data-w]').forEach(b=>{
+      b.classList.toggle('active',b.dataset.w===w);
+    });
+  }
+  updateSeasonBtn(){
+    this.seasonBtn.textContent=this.season.isDry?'🏜 乾':'🌿 濕';
+  }
+  resize(){
+    const dpr=Math.min(devicePixelRatio,2);
+    this.canvas.width=innerWidth*dpr;
+    this.canvas.height=innerHeight*dpr;
+    this.canvas.style.width=innerWidth+'px';
+    this.canvas.style.height=innerHeight+'px';
+    this.ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  loop(now){
+    requestAnimationFrame(t=>this.loop(t));
+    const dt=Math.min((now-this.lastTime)/1000,0.1);
+    this.lastTime=now;
+
+    this.frames++;
+    this.fpsTime+=dt;
+    if(this.fpsTime>=0.5){
+      this.fps=Math.round(this.frames/this.fpsTime);
+      this.frames=0;this.fpsTime=0;
+    }
+
+    const w=innerWidth,h=innerHeight;
+    this.season.update(dt);
+    const sT=this.season.t;
+
+    // Update systems
+    this.weatherSys.update(dt,w,h);
+    this.lightningSys.update(dt,this.weather==='thunder',this.animals,w,h);
+    this.tornado.update(dt,this.animals,w,h);
+    for(const a of this.animals) a.update(dt,this.weather,sT,w,h,null,this.tornado);
+
+    // Draw
+    const ctx=this.ctx;
+    ctx.clearRect(0,0,w,h);
+    this.bg.draw(ctx,w,h,sT,this.weather);
+    drawPuddles(ctx,w,h,this.weather);
+
+    // Sort animals by lane (far first)
+    const sorted=[...this.animals].sort((a,b)=>a.lane-b.lane);
+    for(const a of sorted) a.draw(ctx,h);
+
+    // Weather particles on top
+    this.weatherSys.draw(ctx);
+    this.lightningSys.draw(ctx,w,h);
+    this.tornado.draw(ctx,h);
+
+    // HUD
+    this.hudEl.textContent=`${this.fps} fps · ${this.weatherSys.pool.activeCount} ptcl`;
+    this.updateSeasonBtn();
+  }
+}
+
+new App();
+})();
+</script>
+</body>
+</html>

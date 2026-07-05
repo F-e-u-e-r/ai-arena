@@ -1,0 +1,16 @@
+{
+  "provider": "anthropic",
+  "model": "Sonnet 5",
+  "modelId": "claude-sonnet-5",
+  "effort": "max",
+  "client": "claude-code",
+  "author": "f-e-u-e-r",
+  "generatedAt": "2026-07-05T06:32:00Z",
+  "metrics": {
+    "durationMs": 2346380,
+    "inputTokens": 146261,
+    "outputTokens": 64528,
+    "cachedInputTokens": 6083246
+  },
+  "order": 10
+}

@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<title>漂浮東京島與楓葉 — Opus 4.6 max</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#000}
+canvas{display:block;width:100%;height:100%}
+#hud{position:fixed;top:3px;right:5px;font:9px/1.3 monospace;color:rgba(255,255,255,.55);pointer-events:none;text-align:right;z-index:10}
+#phase{position:fixed;bottom:4px;left:50%;transform:translateX(-50%);font:10px/1 'Segoe UI',system-ui,sans-serif;color:rgba(255,255,255,.75);pointer-events:none;z-index:10;white-space:nowrap;text-shadow:0 1px 4px rgba(0,0,0,.6);letter-spacing:.3px}
+#hint{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);font:8px/1 sans-serif;color:rgba(255,255,255,.3);pointer-events:none;z-index:10;white-space:nowrap;transition:opacity 3s}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+</head>
+<body>
+<div id="hud"></div>
+<div id="phase"></div>
+<div id="hint">drag to rotate · 拖曳旋轉</div>
+<script type="module">
+import * as THREE from 'three';
+
+const CYCLE_DURATION = 15;
+const LEAF_COUNT = 100;
+const CLOUD_COUNT = 7;
+const STAR_COUNT = 400;
+
+const LEAF_COLORS = [0xC41E3A, 0xE34234, 0xFF6B35, 0xFF8C00, 0xFFB800, 0xB22222, 0xD4442A];
+
+const PHASES = [
+  { t: 0.00, sky: 0x72B4E8, fog: 0x9ECFEF, amb: 0.55, sun: 1.1, hemiSky: 0x87CEEB, hemiGnd: 0x8B7355, label: '☀ 白天' },
+  { t: 0.30, sky: 0x5DA0D8, fog: 0x8ABFE5, amb: 0.50, sun: 1.0, hemiSky: 0x7EC0E0, hemiGnd: 0x8B7355, label: '☀ 午後' },
+  { t: 0.38, sky: 0xF08050, fog: 0xE8A87C, amb: 0.35, sun: 0.6, hemiSky: 0xFFAA77, hemiGnd: 0x553322, label: '🌅 黃昏' },
+  { t: 0.48, sky: 0xC04060, fog: 0x884466, amb: 0.20, sun: 0.2, hemiSky: 0xBB5588, hemiGnd: 0x331122, label: '🌇 日落' },
+  { t: 0.55, sky: 0x0B1026, fog: 0x0D1320, amb: 0.08, sun: 0.0, hemiSky: 0x111133, hemiGnd: 0x000000, label: '🌙 夜晚' },
+  { t: 0.78, sky: 0x0B1026, fog: 0x0D1320, amb: 0.08, sun: 0.0, hemiSky: 0x111133, hemiGnd: 0x000000, label: '🌙 深夜' },
+  { t: 0.85, sky: 0x8B5A7B, fog: 0x7B4A6B, amb: 0.20, sun: 0.15, hemiSky: 0xCC88AA, hemiGnd: 0x332233, label: '🌄 黎明' },
+  { t: 0.93, sky: 0xFFB6C1, fog: 0xEAC4D5, amb: 0.40, sun: 0.6, hemiSky: 0xFFCCDD, hemiGnd: 0x665544, label: '🌅 晨曦' },
+  { t: 1.00, sky: 0x72B4E8, fog: 0x9ECFEF, amb: 0.55, sun: 1.1, hemiSky: 0x87CEEB, hemiGnd: 0x8B7355, label: '☀ 白天' },
+];
+
+const _c1 = new THREE.Color();
+const _c2 = new THREE.Color();
+const _v1 = new THREE.Vector3();
+const _sph = new THREE.Spherical();
+
+function smoothstep(t) { return t * t * (3 - 2 * t); }
+
+function lerpPhase(t) {
+  t = ((t % 1) + 1) % 1;
+  for (let i = 0; i < PHASES.length - 1; i++) {
+    if (t >= PHASES[i].t && t <= PHASES[i + 1].t) {
+      const a = PHASES[i], b = PHASES[i + 1];
+      const f = smoothstep((t - a.t) / (b.t - a.t));
+      return {
+        sky:     _c1.setHex(a.sky).lerp(_c2.setHex(b.sky), f).clone(),
+        fog:     _c1.setHex(a.fog).lerp(_c2.setHex(b.fog), f).clone(),
+        hemiSky: _c1.setHex(a.hemiSky).lerp(_c2.setHex(b.hemiSky), f).clone(),
+        hemiGnd: _c1.setHex(a.hemiGnd).lerp(_c2.setHex(b.hemiGnd), f).clone(),
+        amb: a.amb + (b.amb - a.amb) * f,
+        sun: a.sun + (b.sun - a.sun) * f,
+        label: f < 0.5 ? a.label : b.label,
+      };
+    }
+  }
+  return { sky: _c1.setHex(PHASES[0].sky).clone(), fog: _c1.setHex(PHASES[0].fog).clone(), hemiSky: _c1.setHex(PHASES[0].hemiSky).clone(), hemiGnd: _c1.setHex(PHASES[0].hemiGnd).clone(), amb: PHASES[0].amb, sun: PHASES[0].sun, label: PHASES[0].label };
+}
+
+function createGradientMap(steps) {
+  const s = steps || [60, 120, 180, 230, 255];
+  const data = new Uint8Array(s.length * 4);
+  for (let i = 0; i < s.length; i++) {
+    data[i * 4] = s[i]; data[i * 4 + 1] = s[i]; data[i * 4 + 2] = s[i]; data[i * 4 + 3] = 255;
+  }
+  const tex = new THREE.DataTexture(data, s.length, 1, THREE.RGBAFormat);
+  tex.minFilter = THREE.NearestFilter;
+  tex.magFilter = THREE.NearestFilter;
+  tex.needsUpdate = true;
+  return tex;
+}
+
+function createLeafGeometry() {
+  const s = new THREE.Shape();
+  s.moveTo(0, 0.12);
+  s.lineTo(0.035, 0.065);
+  s.lineTo(0.10, 0.085);
+  s.lineTo(0.055, 0.015);
+  s.lineTo(0.11, -0.02);
+  s.lineTo(0.05, -0.035);
+  s.lineTo(0.07, -0.10);
+  s.lineTo(0.015, -0.065);
+  s.lineTo(0, -0.11);
+  s.lineTo(-0.015, -0.065);
+  s.lineTo(-0.07, -0.10);
+  s.lineTo(-0.05, -0.035);
+  s.lineTo(-0.11, -0.02);
+  s.lineTo(-0.055, 0.015);
+  s.lineTo(-0.10, 0.085);
+  s.lineTo(-0.035, 0.065);
+  s.closePath();
+  return new THREE.ShapeGeometry(s);
+}
+
+class OrbitController {
+  constructor(camera, el, target) {
+    this.camera = camera;
+    this.el = el;
+    this.target = target.clone();
+    this._offset = new THREE.Vector3();
+    this.sph = new THREE.Spherical();
+    this.sphDelta = new THREE.Spherical();
+    this.prev = { x: 0, y: 0 };
+    this.dragging = false;
+    this.speed = 0.006;
+    this.autoRotate = 0.08;
+
+    this._offset.copy(camera.position).sub(this.target);
+    this.sph.setFromVector3(this._offset);
+
+    el.addEventListener('pointerdown', e => {
+      this.dragging = true;
+      this.prev.x = e.clientX; this.prev.y = e.clientY;
+      el.setPointerCapture(e.pointerId);
+    });
+    el.addEventListener('pointermove', e => {
+      if (!this.dragging) return;
+      const dx = e.clientX - this.prev.x, dy = e.clientY - this.prev.y;
+      this.sphDelta.theta -= dx * this.speed;
+      this.sphDelta.phi -= dy * this.speed;
+      this.prev.x = e.clientX; this.prev.y = e.clientY;
+    });
+    const up = e => { this.dragging = false; };
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up);
+    el.addEventListener('touchstart', e => e.preventDefault(), { passive: false });
+  }
+
+  update(dt) {
+    if (!this.dragging) {
+      this.sphDelta.theta += this.autoRotate * dt;
+    }
+    this.sph.theta += this.sphDelta.theta;
+    this.sph.phi += this.sphDelta.phi;
+    this.sph.phi = Math.max(0.3, Math.min(Math.PI * 0.48, this.sph.phi));
+    this.sphDelta.theta *= 0.88;
+    this.sphDelta.phi *= 0.88;
+    this._offset.setFromSpherical(this.sph);
+    this.camera.position.copy(this.target).add(this._offset);
+    this.camera.lookAt(this.target);
+  }
+}
+
+class MapleLeafSystem {
+  constructor(scene, gMap) {
+    this.pool = [];
+    this.leafGeo = createLeafGeometry();
+    this.materials = LEAF_COLORS.map(c =>
+      new THREE.MeshToonMaterial({ color: c, gradientMap: gMap, side: THREE.DoubleSide })
+    );
+    for (let i = 0; i < LEAF_COUNT; i++) {
+      const mat = this.materials[i % this.materials.length];
+      const mesh = new THREE.Mesh(this.leafGeo, mat);
+      const leaf = {
+        mesh,
+        vx: 0, vy: 0, vz: 0,
+        rx: 0, ry: 0, rz: 0,
+        swayOffset: 0, swaySpeed: 0, swayAmp: 0,
+        fallSpeed: 0,
+      };
+      this.resetLeaf(leaf, true);
+      scene.add(mesh);
+      this.pool.push(leaf);
+    }
+  }
+
+  resetLeaf(leaf, initial) {
+    const spread = 12;
+    leaf.mesh.position.set(
+      (Math.random() - 0.5) * spread,
+      initial ? Math.random() * 14 + 2 : Math.random() * 4 + 10,
+      (Math.random() - 0.5) * spread
+    );
+    const s = 0.6 + Math.random() * 0.8;
+    leaf.mesh.scale.setScalar(s);
+    leaf.rx = (Math.random() - 0.5) * 3;
+    leaf.ry = (Math.random() - 0.5) * 3;
+    leaf.rz = (Math.random() - 0.5) * 2;
+    leaf.swayOffset = Math.random() * Math.PI * 2;
+    leaf.swaySpeed = 0.6 + Math.random() * 1.2;
+    leaf.swayAmp = 0.3 + Math.random() * 0.6;
+    leaf.fallSpeed = 0.4 + Math.random() * 0.8;
+  }
+
+  update(dt, elapsed) {
+    for (const leaf of this.pool) {
+      const m = leaf.mesh;
+      m.position.y -= leaf.fallSpeed * dt;
+      m.position.x += Math.sin(elapsed * leaf.swaySpeed + leaf.swayOffset) * leaf.swayAmp * dt;
+      m.position.z += Math.cos(elapsed * leaf.swaySpeed * 0.7 + leaf.swayOffset) * leaf.swayAmp * 0.5 * dt;
+      m.rotation.x += leaf.rx * dt;
+      m.rotation.y += leaf.ry * dt;
+      m.rotation.z += leaf.rz * dt;
+      if (m.position.y < -6) this.resetLeaf(leaf, false);
+    }
+  }
+}
+
+class CloudSystem {
+  constructor(scene, gMap) {
+    this.clouds = [];
+    const mat = new THREE.MeshToonMaterial({ color: 0xFFFFFF, gradientMap: gMap, transparent: true, opacity: 0.7 });
+    for (let i = 0; i < CLOUD_COUNT; i++) {
+      const group = new THREE.Group();
+      const count = 3 + Math.floor(Math.random() * 4);
+      for (let j = 0; j < count; j++) {
+        const r = 0.4 + Math.random() * 0.8;
+        const sphere = new THREE.Mesh(new THREE.SphereGeometry(r, 8, 6), mat);
+        sphere.position.set((Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.8);
+        sphere.scale.y = 0.5 + Math.random() * 0.3;
+        group.add(sphere);
+      }
+      const angle = (i / CLOUD_COUNT) * Math.PI * 2;
+      const dist = 10 + Math.random() * 8;
+      group.position.set(Math.cos(angle) * dist, 4 + Math.random() * 5, Math.sin(angle) * dist);
+      group.userData = { angle, dist, speed: 0.03 + Math.random() * 0.05, yBase: group.position.y };
+      scene.add(group);
+      this.clouds.push(group);
+    }
+  }
+
+  update(dt, elapsed) {
+    for (const c of this.clouds) {
+      const d = c.userData;
+      d.angle += d.speed * dt;
+      c.position.x = Math.cos(d.angle) * d.dist;
+      c.position.z = Math.sin(d.angle) * d.dist;
+      c.position.y = d.yBase + Math.sin(elapsed * 0.3 + d.angle) * 0.3;
+    }
+  }
+
+  setOpacity(o) {
+    for (const c of this.clouds) {
+      c.traverse(child => {
+        if (child.isMesh) child.material.opacity = o;
+      });
+    }
+  }
+}
+
+function buildIsland(scene, gMap) {
+  const group = new THREE.Group();
+
+  const grassMat = new THREE.MeshToonMaterial({ color: 0x5CB85C, gradientMap: gMap });
+  const dirtMat = new THREE.MeshToonMaterial({ color: 0x8B5E3C, gradientMap: gMap });
+  const rockMat = new THREE.MeshToonMaterial({ color: 0x4A3728, gradientMap: gMap });
+  const darkRock = new THREE.MeshToonMaterial({ color: 0x3A2A1E, gradientMap: gMap });
+
+  const top = new THREE.Mesh(new THREE.CylinderGeometry(5, 5.2, 0.6, 24), grassMat);
+  top.position.y = 0.3;
+  top.receiveShadow = true;
+  group.add(top);
+
+  const dirt = new THREE.Mesh(new THREE.CylinderGeometry(5.2, 4.5, 1.2, 24), dirtMat);
+  dirt.position.y = -0.6;
+  group.add(dirt);
+
+  const rock1 = new THREE.Mesh(new THREE.CylinderGeometry(4.5, 2.5, 2, 18), rockMat);
+  rock1.position.y = -2.2;
+  group.add(rock1);
+
+  const rock2 = new THREE.Mesh(new THREE.ConeGeometry(2.5, 2.5, 14), darkRock);
+  rock2.position.y = -4.45;
+  rock2.rotation.x = Math.PI;
+  group.add(rock2);
+
+  for (let i = 0; i < 6; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const r = 3 + Math.random() * 1.5;
+    const bump = new THREE.Mesh(
+      new THREE.SphereGeometry(0.3 + Math.random() * 0.5, 6, 4),
+      i % 2 === 0 ? rockMat : dirtMat
+    );
+    bump.position.set(Math.cos(a) * r, -2 - Math.random() * 2, Math.sin(a) * r);
+    bump.scale.y = 0.5 + Math.random() * 0.4;
+    group.add(bump);
+  }
+
+  const waterMat = new THREE.MeshToonMaterial({ color: 0x40B0D0, gradientMap: gMap, transparent: true, opacity: 0.7 });
+  const pond = new THREE.Mesh(new THREE.CircleGeometry(0.8, 16), waterMat);
+  pond.rotation.x = -Math.PI / 2;
+  pond.position.set(2, 0.62, -1.5);
+  group.add(pond);
+
+  const pathMat = new THREE.MeshToonMaterial({ color: 0xC4A882, gradientMap: gMap });
+  const path = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.02, 3), pathMat);
+  path.position.set(0.5, 0.61, 1);
+  group.add(path);
+
+  scene.add(group);
+  return group;
+}
+
+function buildTokyoTower(parent, gMap) {
+  const group = new THREE.Group();
+  const towerMat = new THREE.MeshToonMaterial({ color: 0xEE4422, gradientMap: gMap });
+  const whiteMat = new THREE.MeshToonMaterial({ color: 0xF5F5F5, gradientMap: gMap });
+
+  const legPositions = [
+    [0.5, 0, 0.5], [-0.5, 0, 0.5], [0.5, 0, -0.5], [-0.5, 0, -0.5]
+  ];
+  for (const [lx,, lz] of legPositions) {
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.12, 2.2, 6), towerMat);
+    leg.position.set(lx * 0.5, 1.1, lz * 0.5);
+    const dx = -lx * 0.15, dz = -lz * 0.15;
+    leg.position.x += dx; leg.position.z += dz;
+    group.add(leg);
+  }
+
+  const lower = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.45, 2.2, 8), towerMat);
+  lower.position.y = 1.1;
+  group.add(lower);
+
+  const mainDeck = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.12, 16), whiteMat);
+  mainDeck.position.y = 2.2;
+  group.add(mainDeck);
+
+  const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.12, 1.3, 8), towerMat);
+  upper.position.y = 2.85;
+  group.add(upper);
+
+  const upperDeck = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.08, 12), whiteMat);
+  upperDeck.position.y = 3.5;
+  group.add(upperDeck);
+
+  const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.025, 1.0, 6), towerMat);
+  antenna.position.y = 4.0;
+  group.add(antenna);
+
+  const tipMat = new THREE.MeshToonMaterial({ color: 0xFFFFFF, gradientMap: gMap, emissive: 0xFF4444, emissiveIntensity: 0.3 });
+  const tip = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 4), tipMat);
+  tip.position.y = 4.52;
+  group.add(tip);
+
+  const towerLight1 = new THREE.PointLight(0xFFAA44, 0, 5);
+  towerLight1.position.set(0, 2.2, 0);
+  group.add(towerLight1);
+  const towerLight2 = new THREE.PointLight(0xFFCC66, 0, 4);
+  towerLight2.position.set(0, 3.5, 0);
+  group.add(towerLight2);
+
+  group.position.set(0, 0.6, 0);
+  group.userData.lights = [towerLight1, towerLight2];
+  parent.add(group);
+  return group;
+}
+
+function buildMtFuji(parent, gMap) {
+  const group = new THREE.Group();
+  const bodyMat = new THREE.MeshToonMaterial({ color: 0x6B7C93, gradientMap: gMap });
+  const snowMat = new THREE.MeshToonMaterial({ color: 0xF0F4F8, gradientMap: gMap });
+
+  const body = new THREE.Mesh(new THREE.ConeGeometry(1.8, 2.8, 12), bodyMat);
+  body.position.y = 1.4;
+  group.add(body);
+
+  const snow = new THREE.Mesh(new THREE.ConeGeometry(0.65, 0.9, 12), snowMat);
+  snow.position.y = 2.35;
+  group.add(snow);
+
+  const cloudRing = new THREE.Mesh(
+    new THREE.TorusGeometry(1.1, 0.15, 6, 16),
+    new THREE.MeshToonMaterial({ color: 0xFFFFFF, gradientMap: gMap, transparent: true, opacity: 0.5 })
+  );
+  cloudRing.rotation.x = Math.PI / 2;
+  cloudRing.position.y = 1.8;
+  group.add(cloudRing);
+
+  group.position.set(-3.2, 0.3, -1.8);
+  parent.add(group);
+  return group;
+}
+
+function buildTorii(parent, gMap) {
+  const group = new THREE.Group();
+  const mat = new THREE.MeshToonMaterial({ color: 0xDD3311, gradientMap: gMap });
+
+  const pillarL = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 1.6, 8), mat);
+  pillarL.position.set(-0.4, 0.8, 0);
+  group.add(pillarL);
+
+  const pillarR = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 1.6, 8), mat);
+  pillarR.position.set(0.4, 0.8, 0);
+  group.add(pillarR);
+
+  const beamTop = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.08, 0.12), mat);
+  beamTop.position.y = 1.6;
+  group.add(beamTop);
+
+  const capGeo = new THREE.BoxGeometry(1.35, 0.06, 0.16);
+  const cap = new THREE.Mesh(capGeo, mat);
+  cap.position.y = 1.68;
+  group.add(cap);
+
+  const beamMid = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.05, 0.08), mat);
+  beamMid.position.y = 1.3;
+  group.add(beamMid);
+
+  group.position.set(3, 0.3, 1.5);
+  group.rotation.y = -0.3;
+  parent.add(group);
+
+  const lantern = new THREE.PointLight(0xFF8844, 0, 3);
+  lantern.position.set(3, 1.5, 1.5);
+  group.userData.lights = [lantern];
+  parent.add(lantern);
+  return group;
+}
+
+function buildTemple(parent, gMap) {
+  const group = new THREE.Group();
+  const woodMat = new THREE.MeshToonMaterial({ color: 0x5C4033, gradientMap: gMap });
+  const roofMat = new THREE.MeshToonMaterial({ color: 0x445566, gradientMap: gMap });
+  const goldMat = new THREE.MeshToonMaterial({ color: 0xDAA520, gradientMap: gMap });
+
+  const base = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.15, 0.9), woodMat);
+  base.position.y = 0.075;
+  group.add(base);
+
+  const body = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.6, 0.7), woodMat);
+  body.position.y = 0.45;
+  group.add(body);
+
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(1.0, 0.5, 4), roofMat);
+  roof.position.y = 1.0;
+  roof.rotation.y = Math.PI / 4;
+  group.add(roof);
+
+  const ornament = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 4), goldMat);
+  ornament.position.y = 1.28;
+  group.add(ornament);
+
+  for (let i = 0; i < 3; i++) {
+    const step = new THREE.Mesh(new THREE.BoxGeometry(0.5 - i * 0.05, 0.06, 0.15), woodMat);
+    step.position.set(0, 0.03 + i * 0.06, 0.45 + i * 0.12);
+    group.add(step);
+  }
+
+  const templeLight = new THREE.PointLight(0xFFCC88, 0, 3);
+  templeLight.position.set(0, 0.6, 0.4);
+  group.add(templeLight);
+  group.userData.lights = [templeLight];
+
+  group.position.set(-1.8, 0.4, 2.5);
+  group.rotation.y = 0.4;
+  parent.add(group);
+  return group;
+}
+
+function buildTree(parent, gMap, x, z, type) {
+  const group = new THREE.Group();
+  const trunkMat = new THREE.MeshToonMaterial({ color: 0x6B4226, gradientMap: gMap });
+
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.06, 0.6, 6), trunkMat);
+  trunk.position.y = 0.3;
+  group.add(trunk);
+
+  if (type === 'maple') {
+    const colors = [0xCC3333, 0xEE5533, 0xFF8844];
+    for (let i = 0; i < 3; i++) {
+      const leafCluster = new THREE.Mesh(
+        new THREE.SphereGeometry(0.25 + Math.random() * 0.15, 6, 5),
+        new THREE.MeshToonMaterial({ color: colors[i], gradientMap: gMap })
+      );
+      leafCluster.position.set(
+        (Math.random() - 0.5) * 0.3,
+        0.6 + Math.random() * 0.3,
+        (Math.random() - 0.5) * 0.3
+      );
+      group.add(leafCluster);
+    }
+  } else {
+    const crownMat = new THREE.MeshToonMaterial({ color: 0x3A8A3A, gradientMap: gMap });
+    const crown = new THREE.Mesh(new THREE.SphereGeometry(0.35, 7, 5), crownMat);
+    crown.position.y = 0.75;
+    crown.scale.y = 0.8;
+    group.add(crown);
+  }
+
+  group.position.set(x, 0.3, z);
+  parent.add(group);
+  return group;
+}
+
+function buildStars(scene) {
+  const positions = new Float32Array(STAR_COUNT * 3);
+  for (let i = 0; i < STAR_COUNT; i++) {
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(Math.random() * 0.8 + 0.2);
+    const r = 40 + Math.random() * 10;
+    positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+    positions[i * 3 + 1] = r * Math.cos(phi);
+    positions[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  const mat = new THREE.PointsMaterial({ color: 0xFFFFFF, size: 0.15, sizeAttenuation: true, transparent: true, opacity: 0 });
+  const stars = new THREE.Points(geo, mat);
+  scene.add(stars);
+  return stars;
+}
+
+function buildSunMoon(scene, gMap) {
+  const sunMat = new THREE.MeshBasicMaterial({ color: 0xFFDD44 });
+  const sun = new THREE.Mesh(new THREE.SphereGeometry(0.8, 12, 8), sunMat);
+  scene.add(sun);
+
+  const moonMat = new THREE.MeshBasicMaterial({ color: 0xDDE8F0 });
+  const moon = new THREE.Mesh(new THREE.SphereGeometry(0.5, 10, 7), moonMat);
+  scene.add(moon);
+
+  const sunGlow = new THREE.PointLight(0xFFEE88, 0, 50);
+  sun.add(sunGlow);
+
+  return { sun, moon, sunGlow };
+}
+
+class App {
+  constructor() {
+    this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    this.renderer.setSize(innerWidth, innerHeight);
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.0;
+    document.body.prepend(this.renderer.domElement);
+
+    this.scene = new THREE.Scene();
+    this.scene.fog = new THREE.Fog(0x72B4E8, 15, 50);
+
+    this.camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 100);
+    this.camera.position.set(8, 5, 10);
+
+    this.orbitTarget = new THREE.Vector3(0, 1.5, 0);
+    this.orbit = new OrbitController(this.camera, this.renderer.domElement, this.orbitTarget);
+
+    this.gMap = createGradientMap();
+    this.setupLights();
+    this.buildScene();
+
+    this.clock = new THREE.Clock();
+    this.elapsed = 0;
+    this.frames = 0;
+    this.fpsTime = 0;
+    this.fps = 0;
+    this.timeScale = 1;
+
+    this.hudEl = document.getElementById('hud');
+    this.phaseEl = document.getElementById('phase');
+    this.hintEl = document.getElementById('hint');
+    this.hintTimer = 4;
+
+    window.addEventListener('resize', () => this.onResize());
+    window.addEventListener('keydown', e => {
+      if (e.key === ' ' || e.code === 'Space') { e.preventDefault(); this.timeScale = this.timeScale === 1 ? 4 : 1; }
+    });
+
+    this.animate();
+  }
+
+  setupLights() {
+    this.ambientLight = new THREE.AmbientLight(0xFFFFFF, 0.5);
+    this.scene.add(this.ambientLight);
+
+    this.hemiLight = new THREE.HemisphereLight(0x87CEEB, 0x8B7355, 0.5);
+    this.scene.add(this.hemiLight);
+
+    this.sunLight = new THREE.DirectionalLight(0xFFEECC, 1.0);
+    this.sunLight.position.set(10, 15, 5);
+    this.sunLight.castShadow = true;
+    this.sunLight.shadow.mapSize.width = 1024;
+    this.sunLight.shadow.mapSize.height = 1024;
+    this.sunLight.shadow.camera.near = 0.5;
+    this.sunLight.shadow.camera.far = 40;
+    this.sunLight.shadow.camera.left = -8;
+    this.sunLight.shadow.camera.right = 8;
+    this.sunLight.shadow.camera.top = 8;
+    this.sunLight.shadow.camera.bottom = -8;
+    this.scene.add(this.sunLight);
+  }
+
+  buildScene() {
+    this.island = buildIsland(this.scene, this.gMap);
+    this.tower = buildTokyoTower(this.island, this.gMap);
+    this.fuji = buildMtFuji(this.island, this.gMap);
+    this.torii = buildTorii(this.island, this.gMap);
+    this.temple = buildTemple(this.island, this.gMap);
+
+    this.trees = [];
+    const treeSpots = [
+      [1.5, -2, 'maple'], [-1, -2.8, 'green'], [2.8, -0.5, 'maple'],
+      [-2.5, 0.5, 'green'], [0.5, 3, 'maple'], [-3.5, 1.5, 'green'],
+      [1.2, 2.5, 'maple'],
+    ];
+    for (const [x, z, t] of treeSpots) {
+      this.trees.push(buildTree(this.island, this.gMap, x, z, t));
+    }
+
+    this.leafSystem = new MapleLeafSystem(this.scene, this.gMap);
+    this.cloudSystem = new CloudSystem(this.scene, this.gMap);
+    this.stars = buildStars(this.scene);
+    this.celestial = buildSunMoon(this.scene, this.gMap);
+
+    this.buildingLights = [];
+    [this.tower, this.torii, this.temple].forEach(obj => {
+      if (obj.userData.lights) this.buildingLights.push(...obj.userData.lights);
+    });
+  }
+
+  updateDayNight(t) {
+    const p = lerpPhase(t);
+
+    this.scene.background = p.sky;
+    this.scene.fog.color.copy(p.fog);
+    this.ambientLight.intensity = p.amb;
+    this.sunLight.intensity = p.sun;
+    this.hemiLight.color.copy(p.hemiSky);
+    this.hemiLight.groundColor.copy(p.hemiGnd);
+
+    const sunAngle = t * Math.PI * 2 - Math.PI / 2;
+    this.celestial.sun.position.set(Math.cos(sunAngle) * 25, Math.sin(sunAngle) * 20 + 5, -8);
+    this.celestial.sunGlow.intensity = Math.max(0, p.sun * 0.5);
+    this.celestial.sun.visible = Math.sin(sunAngle) > -0.3;
+
+    const moonAngle = sunAngle + Math.PI;
+    this.celestial.moon.position.set(Math.cos(moonAngle) * 25, Math.sin(moonAngle) * 18 + 5, -6);
+    this.celestial.moon.visible = Math.sin(moonAngle) > -0.3;
+
+    const nightness = 1 - Math.min(1, p.sun / 0.4);
+    this.stars.material.opacity = nightness * 0.8;
+
+    const lightsOn = nightness > 0.3;
+    const lightIntensity = lightsOn ? nightness * 1.5 : 0;
+    for (const l of this.buildingLights) {
+      l.intensity = lightIntensity;
+    }
+
+    this.renderer.toneMappingExposure = 0.7 + p.sun * 0.4;
+    this.cloudSystem.setOpacity(0.3 + (1 - nightness) * 0.5);
+    this.phaseEl.textContent = p.label;
+  }
+
+  animate() {
+    requestAnimationFrame(() => this.animate());
+    const dt = Math.min(this.clock.getDelta(), 0.1);
+    this.elapsed += dt * this.timeScale;
+
+    this.frames++;
+    this.fpsTime += dt;
+    if (this.fpsTime >= 0.5) {
+      this.fps = Math.round(this.frames / this.fpsTime);
+      this.frames = 0;
+      this.fpsTime = 0;
+    }
+
+    const cycleT = (this.elapsed % CYCLE_DURATION) / CYCLE_DURATION;
+    this.updateDayNight(cycleT);
+
+    this.island.position.y = Math.sin(this.elapsed * 0.6) * 0.2;
+    this.island.rotation.y = Math.sin(this.elapsed * 0.15) * 0.02;
+
+    this.leafSystem.update(dt * this.timeScale, this.elapsed);
+    this.cloudSystem.update(dt, this.elapsed);
+    this.orbit.update(dt);
+
+    this.hudEl.textContent = `${this.fps} fps · ${LEAF_COUNT} leaves` + (this.timeScale > 1 ? ` · ${this.timeScale}×` : '');
+
+    if (this.hintTimer > 0) {
+      this.hintTimer -= dt;
+      if (this.hintTimer <= 0) this.hintEl.style.opacity = '0';
+    }
+
+    this.renderer.render(this.scene, this.camera);
+  }
+
+  onResize() {
+    const w = innerWidth, h = innerHeight;
+    this.camera.aspect = w / h;
+    this.camera.updateProjectionMatrix();
+    this.renderer.setSize(w, h);
+    this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  }
+}
+
+new App();
+</script>
+</body>
+</html>

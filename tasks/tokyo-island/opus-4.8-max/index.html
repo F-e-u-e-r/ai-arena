@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>漂浮東京島與楓葉 — Opus 4.8 max</title>
+<style>
+  /* ---------- 版面：canvas 填滿容器，UI 以 overlay 疊在上方 ---------- */
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0b1020; }
+  #app { position: fixed; inset: 0; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+
+  .overlay {
+    position: absolute; z-index: 5;
+    font-family: "Hiragino Sans", "Noto Sans TC", system-ui, sans-serif;
+    color: #fff; -webkit-user-select: none; user-select: none;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, .55);
+    pointer-events: none;
+  }
+
+  /* 左上：標題 + 目前時段 / 時鐘 */
+  #title { top: 10px; left: 12px; }
+  #title h1 { margin: 0; font-size: 15px; font-weight: 700; letter-spacing: .3px; }
+  #title .phase { margin-top: 2px; font-size: 12px; opacity: .9; display: flex; gap: 6px; align-items: center; }
+  #title .dot { width: 8px; height: 8px; border-radius: 50%; background: #ffd36b; box-shadow: 0 0 8px currentColor; }
+
+  /* 右上：除錯資訊（預設隱藏，避免小預覽被遮） */
+  #debug {
+    top: 10px; right: 12px; text-align: right; font-size: 11px;
+    line-height: 1.45; opacity: .85; display: none;
+    font-variant-numeric: tabular-nums;
+  }
+  #debug.on { display: block; }
+
+  /* 底部控制列：一排 icon 按鈕，極小尺寸也不溢出 */
+  #dock {
+    position: absolute; z-index: 6;
+    left: 50%; bottom: 10px; transform: translateX(-50%);
+    font-family: "Hiragino Sans", "Noto Sans TC", system-ui, sans-serif;
+    display: flex; gap: 6px; align-items: center;
+    padding: 6px 8px; border-radius: 12px;
+    background: rgba(16, 22, 42, .55); backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, .12);
+    pointer-events: auto;
+  }
+  #dock button {
+    pointer-events: auto; cursor: pointer;
+    width: 34px; height: 34px; padding: 0;
+    display: grid; place-items: center;
+    font-size: 16px; line-height: 1;
+    color: #fff; background: rgba(255, 255, 255, .08);
+    border: 1px solid rgba(255, 255, 255, .14); border-radius: 9px;
+    transition: background .15s, transform .1s;
+  }
+  #dock button:hover { background: rgba(255, 255, 255, .2); }
+  #dock button:active { transform: scale(.92); }
+  #dock button.active { background: rgba(120, 180, 255, .38); border-color: rgba(150, 200, 255, .6); }
+  #dock .speed { min-width: 40px; font-size: 12px; font-weight: 700; }
+  #dock .sep { width: 1px; height: 22px; background: rgba(255, 255, 255, .16); margin: 0 2px; }
+
+  #hint {
+    left: 50%; bottom: 52px; transform: translateX(-50%);
+    font-size: 11px; opacity: .0; text-align: center;
+    transition: opacity .4s; white-space: nowrap;
+  }
+  #hint.show { opacity: .7; }
+
+  /* 320x200 等極小預覽：縮小按鈕、隱藏文字提示，維持可操作且不重疊 */
+  @media (max-width: 430px) {
+    #title h1 { font-size: 12px; }
+    #title .phase { font-size: 10px; }
+    #dock { gap: 4px; padding: 4px 6px; bottom: 6px; border-radius: 10px; }
+    #dock button { width: 28px; height: 28px; font-size: 13px; border-radius: 7px; }
+    #dock .speed { min-width: 30px; font-size: 10px; }
+    #hint { display: none; }
+  }
+  @media (max-height: 260px) {
+    #dock { bottom: 6px; }
+    #title { top: 6px; left: 8px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="title" class="overlay">
+    <h1>漂浮東京島 · 楓葉飄落</h1>
+    <div class="phase"><span class="dot" id="phaseDot"></span><span id="phaseText">白天</span><span id="clock">06:00</span></div>
+  </div>
+  <div id="debug" class="overlay">
+    <div>FPS <b id="fps">–</b></div>
+    <div>楓葉 <b id="leafCount">–</b></div>
+    <div>繪製呼叫 <b id="drawCalls">–</b></div>
+    <div>三角形 <b id="tris">–</b></div>
+  </div>
+  <div id="hint" class="overlay">拖曳旋轉視角 · 滾輪縮放 · 空白鍵快轉</div>
+  <div id="dock">
+    <button id="btnPlay" title="暫停 / 播放日夜 (空白鍵)">⏸</button>
+    <button id="btnSpeed" class="speed" title="日夜速度 (F)">1×</button>
+    <span class="sep"></span>
+    <button id="btnReset" title="重置視角 (R)">⟲</button>
+    <button id="btnAudio" title="環境音效 (M)">🔇</button>
+    <button id="btnHud" title="除錯資訊 (H)">📊</button>
+    <button id="btnFull" title="全螢幕">⛶</button>
+  </div>
+</div>
+
+<!-- Three.js r160，透過 CDN + importmap 以 ES module 方式引入（沿用官方推薦寫法） -->
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+/* =========================================================================
+ * 小工具
+ * =======================================================================*/
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+// smoothstep：0→1 之間的平滑插值，用於燈光/夜色的柔和開關
+const smoothstep = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
+const TAU = Math.PI * 2;
+
+/* =========================================================================
+ * 程序化貼圖（全部在瀏覽器端用 Canvas 生成，無需外部素材）
+ * =======================================================================*/
+
+// 卡通渲染用的漸層貼圖：把連續光照量化成 4 階，交給 MeshToonMaterial 產生 cel-shading
+function makeToonGradient() {
+  const steps = new Uint8Array([80, 140, 200, 255]);
+  const tex = new THREE.DataTexture(steps, steps.length, 1, THREE.RedFormat);
+  tex.minFilter = tex.magFilter = THREE.NearestFilter;
+  tex.needsUpdate = true;
+  return tex;
+}
+
+// 楓葉輪廓貼圖：用極座標畫出 5 裂片的楓葉（cos(5θ) 保證完美對稱閉合），含葉脈與葉柄
+function makeMapleTexture() {
+  const s = 128, cv = document.createElement('canvas'); cv.width = cv.height = s;
+  const g = cv.getContext('2d');
+  const cx = s / 2, cy = s / 2 + 6, R = s * 0.4;
+  g.translate(cx, cy);
+  g.beginPath();
+  for (let i = 0; i <= 240; i++) {
+    const t = i / 240 * TAU;
+    const c = Math.cos(5 * t);                 // 5 個裂片的主波形
+    const spike = Math.pow(Math.max(0, c), 3); // 尖銳的裂片
+    const notch = 0.18 * Math.max(0, -c);      // 裂片之間的凹槽
+    const r = R * (0.42 + 0.60 * spike - notch);
+    const x = Math.sin(t) * r, y = -Math.cos(t) * r;
+    i === 0 ? g.moveTo(x, y) : g.lineTo(x, y);
+  }
+  g.closePath();
+  g.fillStyle = '#ffffff'; g.fill();
+  // 葉柄
+  g.lineCap = 'round'; g.lineWidth = 5; g.strokeStyle = '#f2f2f2';
+  g.beginPath(); g.moveTo(0, R * 0.42); g.lineTo(0, R * 0.9); g.stroke();
+  // 葉脈（略暗，tint 後成為深色紋理）
+  g.strokeStyle = 'rgba(120,120,120,.55)'; g.lineWidth = 2;
+  for (const a of [-0.9, -0.45, 0, 0.45, 0.9]) {
+    g.beginPath(); g.moveTo(0, R * 0.3);
+    g.lineTo(Math.sin(a) * R * 0.8, -Math.cos(a) * R * 0.82); g.stroke();
+  }
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+  return tex;
+}
+
+// 徑向光暈貼圖：給太陽/月亮當作柔和的 halo sprite
+function makeGlowTexture(inner = '#ffffff', outer = 'rgba(255,255,255,0)') {
+  const s = 128, cv = document.createElement('canvas'); cv.width = cv.height = s;
+  const g = cv.getContext('2d');
+  const grad = g.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
+  grad.addColorStop(0, inner); grad.addColorStop(0.35, inner);
+  grad.addColorStop(1, outer);
+  g.fillStyle = grad; g.fillRect(0, 0, s, s);
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+const TOON_GRADIENT = makeToonGradient();
+// 統一的卡通材質工廠：所有場景物件共用同一張漸層貼圖，維持一致的 cel-shading 風格
+function toonMat(color, opts = {}) {
+  return new THREE.MeshToonMaterial({ color, gradientMap: TOON_GRADIENT, ...opts });
+}
+
+/* =========================================================================
+ * DayNightCycle — 日夜循環控制器
+ *   以 15 秒為一個完整週期，依「正規化時間 u∈[0,1)」在關鍵影格間平滑插值：
+ *   u=0 白天 → 0.25 黃昏 → 0.5 夜晚 → 0.75 黎明 → 1 回到白天
+ *   負責：天空色、霧色、環境光/半球光/太陽光、太陽與月亮位置、星空、夜色因子
+ * =======================================================================*/
+class DayNightCycle {
+  constructor(scene, refs) {
+    this.scene = scene;
+    this.r = refs;                 // { hemi, ambient, sunLight, moonLight, sun, moon, sunGlow, moonGlow, stars }
+    this.period = 15;              // 秒 / 一圈
+    this.u = 0.06;                 // 從清晨稍過一點開始，一進場就是白天
+    this.paused = false;
+    this.night = 0;                // 0=白天 1=深夜（供鐵塔/景點燈光讀取）
+    this.phase = '白天';
+
+    // 關鍵影格：at=正規化時間；顏色用十六進位；數值為光照強度
+    this.keys = [
+      { at: 0.00, name: '白天', top: 0x4aa3e0, bot: 0xbfe6ff, fog: 0xbfe6ff, hemiSky: 0xbfe6ff, hemiGround: 0x6f8f5a, hemiI: 0.95, ambI: 0.55, sunColor: 0xfff2d0, sunI: 1.35 },
+      { at: 0.25, name: '黃昏', top: 0x2a3f7a, bot: 0xff9e5e, fog: 0xff9366, hemiSky: 0xffb27a, hemiGround: 0x6a4a3a, hemiI: 0.7, ambI: 0.4, sunColor: 0xff7b3a, sunI: 1.1 },
+      { at: 0.50, name: '夜晚', top: 0x070b1f, bot: 0x16233f, fog: 0x101a30, hemiSky: 0x27406b, hemiGround: 0x14202f, hemiI: 0.42, ambI: 0.24, sunColor: 0x9fb6ff, sunI: 0.12 },
+      { at: 0.75, name: '黎明', top: 0x2c3566, bot: 0xf3a9c0, fog: 0xd98fb0, hemiSky: 0xd7b6de, hemiGround: 0x5a5560, hemiI: 0.66, ambI: 0.42, sunColor: 0xffd0b0, sunI: 0.95 },
+      { at: 1.00, name: '白天', top: 0x4aa3e0, bot: 0xbfe6ff, fog: 0xbfe6ff, hemiSky: 0xbfe6ff, hemiGround: 0x6f8f5a, hemiI: 0.95, ambI: 0.55, sunColor: 0xfff2d0, sunI: 1.35 },
+    ];
+
+    // 預先配置可重用的顏色物件，避免每幀 new（長時間運行零額外 GC 壓力）
+    this._cTop = new THREE.Color(); this._cBot = new THREE.Color();
+    this._cFog = new THREE.Color(); this._cHemiS = new THREE.Color();
+    this._cHemiG = new THREE.Color(); this._cSun = new THREE.Color();
+    this._tmp = new THREE.Color(); // b 端插值用的暫存色，重複使用不再每幀 new
+    this._bg = this._makeSkyTexture();
+    scene.background = this._bg.tex;
+  }
+
+  // 用 1×2 的漸層貼圖當天空背景，之後每幀只改兩個像素顏色即可（比 CanvasTexture 便宜）
+  _makeSkyTexture() {
+    const data = new Uint8Array(2 * 4);
+    const tex = new THREE.DataTexture(data, 1, 2, THREE.RGBAFormat);
+    tex.colorSpace = THREE.SRGBColorSpace; tex.needsUpdate = true;
+    return { tex, data };
+  }
+
+  setPeriod(sec) { this.period = sec; }
+
+  // 找到 u 所在的關鍵影格區間並回傳插值權重
+  _bracket(u) {
+    const k = this.keys;
+    for (let i = 0; i < k.length - 1; i++) {
+      if (u >= k[i].at && u <= k[i + 1].at) {
+        const f = (u - k[i].at) / (k[i + 1].at - k[i].at);
+        return [k[i], k[i + 1], f];
+      }
+    }
+    return [k[0], k[1], 0];
+  }
+
+  update(dt, speed) {
+    if (!this.paused) this.u = (this.u + dt / this.period * speed) % 1;
+    const u = this.u;
+    const [a, b, f] = this._bracket(u);
+
+    // 天空漸層（上下兩色）→ 寫進 DataTexture
+    this._cTop.setHex(a.top).lerp(this._tmp.setHex(b.top), f);
+    this._cBot.setHex(a.bot).lerp(this._tmp.setHex(b.bot), f);
+    const d = this._bg.data;
+    d[0] = this._cBot.r * 255; d[1] = this._cBot.g * 255; d[2] = this._cBot.b * 255; d[3] = 255; // 底
+    d[4] = this._cTop.r * 255; d[5] = this._cTop.g * 255; d[6] = this._cTop.b * 255; d[7] = 255; // 頂
+    this._bg.tex.needsUpdate = true;
+
+    // 霧色隨天空變化，讓遠景與天空自然銜接
+    this._cFog.setHex(a.fog).lerp(this._tmp.setHex(b.fog), f);
+    if (this.scene.fog) this.scene.fog.color.copy(this._cFog);
+
+    // 半球光 / 環境光
+    this._cHemiS.setHex(a.hemiSky).lerp(this._tmp.setHex(b.hemiSky), f);
+    this._cHemiG.setHex(a.hemiGround).lerp(this._tmp.setHex(b.hemiGround), f);
+    this.r.hemi.color.copy(this._cHemiS);
+    this.r.hemi.groundColor.copy(this._cHemiG);
+    this.r.hemi.intensity = lerp(a.hemiI, b.hemiI, f);
+    this.r.ambient.intensity = lerp(a.ambI, b.ambI, f);
+
+    // 太陽：沿垂直圓弧移動；height=cos(u·2π) 讓正午(u=0)在頂、午夜(u=0.5)在底
+    const ang = u * TAU;
+    const sunH = Math.cos(ang), sunX = Math.sin(ang) * 26, sunY = sunH * 24, sunZ = -8;
+    this.r.sun.position.set(sunX, sunY, sunZ);
+    this.r.sunGlow.position.copy(this.r.sun.position);
+    this.r.sunLight.position.set(sunX, Math.max(sunY, -6), sunZ);
+    this._cSun.setHex(a.sunColor).lerp(this._tmp.setHex(b.sunColor), f);
+    this.r.sunLight.color.copy(this._cSun);
+    // 太陽下山後不再投射方向光（避免夜晚地面被詭異照亮）
+    this.r.sunLight.intensity = lerp(a.sunI, b.sunI, f) * smoothstep(-0.15, 0.12, sunH);
+    this.r.sun.material.opacity = smoothstep(-0.2, 0.05, sunH);
+    this.r.sunGlow.material.opacity = 0.9 * smoothstep(-0.2, 0.05, sunH);
+
+    // 月亮：與太陽相對（另一端），夜晚才發光
+    const moonH = -sunH;
+    this.r.moon.position.set(-sunX, moonH * 24, sunZ);
+    this.r.moonGlow.position.copy(this.r.moon.position);
+    const moonUp = smoothstep(-0.1, 0.2, moonH);
+    this.r.moonLight.position.copy(this.r.moon.position);
+    this.r.moonLight.intensity = 0.35 * moonUp;
+    this.r.moon.material.opacity = moonUp;
+    this.r.moonGlow.material.opacity = 0.8 * moonUp;
+
+    // 夜色因子：太陽低於地平線附近時 →1，用來控制鐵塔/景點自動亮燈與星空
+    this.night = smoothstep(0.12, -0.12, sunH);
+    if (this.r.stars) this.r.stars.material.opacity = this.night;
+
+    // 時段名稱 + 擬時鐘（u=0 對應 12:00 正午）
+    this.phase = f < 0.5 ? a.name : b.name;
+    const hour = (u * 24 + 12) % 24;
+    const hh = String(Math.floor(hour)).padStart(2, '0');
+    const mm = String(Math.floor((hour % 1) * 60)).padStart(2, '0');
+    this.clock = `${hh}:${mm}`;
+    return this.night;
+  }
+}
+
+/* =========================================================================
+ * FloatingIsland — 漂浮小島（島體 + 草皮 + 岩石 + 樹 + 小水塘）
+ * =======================================================================*/
+class FloatingIsland {
+  constructor() {
+    this.group = new THREE.Group();
+    this.t = 0;
+
+    // 島底：倒圓錐狀岩石
+    const rock = new THREE.Mesh(
+      new THREE.CylinderGeometry(7.2, 1.6, 6.5, 10, 1),
+      toonMat(0x7c5a44));
+    rock.position.y = -3.4; rock.castShadow = true; rock.receiveShadow = true;
+    this.group.add(rock);
+    // 底部再加幾塊懸浮碎岩，強化「漂浮」感
+    for (let i = 0; i < 5; i++) {
+      const a = i / 5 * TAU;
+      const chunk = new THREE.Mesh(
+        new THREE.DodecahedronGeometry(0.6 + (i % 3) * 0.25, 0),
+        toonMat(0x6b4d3a));
+      chunk.position.set(Math.cos(a) * 2.4, -7 - (i % 2), Math.sin(a) * 2.4);
+      this.group.add(chunk);
+    }
+
+    // 草皮：微微鼓起的圓盤
+    const grass = new THREE.Mesh(
+      new THREE.CylinderGeometry(7.4, 7.1, 1.4, 48, 1),
+      toonMat(0x86c661));
+    grass.position.y = 0.2; grass.receiveShadow = true; grass.castShadow = true;
+    this.group.add(grass);
+
+    // 邊緣一圈深色草，增加卡通描邊感
+    const rim = new THREE.Mesh(
+      new THREE.TorusGeometry(7.3, 0.28, 8, 48),
+      toonMat(0x5fa044));
+    rim.rotation.x = Math.PI / 2; rim.position.y = 0.85; this.group.add(rim);
+
+    // 小水塘（夜晚會反射一點天光）
+    const pond = new THREE.Mesh(
+      new THREE.CircleGeometry(1.5, 24),
+      new THREE.MeshStandardMaterial({ color: 0x3a86b5, roughness: 0.15, metalness: 0.3, transparent: true, opacity: 0.9 }));
+    pond.rotation.x = -Math.PI / 2; pond.position.set(-3.6, 0.92, 3.2); this.group.add(pond);
+
+    // 幾棵卡通樹（用來讓楓葉「有出處」）
+    for (const [x, z, s] of [[-4.2, -2.8, 1.0], [3.8, -3.6, 0.85], [4.6, 2.6, 0.7], [-2.2, 4.0, 0.6]]) {
+      this.group.add(this._tree(x, z, s));
+    }
+    // 幾顆點綴石頭與燈籠
+    for (const [x, z] of [[2.0, 3.6], [-5.0, 1.2], [1.2, -4.4]]) {
+      const stone = new THREE.Mesh(new THREE.DodecahedronGeometry(0.35, 0), toonMat(0x9a9a9a));
+      stone.position.set(x, 1.0, z); stone.castShadow = true; this.group.add(stone);
+    }
+  }
+
+  // 一棵卡通楓樹：圓柱樹幹 + 幾顆球狀樹冠（帶自發光材質，夜晚微亮）
+  _tree(x, z, s) {
+    const g = new THREE.Group();
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.22 * s, 0.32 * s, 2.4 * s, 7), toonMat(0x6b4a34));
+    trunk.position.y = 1.2 * s + 0.9; trunk.castShadow = true; g.add(trunk);
+    const crownColors = [0xe8663a, 0xf0913a, 0xd8482f];
+    for (let i = 0; i < 3; i++) {
+      const c = new THREE.Mesh(new THREE.IcosahedronGeometry((1.05 - i * 0.18) * s, 0),
+        toonMat(crownColors[i % crownColors.length]));
+      c.position.set((i - 1) * 0.5 * s, (2.4 + i * 0.55) * s + 0.6, (i % 2 - 0.5) * 0.4 * s);
+      c.castShadow = true; g.add(c);
+    }
+    g.position.set(x, 0, z);
+    return g;
+  }
+
+  update(dt) {
+    // 島體上下浮動 + 極緩慢自轉，營造漂浮感
+    this.t += dt;
+    this.group.position.y = Math.sin(this.t * 0.8) * 0.5;
+    this.group.rotation.z = Math.sin(this.t * 0.5) * 0.012;
+    this.group.rotation.y += dt * 0.02;
+  }
+}
+
+/* =========================================================================
+ * TokyoTower — 東京鐵塔（分段桁架 + 觀景台 + 塔頂天線），黃昏自動亮燈
+ * =======================================================================*/
+class TokyoTower {
+  constructor() {
+    this.group = new THREE.Group();
+    this.lights = [];        // 自發光材質，夜晚提高 emissiveIntensity
+    this.pointLights = [];    // PointLight，夜晚點亮
+
+    const red = 0xe8623a, white = 0xf3ede2;
+    const legMat = toonMat(red);
+
+    // 四支帶錐度的塔腳（下寬上窄）
+    const H = 7.2;
+    const legDefs = [[-1.5, -1.5], [1.5, -1.5], [1.5, 1.5], [-1.5, 1.5]];
+    for (const [lx, lz] of legDefs) {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.22, H, 6), legMat);
+      leg.position.set(lx * 0.72, H / 2, lz * 0.72);
+      // 讓四腳往中心微傾，形成金字塔輪廓
+      leg.lookAt(0, H + 3, 0);
+      leg.castShadow = true;
+      this.group.add(leg);
+    }
+    // 水平桁架橫桿（三層）
+    for (const y of [1.4, 3.0, 4.6]) {
+      const w = lerp(2.7, 1.1, y / H);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(w, 0.06, 5, 4), toonMat(white));
+      ring.rotation.x = Math.PI / 2; ring.rotation.z = Math.PI / 4; ring.position.y = y;
+      this.group.add(ring);
+    }
+
+    // 主觀景台（帶自發光窗）
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.7, 2.0), toonMat(white));
+    deck.position.y = 3.0; deck.castShadow = true; this.group.add(deck);
+    const deckGlow = new THREE.Mesh(new THREE.BoxGeometry(2.05, 0.32, 2.05),
+      new THREE.MeshStandardMaterial({ color: 0xfff0c0, emissive: 0xffcf66, emissiveIntensity: 0, roughness: 0.6 }));
+    deckGlow.position.y = 3.0; this.group.add(deckGlow); this.lights.push(deckGlow.material);
+
+    // 上段塔身
+    const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.55, 3.2, 6), legMat);
+    upper.position.y = H - 0.4; upper.castShadow = true; this.group.add(upper);
+    // 頂端觀景室
+    const top = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.5, 0.9), toonMat(white));
+    top.position.y = H + 0.9; this.group.add(top);
+    const topGlow = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 12),
+      new THREE.MeshStandardMaterial({ color: 0xffe9b0, emissive: 0xffbf55, emissiveIntensity: 0, roughness: 0.5 }));
+    topGlow.position.y = H + 0.9; this.group.add(topGlow); this.lights.push(topGlow.material);
+
+    // 天線
+    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.08, 2.6, 5), toonMat(0xd94b2f));
+    mast.position.y = H + 2.4; this.group.add(mast);
+    const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 10),
+      new THREE.MeshStandardMaterial({ color: 0xff5a4a, emissive: 0xff2a1a, emissiveIntensity: 0 }));
+    beacon.position.y = H + 3.75; this.group.add(beacon); this.lights.push(beacon.material);
+
+    // 夜晚點亮的 PointLight（暖色）
+    for (const y of [3.0, H + 0.9]) {
+      const pl = new THREE.PointLight(0xffc766, 0, 10, 2);
+      pl.position.y = y; this.group.add(pl); this.pointLights.push(pl);
+    }
+
+    this.group.position.y = 0.9;
+    this.beacon = beacon;
+  }
+
+  // night∈[0,1]：黃昏起提高自發光與 PointLight，黎明後歸零
+  setNight(night, t) {
+    for (const m of this.lights) m.emissiveIntensity = night * 1.4;
+    for (const pl of this.pointLights) pl.intensity = night * 1.6;
+    // 塔頂航空障礙燈：夜裡緩慢閃爍
+    this.beacon.material.emissiveIntensity = night * (0.6 + 0.4 * Math.sin(t * 3));
+  }
+}
+
+/* =========================================================================
+ * Landmark — 日本特色景點工廠（富士山 / 鳥居 / 五重塔）
+ *   鳥居與塔在黃昏會亮起 emissive
+ * =======================================================================*/
+class Landmark {
+  static fuji() {
+    const g = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.ConeGeometry(2.4, 3.2, 24, 1, false),
+      toonMat(0x5566a0));
+    body.position.y = 1.6; body.castShadow = true; body.receiveShadow = true; g.add(body);
+    // 山頂雪冠（略高於本體、半徑較小的錐）
+    const snow = new THREE.Mesh(new THREE.ConeGeometry(0.95, 1.1, 24), toonMat(0xf4f8ff));
+    snow.position.y = 2.75; g.add(snow);
+    return { group: g, lights: [], pointLights: [] };
+  }
+
+  static torii() {
+    const g = new THREE.Group();
+    const red = toonMat(0xd93b32);
+    const emiMat = () => new THREE.MeshStandardMaterial({ color: 0xff7a5a, emissive: 0xff3b1e, emissiveIntensity: 0, roughness: 0.6 });
+    const pillarGeo = new THREE.CylinderGeometry(0.16, 0.2, 3, 8);
+    const lights = [];
+    for (const x of [-1.1, 1.1]) {
+      const p = new THREE.Mesh(pillarGeo, red); p.position.set(x, 1.5, 0); p.castShadow = true; g.add(p);
+    }
+    const top = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.32, 0.4), emiMat());
+    top.position.y = 3.15; g.add(top); lights.push(top.material);
+    const top2 = new THREE.Mesh(new THREE.BoxGeometry(2.7, 0.22, 0.3), red);
+    top2.position.y = 2.7; g.add(top2);
+    const cap = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.18, 0.5), emiMat());
+    cap.position.y = 3.42; cap.rotation.z = 0.02; g.add(cap); lights.push(cap.material);
+    const pl = new THREE.PointLight(0xff6a4a, 0, 6, 2); pl.position.y = 3; g.add(pl);
+    return { group: g, lights, pointLights: [pl] };
+  }
+
+  static pagoda() {
+    const g = new THREE.Group();
+    const wood = toonMat(0x8a3b2e), roofMat = toonMat(0x3f4a63);
+    const glowMat = () => new THREE.MeshStandardMaterial({ color: 0xffdca0, emissive: 0xffb347, emissiveIntensity: 0, roughness: 0.6 });
+    const lights = [];
+    let y = 0;
+    const tiers = 4;
+    for (let i = 0; i < tiers; i++) {
+      const w = 2.2 - i * 0.4;
+      const body = new THREE.Mesh(new THREE.BoxGeometry(w, 0.9, w), wood);
+      body.position.y = y + 0.45; body.castShadow = true; g.add(body);
+      // 發光窗
+      const win = new THREE.Mesh(new THREE.BoxGeometry(w * 0.5, 0.4, w + 0.02), glowMat());
+      win.position.y = y + 0.45; g.add(win); lights.push(win.material);
+      // 屋簷（略寬的扁錐）
+      const roof = new THREE.Mesh(new THREE.ConeGeometry(w * 0.95, 0.6, 4), roofMat);
+      roof.rotation.y = Math.PI / 4; roof.position.y = y + 1.15; roof.castShadow = true; g.add(roof);
+      y += 1.15;
+    }
+    // 塔剎
+    const spire = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.12, 1.0, 6), toonMat(0xd9b45a));
+    spire.position.y = y + 0.4; g.add(spire);
+    const pl = new THREE.PointLight(0xffc06a, 0, 7, 2); pl.position.y = y * 0.5; g.add(pl);
+    return { group: g, lights, pointLights: [pl] };
+  }
+}
+
+/* =========================================================================
+ * MapleLeafSystem — 楓葉粒子系統
+ *   用 InstancedMesh 一次 draw call 畫出上百片葉子；每片葉子在「掉到島下方」時
+ *   被回收到頂端重新落下，等同物件池（固定 instance 數，永不 new/dispose）。
+ * =======================================================================*/
+class MapleLeafSystem {
+  constructor(count) {
+    this.count = count;
+    const geo = new THREE.PlaneGeometry(0.5, 0.5);
+    const mat = new THREE.MeshToonMaterial({
+      map: makeMapleTexture(), gradientMap: TOON_GRADIENT,
+      transparent: true, alphaTest: 0.4, side: THREE.DoubleSide, depthWrite: true,
+    });
+    this.mesh = new THREE.InstancedMesh(geo, mat, count);
+    this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    this.mesh.frustumCulled = false;
+
+    // 每片葉子的物理狀態（用 typed array 緊湊儲存）
+    this.pos = new Float32Array(count * 3);
+    this.rot = new Float32Array(count * 3);
+    this.rotV = new Float32Array(count * 3);
+    this.fall = new Float32Array(count);      // 下落速度
+    this.swayPhase = new Float32Array(count); // 左右擺動相位
+    this.swayAmp = new Float32Array(count);
+    this.scale = new Float32Array(count);
+    this._dummy = new THREE.Object3D();       // 重用的暫存物件，用來組 matrix
+
+    const palette = [0xe8452f, 0xf0733a, 0xf6a83c, 0xc9432b, 0xe98b3a, 0xbf5a2e];
+    const col = new THREE.Color();
+    for (let i = 0; i < count; i++) {
+      this._spawn(i, true);
+      col.setHex(palette[i % palette.length]);
+      this.mesh.setColorAt(i, col);
+    }
+    this.mesh.instanceColor.needsUpdate = true;
+    this.wind = 0;
+  }
+
+  // 生成/回收一片葉子。fresh=true 時整個高度隨機（初始化），否則從頂端落下（回收）
+  _spawn(i, fresh) {
+    const R = 9;
+    this.pos[i * 3] = (Math.random() * 2 - 1) * R;
+    this.pos[i * 3 + 1] = fresh ? Math.random() * 16 - 2 : 13 + Math.random() * 3;
+    this.pos[i * 3 + 2] = (Math.random() * 2 - 1) * R;
+    this.rot[i * 3] = Math.random() * TAU;
+    this.rot[i * 3 + 1] = Math.random() * TAU;
+    this.rot[i * 3 + 2] = Math.random() * TAU;
+    this.rotV[i * 3] = (Math.random() - 0.5) * 2.2;
+    this.rotV[i * 3 + 1] = (Math.random() - 0.5) * 2.2;
+    this.rotV[i * 3 + 2] = (Math.random() - 0.5) * 1.5;
+    this.fall[i] = 1.1 + Math.random() * 1.6;
+    this.swayPhase[i] = Math.random() * TAU;
+    this.swayAmp[i] = 0.5 + Math.random() * 1.1;
+    this.scale[i] = 0.55 + Math.random() * 0.8;
+  }
+
+  update(dt, t) {
+    // 風向隨時間緩慢變化，讓整體飄落更自然
+    this.wind = Math.sin(t * 0.3) * 0.6 + Math.sin(t * 0.11) * 0.35;
+    const d = this._dummy;
+    for (let i = 0; i < this.count; i++) {
+      const px = i * 3, py = px + 1, pz = px + 2;
+      // 垂直下落
+      this.pos[py] -= this.fall[i] * dt;
+      // 左右飄擺（sway）+ 全域風
+      this.swayPhase[i] += dt * (1.4 + this.swayAmp[i]);
+      this.pos[px] += (Math.sin(this.swayPhase[i]) * this.swayAmp[i] + this.wind) * dt;
+      this.pos[pz] += Math.cos(this.swayPhase[i] * 0.8) * this.swayAmp[i] * 0.6 * dt;
+      // 自轉
+      this.rot[px] += this.rotV[px] * dt;
+      this.rot[py] += this.rotV[py] * dt;
+      this.rot[pz] += this.rotV[pz] * dt;
+      // 掉到島下方 → 回收（物件池核心：重設狀態而非重新配置）
+      if (this.pos[py] < -6) this._spawn(i, false);
+
+      d.position.set(this.pos[px], this.pos[py], this.pos[pz]);
+      d.rotation.set(this.rot[px], this.rot[py], this.rot[pz]);
+      d.scale.setScalar(this.scale[i]);
+      d.updateMatrix();
+      this.mesh.setMatrixAt(i, d.matrix);
+    }
+    this.mesh.instanceMatrix.needsUpdate = true;
+  }
+}
+
+/* =========================================================================
+ * CameraController — 自行實作的軌道控制（滑鼠/觸控拖曳旋轉 + 滾輪縮放 + 阻尼）
+ *   刻意不依賴 OrbitControls，減少 CDN 相依並確保任何版本都能運作。
+ * =======================================================================*/
+class CameraController {
+  constructor(camera, dom, target) {
+    this.cam = camera; this.dom = dom; this.target = target.clone();
+    this.az = 0.6; this.pol = 1.15; this.radius = 26;   // 目前值
+    this.azT = 0.6; this.polT = 1.15; this.radT = 26;    // 目標值（用於阻尼）
+    this.autoRotate = true; this.dragging = false;
+    this.lastX = 0; this.lastY = 0; this._lastMove = 0; this._idle = 0;
+    this.home = { az: 0.6, pol: 1.15, rad: 26 };
+
+    dom.addEventListener('pointerdown', e => this._down(e));
+    window.addEventListener('pointermove', e => this._move(e));
+    window.addEventListener('pointerup', () => this._up());
+    dom.addEventListener('wheel', e => { e.preventDefault(); this.radT = clamp(this.radT + Math.sign(e.deltaY) * 2, 12, 44); }, { passive: false });
+  }
+  _down(e) { this.dragging = true; this.autoRotate = false; this.lastX = e.clientX; this.lastY = e.clientY; }
+  _move(e) {
+    if (!this.dragging) return;
+    const dx = e.clientX - this.lastX, dy = e.clientY - this.lastY;
+    this.lastX = e.clientX; this.lastY = e.clientY;
+    this.azT -= dx * 0.006;                          // 左右拖曳 → 方位角
+    this.polT = clamp(this.polT - dy * 0.006, 0.35, 1.45); // 上下拖曳 → 仰角（夾住避免翻面）
+    this._idle = 0;
+  }
+  _up() { this.dragging = false; this._idle = 0; }
+  reset() { this.azT = this.home.az; this.polT = this.home.pol; this.radT = this.home.rad; this.autoRotate = false; }
+
+  update(dt) {
+    // 放手一段時間後回到緩慢自動旋轉（gallery 展示更好看）
+    if (!this.dragging) { this._idle += dt; if (this._idle > 4) this.autoRotate = true; }
+    if (this.autoRotate) this.azT += dt * 0.12;
+
+    // 阻尼：現值往目標值平滑靠近
+    const k = 1 - Math.pow(0.0016, dt);
+    this.az = lerp(this.az, this.azT, k);
+    this.pol = lerp(this.pol, this.polT, k);
+    this.radius = lerp(this.radius, this.radT, k);
+
+    // 球座標 → 相機位置
+    const sp = Math.sin(this.pol), cp = Math.cos(this.pol);
+    this.cam.position.set(
+      this.target.x + this.radius * sp * Math.sin(this.az),
+      this.target.y + this.radius * cp,
+      this.target.z + this.radius * sp * Math.cos(this.az));
+    this.cam.lookAt(this.target);
+  }
+}
+
+/* =========================================================================
+ * AmbientAudio — 選用的環境音（Web Audio 程序合成，預設關閉）
+ *   白天：明亮的柔和 pad；夜晚：偏低沉 + 微弱蟲鳴脈衝。音量刻意壓很低。
+ * =======================================================================*/
+class AmbientAudio {
+  constructor() { this.ctx = null; this.on = false; }
+  _init() {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    this.ctx = new AC();
+    const c = this.ctx;
+    this.master = c.createGain(); this.master.gain.value = 0; this.master.connect(c.destination);
+    // 兩顆微微失諧的振盪器組成 pad
+    this.oscA = c.createOscillator(); this.oscA.type = 'sine'; this.oscA.frequency.value = 110;
+    this.oscB = c.createOscillator(); this.oscB.type = 'triangle'; this.oscB.frequency.value = 110 * 1.5;
+    this.filter = c.createBiquadFilter(); this.filter.type = 'lowpass'; this.filter.frequency.value = 700;
+    this.padGain = c.createGain(); this.padGain.gain.value = 0.5;
+    this.oscA.connect(this.filter); this.oscB.connect(this.filter);
+    this.filter.connect(this.padGain); this.padGain.connect(this.master);
+    this.oscA.start(); this.oscB.start();
+    // 蟲鳴脈衝（夜晚）
+    this.cricket = c.createOscillator(); this.cricket.type = 'square'; this.cricket.frequency.value = 1800;
+    this.cricketGain = c.createGain(); this.cricketGain.gain.value = 0;
+    this.cricket.connect(this.cricketGain); this.cricketGain.connect(this.master); this.cricket.start();
+    this._tick = 0;
+  }
+  toggle() {
+    if (!this.ctx) this._init();
+    if (this.ctx.state === 'suspended') this.ctx.resume();
+    this.on = !this.on;
+    this.master.gain.linearRampToValueAtTime(this.on ? 0.06 : 0, this.ctx.currentTime + 0.6);
+    return this.on;
+  }
+  update(dt, night) {
+    if (!this.ctx || !this.on) return;
+    // 夜晚把濾波器壓低、頻率下移；蟲鳴以節奏脈衝
+    this.filter.frequency.value = lerp(900, 420, night);
+    this.oscA.frequency.value = lerp(120, 90, night);
+    this._tick += dt;
+    const pulse = night * (Math.sin(this._tick * 14) > 0.7 ? 0.02 : 0);
+    this.cricketGain.gain.setTargetAtTime(pulse, this.ctx.currentTime, 0.02);
+  }
+}
+
+/* =========================================================================
+ * App — 場景組裝、渲染迴圈、UI 綁定
+ * =======================================================================*/
+class App {
+  constructor() {
+    this.appEl = document.getElementById('app');
+    this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.05;
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.appEl.appendChild(this.renderer.domElement);
+
+    this.scene = new THREE.Scene();
+    this.scene.fog = new THREE.Fog(0xbfe6ff, 30, 78);
+    this.camera = new THREE.PerspectiveCamera(48, 1, 0.1, 200);
+
+    this._buildLightsAndSky();
+    this._buildWorld();
+
+    this.controls = new CameraController(this.camera, this.renderer.domElement, new THREE.Vector3(0, 3, 0));
+    this.audio = new AmbientAudio();
+
+    // 執行狀態
+    this.speeds = [1, 3, 8]; this.speedIdx = 0;
+    this.clock = new THREE.Clock();
+    this.frames = 0; this.fpsTime = 0; this.fps = 0;
+
+    this._bindUI();
+    this._resize();
+    window.addEventListener('resize', () => this._resize());
+
+    // 進場提示淡入淡出
+    const hint = document.getElementById('hint');
+    hint.classList.add('show');
+    this._hintTimer = 4;
+
+    this.renderer.setAnimationLoop(() => this._frame());
+  }
+
+  _buildLightsAndSky() {
+    this.hemi = new THREE.HemisphereLight(0xbfe6ff, 0x6f8f5a, 0.95);
+    this.scene.add(this.hemi);
+    this.ambient = new THREE.AmbientLight(0xffffff, 0.5);
+    this.scene.add(this.ambient);
+
+    // 太陽方向光（投影主光源）
+    this.sunLight = new THREE.DirectionalLight(0xfff2d0, 1.35);
+    this.sunLight.castShadow = true;
+    this.sunLight.shadow.mapSize.set(1024, 1024);
+    const cam = this.sunLight.shadow.camera;
+    cam.left = -16; cam.right = 16; cam.top = 16; cam.bottom = -16; cam.near = 1; cam.far = 80;
+    this.sunLight.shadow.bias = -0.0006;
+    this.scene.add(this.sunLight); this.scene.add(this.sunLight.target);
+
+    this.moonLight = new THREE.DirectionalLight(0x9fb6ff, 0);
+    this.scene.add(this.moonLight); this.scene.add(this.moonLight.target);
+
+    // 太陽 / 月亮本體 + 光暈 sprite
+    const sunGlowTex = makeGlowTexture('rgba(255,240,190,1)', 'rgba(255,200,120,0)');
+    const moonGlowTex = makeGlowTexture('rgba(220,230,255,1)', 'rgba(180,200,255,0)');
+    this.sun = new THREE.Mesh(new THREE.SphereGeometry(1.6, 20, 16),
+      new THREE.MeshBasicMaterial({ color: 0xfff3c8, transparent: true, fog: false }));
+    this.moon = new THREE.Mesh(new THREE.SphereGeometry(1.2, 20, 16),
+      new THREE.MeshBasicMaterial({ color: 0xeaf0ff, transparent: true, fog: false }));
+    this.sunGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: sunGlowTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+    this.sunGlow.scale.setScalar(9);
+    this.moonGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: moonGlowTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+    this.moonGlow.scale.setScalar(6);
+    this.scene.add(this.sun, this.moon, this.sunGlow, this.moonGlow);
+
+    // 星空（夜晚才顯示，opacity 由 DayNightCycle 控制）
+    const starGeo = new THREE.BufferGeometry();
+    const N = 600, sp = new Float32Array(N * 3);
+    for (let i = 0; i < N; i++) {
+      // 均勻散佈在天球上半部
+      const th = Math.random() * TAU, ph = Math.acos(Math.random() * 0.9 + 0.05);
+      const r = 90;
+      sp[i * 3] = r * Math.sin(ph) * Math.cos(th);
+      sp[i * 3 + 1] = Math.abs(r * Math.cos(ph)) * 0.9 + 6;
+      sp[i * 3 + 2] = r * Math.sin(ph) * Math.sin(th);
+    }
+    starGeo.setAttribute('position', new THREE.BufferAttribute(sp, 3));
+    this.stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.5, transparent: true, opacity: 0, depthWrite: false, fog: false }));
+    this.scene.add(this.stars);
+
+    this.day = new DayNightCycle(this.scene, {
+      hemi: this.hemi, ambient: this.ambient, sunLight: this.sunLight, moonLight: this.moonLight,
+      sun: this.sun, moon: this.moon, sunGlow: this.sunGlow, moonGlow: this.moonGlow, stars: this.stars,
+    });
+  }
+
+  _buildWorld() {
+    this.island = new FloatingIsland();
+    this.scene.add(this.island.group);
+
+    this.tower = new TokyoTower();
+    this.island.group.add(this.tower.group); // 掛在島上，跟著島一起浮動
+
+    // 三個日本景點（超過「至少兩個」的需求）
+    this.landmarks = [];
+    const fuji = Landmark.fuji(); fuji.group.position.set(-4.6, 1.0, -1.5); fuji.group.scale.setScalar(0.9);
+    const torii = Landmark.torii(); torii.group.position.set(4.4, 1.0, 1.0); torii.group.rotation.y = -0.5;
+    const pagoda = Landmark.pagoda(); pagoda.group.position.set(1.4, 1.0, 4.4); pagoda.group.scale.setScalar(0.72); pagoda.group.rotation.y = 0.6;
+    for (const lm of [fuji, torii, pagoda]) { this.island.group.add(lm.group); this.landmarks.push(lm); }
+
+    // 楓葉：小螢幕自動減量以維持效能
+    const leafCount = Math.min(window.innerWidth, window.innerHeight) < 420 ? 160 : 300;
+    this.leaves = new MapleLeafSystem(leafCount);
+    this.scene.add(this.leaves.mesh);
+
+    // 雲層：幾團扁球在島的高度緩慢環繞
+    this.clouds = new THREE.Group();
+    for (let i = 0; i < 7; i++) {
+      const cloud = new THREE.Group();
+      const puffs = 3 + (i % 3);
+      for (let p = 0; p < puffs; p++) {
+        const m = new THREE.Mesh(new THREE.SphereGeometry(1.1 + Math.random() * 0.7, 10, 8),
+          new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, transparent: true, opacity: 0.9 }));
+        m.position.set((p - puffs / 2) * 1.3, Math.random() * 0.4, Math.random() * 0.6);
+        m.scale.y = 0.6; cloud.add(m);
+      }
+      const a = i / 7 * TAU, R = 22 + (i % 3) * 4;
+      cloud.position.set(Math.cos(a) * R, 2 + (i % 3) * 3 - 4, Math.sin(a) * R);
+      cloud.userData = { a, R, y: cloud.position.y, speed: 0.02 + Math.random() * 0.02 };
+      this.clouds.add(cloud);
+    }
+    this.scene.add(this.clouds);
+
+    // 遠景山脈剪影（低多邊形），提供景深。用偏暗、低飽和的色並壓低位置，
+    // 讓山腳沒入霧與地平線，讀起來像遠方剪影而非漂浮的錐體。
+    const ring = new THREE.Group();
+    for (let i = 0; i < 22; i++) {
+      const a = i / 22 * TAU + (i % 2) * 0.14;
+      const h = 9 + Math.random() * 9;
+      const m = new THREE.Mesh(new THREE.ConeGeometry(5 + Math.random() * 3, h, 5),
+        new THREE.MeshStandardMaterial({ color: 0x2a3352, roughness: 1, flatShading: true }));
+      m.position.set(Math.cos(a) * 58, h / 2 - 22, Math.sin(a) * 58);
+      m.rotation.y = Math.random() * TAU; ring.add(m);
+    }
+    this.scene.add(ring);
+  }
+
+  _bindUI() {
+    const $ = id => document.getElementById(id);
+    this.ui = {
+      play: $('btnPlay'), speed: $('btnSpeed'), reset: $('btnReset'),
+      audio: $('btnAudio'), hud: $('btnHud'), full: $('btnFull'), debug: $('debug'),
+      phaseText: $('phaseText'), phaseDot: $('phaseDot'), clock: $('clock'),
+      fps: $('fps'), leafCount: $('leafCount'), drawCalls: $('drawCalls'), tris: $('tris'),
+    };
+    this.ui.leafCount.textContent = this.leaves.count;
+
+    this.ui.play.onclick = () => this._togglePlay();
+    this.ui.speed.onclick = () => this._cycleSpeed();
+    this.ui.reset.onclick = () => this.controls.reset();
+    this.ui.audio.onclick = () => { const on = this.audio.toggle(); this.ui.audio.textContent = on ? '🔊' : '🔇'; this.ui.audio.classList.toggle('active', on); };
+    this.ui.hud.onclick = () => { this.ui.debug.classList.toggle('on'); this.ui.hud.classList.toggle('active'); };
+    this.ui.full.onclick = () => { if (!document.fullscreenElement) document.documentElement.requestFullscreen?.(); else document.exitFullscreen?.(); };
+
+    // 鍵盤快捷鍵
+    window.addEventListener('keydown', e => {
+      switch (e.key) {
+        case ' ': e.preventDefault(); this._togglePlay(); break;
+        case 'f': case 'F': this._cycleSpeed(); break;
+        case 'r': case 'R': this.controls.reset(); break;
+        case 'h': case 'H': this.ui.hud.click(); break;
+        case 'm': case 'M': this.ui.audio.click(); break;
+      }
+    });
+  }
+
+  _togglePlay() {
+    this.day.paused = !this.day.paused;
+    this.ui.play.textContent = this.day.paused ? '▶' : '⏸';
+  }
+  _cycleSpeed() {
+    this.speedIdx = (this.speedIdx + 1) % this.speeds.length;
+    this.ui.speed.textContent = this.speeds[this.speedIdx] + '×';
+  }
+
+  _resize() {
+    const w = this.appEl.clientWidth, h = this.appEl.clientHeight;
+    this.renderer.setSize(w, h, false);
+    this.camera.aspect = w / h;
+    this.camera.updateProjectionMatrix();
+  }
+
+  _frame() {
+    let dt = this.clock.getDelta();
+    dt = Math.min(dt, 0.05); // 夾住分頁切回時的大跳幀，避免物理爆走
+    const t = this.clock.elapsedTime;
+    const speed = this.speeds[this.speedIdx];
+
+    // 日夜循環 → 取得夜色因子
+    const night = this.day.update(dt, speed);
+
+    // 世界更新
+    this.island.update(dt);
+    this.tower.setNight(night, t);
+    for (const lm of this.landmarks) {
+      for (const m of lm.lights) m.emissiveIntensity = night * 1.3;
+      for (const pl of lm.pointLights) pl.intensity = night * 1.2;
+    }
+    this.leaves.update(dt, t);
+    // 雲層緩慢環繞
+    for (const c of this.clouds.children) {
+      c.userData.a += dt * c.userData.speed;
+      c.position.x = Math.cos(c.userData.a) * c.userData.R;
+      c.position.z = Math.sin(c.userData.a) * c.userData.R;
+    }
+    this.controls.update(dt);
+    this.audio.update(dt, night);
+
+    // 太陽方向光 target 對準島心
+    this.sunLight.target.position.set(0, 2, 0);
+    this.moonLight.target.position.set(0, 2, 0);
+
+    this.renderer.render(this.scene, this.camera);
+
+    // ---- HUD 更新（每 0.25s 一次，降低 DOM 寫入） ----
+    this.frames++; this.fpsTime += dt; this._hintTimer -= dt;
+    if (this._hintTimer < 0) document.getElementById('hint').classList.remove('show');
+    if (this.fpsTime >= 0.25) {
+      this.fps = Math.round(this.frames / this.fpsTime);
+      this.frames = 0; this.fpsTime = 0;
+      this.ui.phaseText.textContent = this.day.phase;
+      this.ui.clock.textContent = this.day.clock;
+      this.ui.phaseDot.style.background = night > 0.5 ? '#8fb4ff' : (this.day.phase === '黃昏' || this.day.phase === '黎明' ? '#ff9a5c' : '#ffd36b');
+      if (this.ui.debug.classList.contains('on')) {
+        const info = this.renderer.info;
+        this.ui.fps.textContent = this.fps;
+        this.ui.drawCalls.textContent = info.render.calls;
+        this.ui.tris.textContent = info.render.triangles.toLocaleString();
+      }
+    }
+  }
+}
+
+// 啟動（掛到 window 方便除錯 / 自動化測試控制日夜階段）
+window.app = new App();
+</script>
+</body>
+</html>
