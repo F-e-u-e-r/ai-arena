@@ -101,118 +101,20 @@
     "title": "非洲大草原生態系統 (Canvas 2D)",
     "type": "iframe",
     "runtime": "canvas",
-    "prompt": "# Technical Challenge: Advanced 2D African Savannah Ecosystem with Dynamic Wildlife\n\n## 1) 題目目標\n請使用**原生 HTML + JavaScript + CSS**，在單一頁面打造一個豐富、視覺吸引力的 2D 非洲大草原生態系統動畫。\n\n本題重點在評估你對：\n- 複雜的物件導向設計（OOP / 多模組化系統）\n- 多粒子系統與物理行為的並行管理\n- 狀態機與事件驅動的互動設計\n- 長時間運行效能與記憶體管理的掌握程度\n- **美術表現力**（色彩運用、動畫細節、整體視覺吸引力）\n\n---\n\n## 2) 技術限制（Constraints）\n- **核心技術**：HTML5、CSS3、ES6+ JavaScript\n- **禁止使用**：任何框架、遊戲引擎、外部函式庫\n- **渲染方式**：必須使用 Canvas 2D API\n- **執行方式**：可直接開啟 index.html 或使用簡單 static server\n- **不得依賴後端**\n\n---\n\n## 3) 視覺素材說明（重要）\n- **美術表現將列入評分**：色彩搭配、動物造型細節、環境氛圍、動畫流暢度與整體視覺美感都會被評價\n- 動物與粒子皆可用簡單色塊、線條、基本圖形或自訂路徑繪製\n- 可使用開源 Sprite（需在 README 註明來源）\n- 評估重點為：**系統架構、動畫穩定性、動物行為真實性 與 美術吸引力**\n\n---\n\n## 4) 功能需求\n\n### A. 角色系統（Wildlife）\n- 畫面上同時存在 **至少 6 隻動物**（獅子、大象、豹各至少 2 隻）\n- 每種動物需依照**真實非洲大草原生活習性**活動：\n  - **獅子**：群體移動、偶爾短暫休息或慢速巡邏，速度較慢\n  - **大象**：成群緩慢移動、偶爾「喝水」或抬鼻動作，體型較大\n  - **豹**：單獨、快速且隱密移動，偶爾「攀爬」樹木（簡單垂直動畫）\n- 所有動物皆由左側進入畫面，抵達右側後從左側重新出現（無縫循環）\n- 不同天氣與季節下，動物行為會明顯改變（速度、群聚、動作頻率等）\n\n### B. 天氣與季節系統（Weather + Season Ecosystem）\n頁面下方提供 **天氣按鈕**（單選） + **季節切換**：\n- 天氣：Sunny、Rain、Heavy Rain、Snow、Thunderstorm、Tornado（共 6 種）\n- **季節**：乾季（Dry Season）與濕季（Wet Season），每 **60 秒** 自動輪轉一次（或可手動切換），並影響：\n  - 背景顏色、草地色調、整體亮度\n  - 天氣可用性（例如雪只在乾季較少出現）\n  - 動物行為（濕季動物更活躍、乾季更趨向群聚）\n\n**進階要求**：\n- 天氣切換時舊粒子必須正確清理或回收\n- 部分天氣產生次要效果（雨天地面積水、龍捲風捲起粒子）\n- 閃電**不可擊中任何動物**，必須根據所有動物即時位置動態計算安全區\n- 龍捲風需具備追逐行為（朝最近的動物靠近，但速度較慢）\n\n### C. 互動與狀態規則\n- 同一時間只有一種主要天氣 + 當前季節\n- 切換天氣或季節時動物**不可停止或重置位置**\n- 建議加入視差多層背景（天空、遠山、草原）以增加深度與美術效果\n\n---\n\n## 5) 程式品質要求（Code Quality）\n- 必須使用 `requestAnimationFrame` + `deltaTime`\n- 展現清晰模組化設計（例如 `Lion`、`Elephant`、`Leopard`、`WeatherManager`、`SeasonManager`、`ParticleSystem` 等類別）\n- **必須實作 Object Pooling** 管理大量粒子\n- 關鍵演算法（閃電安全區、龍捲風追逐、季節過渡）需加上註解\n- 長時間運行（切換多次、30 分鐘以上）不得出現明顯卡頓或記憶體洩漏\n\n---\n\n## 6) 交付內容（Deliverables）\n1. 程式碼：\n   - `index.html`\n   - `style.css`\n   - `main.js`（可拆分多檔）\n2. `README.md`（必填）：\n   - 如何啟動\n   - 為何選擇 Canvas\n   - 粒子管理與效能策略\n   - 雷暴安全區演算法說明\n   - 動物習性實作與季節變化邏輯\n   - Object Pooling 實作細節\n\n---\n\n## 7) 驗收標準（Definition of Done）\n- [ ] 至少 6 隻動物（獅子、大象、豹）依照非洲習性正常循環移動\n- [ ] 6 種天氣 + 乾/濕季皆可切換且有明顯視覺與行為差異\n- [ ] 天氣與季節明顯影響動物行為\n- [ ] 閃電永遠不會擊中任何動物\n- [ ] 龍捲風具追逐效果\n- [ ] 使用 Object Pooling 管理粒子\n- [ ] 長時間運行無明顯效能劣化\n- [ ] 美術表現具有吸引力（色彩、動畫細節）\n- [ ] 程式碼具良好模組化與可讀性\n- [ ] README 完整說明核心設計\n\n---\n\n## 8) 加分項目（Bonus）\n- 視差多層背景 + 動態雲層與草地動畫\n- 天氣與季節切換時的平滑過渡效果\n- 動物簡單「心情」或狀態顯示\n- 顯示 FPS / 粒子數 debug overlay\n- 支援鍵盤快捷鍵切換天氣與季節\n- RWD（視窗調整大小時畫面自動適配）",
+    "prompt": "# Technical Challenge: Advanced 2D African Savannah Ecosystem with Dynamic Wildlife\n\n## 1) 題目目標\n請使用**原生 HTML + JavaScript + CSS**，在單一頁面打造一個豐富、視覺吸引力的 2D 非洲大草原生態系統動畫。\n\n本題重點在評估你對：\n- 複雜的物件導向設計（OOP / 多模組化系統）\n- 多粒子系統與物理行為的並行管理\n- 狀態機與事件驅動的互動設計\n- 長時間運行效能與記憶體管理的掌握程度\n- **美術表現力**（色彩運用、動畫細節、整體視覺吸引力）\n\n---\n\n## 2) 技術限制（Constraints）\n- **核心技術**：HTML5、CSS3、ES6+ JavaScript\n- **禁止使用**：任何框架、遊戲引擎、外部函式庫\n- **渲染方式**：必須使用 Canvas 2D API\n- **執行方式**：可直接開啟 index.html 或使用簡單 static server\n- **不得依賴後端**\n\n---\n\n## 3) 視覺素材說明（重要）\n- **美術表現將列入評分**：色彩搭配、動物造型細節、環境氛圍、動畫流暢度與整體視覺美感都會被評價\n- 動物與粒子皆可用簡單色塊、線條、基本圖形或自訂路徑繪製\n- 可使用開源 Sprite（需在 README 註明來源）\n- 評估重點為：**系統架構、動畫穩定性、動物行為真實性 與 美術吸引力**\n\n---\n\n## 4) 功能需求\n\n### A. 角色系統（Wildlife）\n- 畫面上同時存在 **至少 6 隻動物**（獅子、大象、豹各至少 2 隻）\n- 每種動物需依照**真實非洲大草原生活習性**活動：\n  - **獅子**：群體移動、偶爾短暫休息或慢速巡邏，速度較慢\n  - **大象**：成群緩慢移動、偶爾「喝水」或抬鼻動作，體型較大\n  - **豹**：單獨、快速且隱密移動，偶爾「攀爬」樹木（簡單垂直動畫）\n- 所有動物皆由左側進入畫面，抵達右側後從左側重新出現（無縫循環）\n- 不同天氣與季節下，動物行為會明顯改變（速度、群聚、動作頻率等）\n\n### B. 天氣與季節系統（Weather + Season Ecosystem）\n頁面下方提供 **天氣按鈕**（單選） + **季節切換**：\n- 天氣：Sunny、Rain、Heavy Rain、Snow、Thunderstorm、Tornado（共 6 種）\n- **季節**：乾季（Dry Season）與濕季（Wet Season），每 **60 秒** 自動輪轉一次（或可手動切換），並影響：\n  - 背景顏色、草地色調、整體亮度\n  - 天氣可用性（例如雪只在乾季較少出現）\n  - 動物行為（濕季動物更活躍、乾季更趨向群聚）\n\n**進階要求**：\n- 天氣切換時舊粒子必須正確清理或回收\n- 部分天氣產生次要效果（雨天地面積水、龍捲風捲起粒子）\n- 閃電**不可擊中任何動物**，必須根據所有動物即時位置動態計算安全區\n- 龍捲風需具備追逐行為（朝最近的動物靠近，但速度較慢）\n\n### C. 互動與狀態規則\n- 同一時間只有一種主要天氣 + 當前季節\n- 切換天氣或季節時動物**不可停止或重置位置**\n- 建議加入視差多層背景（天空、遠山、草原）以增加深度與美術效果\n\n---\n\n## 5) 程式品質要求（Code Quality）\n- 必須使用 `requestAnimationFrame` + `deltaTime`\n- 展現清晰模組化設計（例如 `Lion`、`Elephant`、`Leopard`、`WeatherManager`、`SeasonManager`、`ParticleSystem` 等類別）\n- **必須實作 Object Pooling** 管理大量粒子\n- 關鍵演算法（閃電安全區、龍捲風追逐、季節過渡）需加上註解\n- 長時間運行（切換多次、30 分鐘以上）不得出現明顯卡頓或記憶體洩漏\n\n---\n\n## 6) 交付內容（Deliverables）\n1. 程式碼：\n   - `index.html`\n   - `style.css`\n   - `main.js`（可拆分多檔）\n2. `README.md`（必填）：\n   - 如何啟動\n   - 為何選擇 Canvas\n   - 粒子管理與效能策略\n   - 雷暴安全區演算法說明\n   - 動物習性實作與季節變化邏輯\n   - Object Pooling 實作細節\n\n---\n\n## 7) Responsive Embed Requirement\n此作品會在 AI Arena gallery 內以 iframe card 形式嵌入預覽，必須在極小預覽尺寸仍可操作：\n- 目標最小嵌入 viewport：320px × 200px\n- 預覽 aspect ratio：16:10\n- 在此尺寸下仍必須呈現有意義的主要場景內容\n- 主要 controls 必須可見、可點擊/觸控，且不可互相重疊或溢出畫面\n- 文字、HUD、panel 不可佔滿預覽空間或遮住主要內容；小尺寸時可折疊為 icon、drawer、tabs 或精簡 overlay\n- 開新分頁時可提供更完整 UI，但嵌入預覽本身仍必須功能可用\n\n---\n\n## 8) 驗收標準（Definition of Done）\n- [ ] 至少 6 隻動物（獅子、大象、豹）依照非洲習性正常循環移動\n- [ ] 6 種天氣 + 乾/濕季皆可切換且有明顯視覺與行為差異\n- [ ] 天氣與季節明顯影響動物行為\n- [ ] 閃電永遠不會擊中任何動物\n- [ ] 龍捲風具追逐效果\n- [ ] 使用 Object Pooling 管理粒子\n- [ ] 長時間運行無明顯效能劣化\n- [ ] 美術表現具有吸引力（色彩、動畫細節）\n- [ ] 程式碼具良好模組化與可讀性\n- [ ] 在 320px × 200px、16:10 iframe preview 中，主要場景仍可見，天氣/季節 controls 可用，HUD 不重疊、不溢出、不遮住主要內容\n- [ ] README 完整說明核心設計\n\n---\n\n## 9) 加分項目（Bonus）\n- 視差多層背景 + 動態雲層與草地動畫\n- 天氣與季節切換時的平滑過渡效果\n- 動物簡單「心情」或狀態顯示\n- 顯示 FPS / 粒子數 debug overlay\n- 支援鍵盤快捷鍵切換天氣與季節\n- RWD（視窗調整大小時畫面自動適配）",
     "description": "進階 Canvas 2D 挑戰：評比 OOP 架構、粒子 Object Pooling、狀態機與美術表現。6+ 動物依非洲習性循環、6 種天氣 × 乾濕季、閃電避開動物、龍捲風追逐。",
     "order": 30,
     "id": "savannah-ecosystem",
-    "submissions": [
-      {
-        "provider": "openai",
-        "model": "GPT 5.4",
-        "modelId": "gpt-5.4",
-        "effort": "xhigh",
-        "client": "codex",
-        "author": "F-e-u-e-r",
-        "generatedAt": "2026-07-05T00:00:00Z",
-        "order": 10,
-        "usageMetadata": {
-          "fields": [
-            "input_tokens",
-            "cached_input_tokens",
-            "output_tokens",
-            "reasoning_output_tokens"
-          ],
-          "durationSource": "structured log request duration or wrapper wall-clock timing",
-          "usageSource": "codex exec --json -> turn.completed.usage",
-          "status": "omitted",
-          "note": "This interactive Codex session did not expose reliable per-task metrics, so token counts and duration were intentionally left out instead of guessed."
-        },
-        "id": "gpt-5.4-xhigh-f-e-u-e-r",
-        "path": "tasks/savannah-ecosystem/gpt-5.4-xhigh-f-e-u-e-r/"
-      },
-      {
-        "provider": "openai",
-        "model": "GPT-5.5",
-        "modelId": "gpt-5.5",
-        "effort": "xhigh",
-        "client": "codex",
-        "author": "F-e-u-e-r",
-        "generatedAt": "2026-07-02T16:22:26Z",
-        "order": 30,
-        "id": "openai-gpt-5-codex",
-        "path": "tasks/savannah-ecosystem/openai-gpt-5-codex/"
-      },
-      {
-        "provider": "openai",
-        "model": "GPT-5.5",
-        "modelId": "gpt-5.5",
-        "effort": "medium",
-        "client": "codex",
-        "author": "F-e-u-e-r",
-        "generatedAt": "2026-07-04T19:03:39Z",
-        "order": 40,
-        "id": "openai-gpt-5.5-medium",
-        "path": "tasks/savannah-ecosystem/openai-gpt-5.5-medium/"
-      }
-    ]
+    "submissions": []
   },
   {
     "title": "漂浮東京島與楓葉 (Three.js)",
     "type": "iframe",
     "runtime": "webgl",
-    "prompt": "# Technical Challenge: 3D Cartoon Floating Tokyo Island with Maple Leaves\n\n## 1) 題目目標\n請使用**原生 HTML + Three.js + CSS**，在單一頁面實作一個卡通風格且視覺吸引力的 3D 動畫場景。\n\n本題重點在評估你對：\n- Three.js 場景管理與渲染管線\n- 粒子系統與大量物件的效能控制\n- 光影與時間驅動的動畫狀態\n- 3D 互動與相機控制\n- 整體程式架構與長時間運行穩定性\n- **美術表現力**（色彩運用、光影氛圍、整體視覺吸引力）\n\n---\n\n## 2) 技術限制（Constraints）\n- **核心技術**：HTML5、CSS3、Three.js（v134 或更新版本，可透過 CDN 引入）\n- **禁止使用**：任何其他 3D 框架、遊戲引擎、React/Vue 等\n- **渲染方式**：必須使用 Three.js WebGLRenderer\n- **執行方式**：可直接開啟 index.html 或使用簡單 static server\n- **不得依賴後端**\n\n---\n\n## 3) 視覺素材說明（重要）\n- **美術表現將列入評分**：色彩搭配、光影使用、材質細節、整體氛圍與卡通風格的呈現都會被評價\n- 所有物件皆可用基本幾何體（BoxGeometry、CylinderGeometry、PlaneGeometry 等）組合\n- 楓葉可用簡單平面 + 顏色或自訂材質\n- 推薦使用 MeshStandardMaterial / MeshToonMaterial 達成卡通風格\n- 若使用外部紋理，請在 README 註明來源\n\n---\n\n## 4) 功能需求\n\n### A. 主場景\n- 一個漂浮在空中的卡通風格小島（島體需有輕微上下浮動動畫）\n- 島中央為東京鐵塔（可用簡單幾何體搭建）\n- 周圍散落至少兩個日本特色簡化景點（例如富士山、鳥居、寺廟等）\n- 大量楓葉在空中自然飄落（需有旋轉與左右擺動）\n\n### B. 日夜循環系統\n- 每 **15 秒** 進行一次完整日夜輪轉（白天 → 黃昏 → 夜晚 → 黎明 → 白天）\n- 必須自然平滑過渡（天空顏色、環境光、定向光、霧氣等都要漸變）\n- 黃昏開始時，東京鐵塔與周圍景點自動亮燈（PointLight 或材質自發光）\n- 黎明前燈光自動關閉\n- 太陽與月亮位置需隨時間變化\n\n### C. 互動功能\n- 使用滑鼠**左右拖曳**可旋轉視角（OrbitControls 或自行實作）\n- 拖曳過程中場景必須持續動畫\n\n---\n\n## 5) 程式品質要求（Code Quality）\n- 必須使用 `requestAnimationFrame` + `deltaTime`\n- 清晰模組化設計（建議包含 `Island`、`TokyoTower`、`Landmark`、`MapleLeafSystem`、`DayNightCycle` 等類別）\n- 楓葉需使用物件池或有效回收機制\n- 長時間運行不得出現明顯卡頓或記憶體洩漏\n- 關鍵演算法（日夜過渡、燈光控制、粒子物理）需加上註解\n\n---\n\n## 6) 交付內容（Deliverables）\n1. 程式碼：\n   - `index.html`\n   - `style.css`\n   - `main.js`（可拆分多個 JS 模組）\n2. `README.md`（必填）：\n   - 如何啟動\n   - Three.js 版本與引入方式\n   - 日夜循環的時間控制與過渡邏輯說明\n   - 粒子系統與效能優化策略\n   - 相機旋轉控制的實作方式\n\n---\n\n## 7) 驗收標準（Definition of Done）\n- [ ] 浮空島、東京鐵塔與至少兩個日本特色景點正確呈現並持續動畫\n- [ ] 楓葉粒子系統自然飄落且效能穩定\n- [ ] 每 15 秒完成一次自然日夜輪轉（含燈光自動開關）\n- [ ] 支援滑鼠左右拖曳旋轉視角\n- [ ] 長時間運行無明顯效能劣化\n- [ ] 美術表現具有吸引力（色彩、光影、卡通感）\n- [ ] 程式碼具良好模組化與可讀性\n- [ ] README 完整說明核心設計\n\n---\n\n## 8) 加分項目（Bonus）\n- 使用 MeshToonMaterial 做出強烈卡通渲染效果\n- 加入簡單雲層或遠景山脈\n- 支援鍵盤快捷鍵加速日夜循環\n- 顯示粒子數 / FPS debug 資訊\n- RWD（視窗 resize 自動調整畫面比例）\n- 加入依日夜變化的背景音效（Web Audio API）",
+    "prompt": "# Technical Challenge: 3D Cartoon Floating Tokyo Island with Maple Leaves\n\n## 1) 題目目標\n請使用**原生 HTML + Three.js + CSS**，在單一頁面實作一個卡通風格且視覺吸引力的 3D 動畫場景。\n\n本題重點在評估你對：\n- Three.js 場景管理與渲染管線\n- 粒子系統與大量物件的效能控制\n- 光影與時間驅動的動畫狀態\n- 3D 互動與相機控制\n- 整體程式架構與長時間運行穩定性\n- **美術表現力**（色彩運用、光影氛圍、整體視覺吸引力）\n\n---\n\n## 2) 技術限制（Constraints）\n- **核心技術**：HTML5、CSS3、Three.js（v134 或更新版本，可透過 CDN 引入）\n- **禁止使用**：任何其他 3D 框架、遊戲引擎、React/Vue 等\n- **渲染方式**：必須使用 Three.js WebGLRenderer\n- **執行方式**：可直接開啟 index.html 或使用簡單 static server\n- **不得依賴後端**\n\n---\n\n## 3) 視覺素材說明（重要）\n- **美術表現將列入評分**：色彩搭配、光影使用、材質細節、整體氛圍與卡通風格的呈現都會被評價\n- 所有物件皆可用基本幾何體（BoxGeometry、CylinderGeometry、PlaneGeometry 等）組合\n- 楓葉可用簡單平面 + 顏色或自訂材質\n- 推薦使用 MeshStandardMaterial / MeshToonMaterial 達成卡通風格\n- 若使用外部紋理，請在 README 註明來源\n\n---\n\n## 4) 功能需求\n\n### A. 主場景\n- 一個漂浮在空中的卡通風格小島（島體需有輕微上下浮動動畫）\n- 島中央為東京鐵塔（可用簡單幾何體搭建）\n- 周圍散落至少兩個日本特色簡化景點（例如富士山、鳥居、寺廟等）\n- 大量楓葉在空中自然飄落（需有旋轉與左右擺動）\n\n### B. 日夜循環系統\n- 每 **15 秒** 進行一次完整日夜輪轉（白天 → 黃昏 → 夜晚 → 黎明 → 白天）\n- 必須自然平滑過渡（天空顏色、環境光、定向光、霧氣等都要漸變）\n- 黃昏開始時，東京鐵塔與周圍景點自動亮燈（PointLight 或材質自發光）\n- 黎明前燈光自動關閉\n- 太陽與月亮位置需隨時間變化\n\n### C. 互動功能\n- 使用滑鼠**左右拖曳**可旋轉視角（OrbitControls 或自行實作）\n- 拖曳過程中場景必須持續動畫\n\n---\n\n## 5) 程式品質要求（Code Quality）\n- 必須使用 `requestAnimationFrame` + `deltaTime`\n- 清晰模組化設計（建議包含 `Island`、`TokyoTower`、`Landmark`、`MapleLeafSystem`、`DayNightCycle` 等類別）\n- 楓葉需使用物件池或有效回收機制\n- 長時間運行不得出現明顯卡頓或記憶體洩漏\n- 關鍵演算法（日夜過渡、燈光控制、粒子物理）需加上註解\n\n---\n\n## 6) 交付內容（Deliverables）\n1. 程式碼：\n   - `index.html`\n   - `style.css`\n   - `main.js`（可拆分多個 JS 模組）\n2. `README.md`（必填）：\n   - 如何啟動\n   - Three.js 版本與引入方式\n   - 日夜循環的時間控制與過渡邏輯說明\n   - 粒子系統與效能優化策略\n   - 相機旋轉控制的實作方式\n\n---\n\n## 7) Responsive Embed Requirement\n此作品會在 AI Arena gallery 內以 iframe card 形式嵌入預覽，必須在極小預覽尺寸仍可操作：\n- 目標最小嵌入 viewport：320px × 200px\n- 預覽 aspect ratio：16:10\n- 在此尺寸下仍必須呈現有意義的主要場景內容\n- 主要 controls 必須可見、可點擊/觸控，且不可互相重疊或溢出畫面\n- 文字、HUD、panel 不可佔滿預覽空間或遮住主要內容；小尺寸時可折疊為 icon、drawer、tabs 或精簡 overlay\n- 開新分頁時可提供更完整 UI，但嵌入預覽本身仍必須功能可用\n\n---\n\n## 8) 驗收標準（Definition of Done）\n- [ ] 浮空島、東京鐵塔與至少兩個日本特色景點正確呈現並持續動畫\n- [ ] 楓葉粒子系統自然飄落且效能穩定\n- [ ] 每 15 秒完成一次自然日夜輪轉（含燈光自動開關）\n- [ ] 支援滑鼠左右拖曳旋轉視角\n- [ ] 長時間運行無明顯效能劣化\n- [ ] 美術表現具有吸引力（色彩、光影、卡通感）\n- [ ] 程式碼具良好模組化與可讀性\n- [ ] 在 320px × 200px、16:10 iframe preview 中，主要 3D 場景仍可見，視角互動/主要 controls 可用，HUD 不重疊、不溢出、不遮住主要內容\n- [ ] README 完整說明核心設計\n\n---\n\n## 9) 加分項目（Bonus）\n- 使用 MeshToonMaterial 做出強烈卡通渲染效果\n- 加入簡單雲層或遠景山脈\n- 支援鍵盤快捷鍵加速日夜循環\n- 顯示粒子數 / FPS debug 資訊\n- RWD（視窗 resize 自動調整畫面比例）\n- 加入依日夜變化的背景音效（Web Audio API）",
     "description": "卡通風 3D 挑戰：評比 Three.js 場景/渲染管線、粒子效能、日夜循環與美術氛圍。浮空島 + 東京鐵塔 + 日本景點、楓葉飄落、15 秒日夜輪轉、滑鼠旋轉視角。",
     "order": 40,
     "id": "tokyo-island",
-    "submissions": [
-      {
-        "provider": "openai",
-        "model": "GPT 5.4",
-        "modelId": "gpt-5.4",
-        "effort": "xhigh",
-        "client": "codex",
-        "author": "F-e-u-e-r",
-        "generatedAt": "2026-07-05T00:00:00Z",
-        "order": 10,
-        "usageMetadata": {
-          "fields": [
-            "input_tokens",
-            "cached_input_tokens",
-            "output_tokens",
-            "reasoning_output_tokens"
-          ],
-          "durationSource": "structured log request duration or wrapper wall-clock timing",
-          "usageSource": "codex exec --json -> turn.completed.usage",
-          "status": "omitted",
-          "note": "This interactive Codex session did not expose reliable per-task metrics, so token counts and duration were intentionally left out instead of guessed."
-        },
-        "id": "gpt-5.4-xhigh-f-e-u-e-r",
-        "path": "tasks/tokyo-island/gpt-5.4-xhigh-f-e-u-e-r/"
-      },
-      {
-        "provider": "openai",
-        "model": "GPT-5.5",
-        "modelId": "gpt-5.5",
-        "effort": "xhigh",
-        "client": "codex",
-        "author": "F-e-u-e-r",
-        "generatedAt": "2026-07-02T16:22:26Z",
-        "order": 30,
-        "id": "openai-gpt-5-codex",
-        "path": "tasks/tokyo-island/openai-gpt-5-codex/"
-      },
-      {
-        "provider": "openai",
-        "model": "GPT-5.5",
-        "modelId": "gpt-5.5",
-        "effort": "medium",
-        "client": "codex",
-        "author": "F-e-u-e-r",
-        "generatedAt": "2026-07-04T19:03:39Z",
-        "order": 40,
-        "id": "openai-gpt-5.5-medium",
-        "path": "tasks/tokyo-island/openai-gpt-5.5-medium/"
-      }
-    ]
+    "submissions": []
   }
 ]
