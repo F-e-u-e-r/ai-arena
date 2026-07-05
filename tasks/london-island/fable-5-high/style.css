@@ -1,0 +1,127 @@
+/* ============================================================
+   Floating London Island — 版面樣式
+   目標：在 320×200 iframe 預覽中 HUD 依然精簡、不重疊、不遮擋主場景
+   ============================================================ */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #0b1030;
+  font-family: "Avenir Next", "PingFang TC", "Noto Sans TC", system-ui, sans-serif;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+#app { position: relative; width: 100%; height: 100%; }
+
+#scene {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  touch-action: none; /* 讓 pointer 拖曳在觸控裝置上也能旋轉視角 */
+}
+#scene.dragging { cursor: grabbing; }
+
+/* ---------- HUD 共用 ---------- */
+.hud {
+  position: absolute;
+  z-index: 10;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+
+/* 左上：季節 + 時段狀態 */
+#status {
+  top: 8px;
+  left: 8px;
+  font-size: 12px;
+  line-height: 1;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(10, 18, 40, 0.42);
+  backdrop-filter: blur(4px);
+  white-space: nowrap;
+}
+
+/* 右上：FPS / 粒子數 debug 資訊 */
+#debug {
+  top: 8px;
+  right: 8px;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: rgba(10, 18, 40, 0.35);
+  opacity: 0.85;
+}
+
+/* 下方置中：季節控制列（永遠可點擊） */
+#controls {
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  padding: 5px;
+  border-radius: 999px;
+  background: rgba(10, 18, 40, 0.42);
+  backdrop-filter: blur(4px);
+  pointer-events: auto;
+}
+
+#controls button {
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 50%;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.14);
+  transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+#controls button:hover { transform: translateY(-2px) scale(1.08); background: rgba(255, 255, 255, 0.3); }
+#controls button.active {
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.45), 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* 底部提示：幾秒後自動淡出（由 JS 加上 .fade） */
+#hint {
+  left: 50%;
+  bottom: 46px;
+  transform: translateX(-50%);
+  font-size: 11px;
+  opacity: 0.85;
+  transition: opacity 1.2s ease;
+  white-space: nowrap;
+}
+#hint.fade { opacity: 0; }
+
+#fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #ffd9a0;
+  font-size: 13px;
+  text-align: center;
+  padding: 16px;
+  background: #101830;
+  z-index: 20;
+}
+#fallback[hidden] { display: none; }
+
+/* ---------- 小尺寸（gallery 320×200 嵌入）：進一步縮小 HUD ---------- */
+@media (max-width: 420px), (max-height: 260px) {
+  #status { font-size: 10px; padding: 4px 8px; top: 5px; left: 5px; }
+  #debug { display: none; } /* debug 屬加分資訊，小尺寸讓位給主場景 */
+  #hint { display: none; }
+  #controls { bottom: 5px; gap: 4px; padding: 4px; }
+  #controls button { width: 24px; height: 24px; font-size: 12px; }
+}
