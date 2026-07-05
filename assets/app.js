@@ -110,7 +110,7 @@ function makeCard(task, sub) {
   const head = el('div', 'card-head');
   head.append(el('span', 'model', sub.model || 'Unknown'));
   if (sub.provider) head.append(el('span', 'badge provider', sub.provider));
-  if (sub.effort) head.append(el('span', 'badge effort-' + sub.effort, sub.effort));
+  if (sub.effort) head.append(el('span', 'badge effort ' + effortClass(sub.effort), sub.effort));
   if (sub.client) head.append(el('span', 'badge client ' + clientClass(sub.client), sub.client));
   if (sub.label) head.append(el('span', 'badge', sub.label));
   const byline = submissionByline(sub);
@@ -146,6 +146,10 @@ function metric(key, value, title) {
 
 function clientClass(client) {
   return 'client-' + String(client).replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+}
+
+function effortClass(effort) {
+  return 'effort-' + String(effort).replace(/[^a-z0-9]+/gi, '-').toLowerCase();
 }
 
 function authorLink(author) {
