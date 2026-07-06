@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Little London in the Sky — 漂浮倫敦島與四季天氣</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Three.js r149（UMD 版，掛在全域 THREE）：classic script 讓本作品同時支援
+       file:// 直接開啟與 static server / iframe 嵌入 -->
+  <script defer src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+  <script defer src="main.js"></script>
+</head>
+<body>
+  <canvas id="scene" aria-label="漂浮倫敦島 3D 場景"></canvas>
+
+  <div id="hud">
+    <div id="title">Little London in the Sky</div>
+
+    <!-- 左上：目前季節與日夜狀態 -->
+    <div id="status" class="pill" aria-live="polite">
+      <span id="statusSeason">🌞 夏 Summer</span>
+      <span class="sep">·</span>
+      <span id="statusPhase">☀️ Day</span>
+    </div>
+
+    <!-- 右上：FPS / 粒子數 debug（極小視窗自動隱藏） -->
+    <div id="stats" class="pill">-- FPS · 0 ptcl</div>
+
+    <!-- 底部：季節手動切換 + 自動模式 + 音效 -->
+    <div id="controls" role="toolbar" aria-label="季節與音效控制">
+      <button class="seasonBtn" data-season="0" title="春 Spring（快捷鍵 1）" aria-label="春季">🌸</button>
+      <button class="seasonBtn" data-season="1" title="夏 Summer（快捷鍵 2）" aria-label="夏季">🌞</button>
+      <button class="seasonBtn" data-season="2" title="秋 Autumn（快捷鍵 3）" aria-label="秋季">🍁</button>
+      <button class="seasonBtn" data-season="3" title="冬 Winter（快捷鍵 4）" aria-label="冬季">❄️</button>
+      <button id="autoBtn" class="on" title="季節自動循環（快捷鍵 A）" aria-label="自動循環">A</button>
+      <button id="soundBtn" title="環境音效開關（快捷鍵 M）" aria-label="音效開關">🔇</button>
+    </div>
+
+    <div id="hint" class="pill">拖曳旋轉 · 滾輪縮放</div>
+  </div>
+
+  <div id="fallback" hidden>
+    <p>⚠️ Three.js 載入失敗。<br>請確認網路可連到 cdn.jsdelivr.net 後重新整理。</p>
+  </div>
+</body>
+</html>
