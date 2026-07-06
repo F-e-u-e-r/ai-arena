@@ -332,6 +332,25 @@
         "id": "fable-5-high",
         "costUsd": 1.272,
         "path": "tasks/london-island/fable-5-high/"
+      },
+      {
+        "provider": "anthropic",
+        "model": "Fable 5",
+        "modelId": "claude-fable-5",
+        "effort": "max",
+        "client": "claude-code",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-07-05T16:45:00Z",
+        "order": 10,
+        "metrics": {
+          "durationMs": 9915515,
+          "inputTokens": 363953,
+          "outputTokens": 167099,
+          "cachedInputTokens": 33149394
+        },
+        "id": "fable-5-max",
+        "costUsd": 45.143874,
+        "path": "tasks/london-island/fable-5-max/"
       }
     ]
   }
