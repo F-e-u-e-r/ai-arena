@@ -21,6 +21,21 @@ function matchesType(value, type) {
   return typeOf(value) === type; // string / boolean / null
 }
 
+// 完整的 RFC3339 date-time 檢查：不只卡形狀，也逐欄位驗證日曆真實性，
+// 這樣 Date.parse 會默默正規化的畸形值（2024-02-30、24:00:00）也會被擋下。
+function isValidRfc3339DateTime(value) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})[Tt](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:[Zz]|([+-])(\d{2}):(\d{2}))$/.exec(value);
+  if (!m) return false;
+  const year = +m[1], month = +m[2], day = +m[3], hour = +m[4], minute = +m[5], second = +m[6];
+  if (month < 1 || month > 12) return false;
+  if (hour > 23 || minute > 59 || second > 59) return false; // 不接受 leap second :60
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const daysInMonth = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  if (day < 1 || day > daysInMonth[month - 1]) return false;
+  if (m[7] && (+m[8] > 23 || +m[9] > 59)) return false; // 時區位移也要合法
+  return true;
+}
+
 export function validate(schema, data, path = '') {
   const errors = [];
   const at = path || '(root)';
@@ -41,13 +56,8 @@ export function validate(schema, data, path = '') {
     return errors; // 非有限值再往下比 minimum 沒有意義
   }
 
-  if (schema.format === 'date-time' && typeof data === 'string') {
-    // RFC3339 date-time：必須有日期 + T + 時間 + Z/時區位移。單靠 Date.parse 會誤放
-    // 純日期（2026-07-05）這類值，所以先用 regex 卡形狀，再用 Date.parse 卡真實性。
-    const rfc3339 = /^\d{4}-\d{2}-\d{2}[Tt]\d{2}:\d{2}:\d{2}(\.\d+)?([Zz]|[+-]\d{2}:\d{2})$/;
-    if (!rfc3339.test(data) || Number.isNaN(Date.parse(data))) {
-      errors.push(`${at}: 不是合法的 date-time（應為 RFC3339，例如 2026-07-05T06:32:00Z）`);
-    }
+  if (schema.format === 'date-time' && typeof data === 'string' && !isValidRfc3339DateTime(data)) {
+    errors.push(`${at}: 不是合法的 date-time（應為 RFC3339，例如 2026-07-05T06:32:00Z）`);
   }
 
   if (typeof schema.minLength === 'number' && typeof data === 'string' && data.length < schema.minLength) {

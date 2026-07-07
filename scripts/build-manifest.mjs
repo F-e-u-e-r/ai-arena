@@ -71,16 +71,18 @@ function isInsideDir(parentDir, targetPath) {
   return rel === '' || (rel !== '..' && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel));
 }
 
-// submission 資料夾內不允許任何 symlink。iframe 會載入整個資料夾，任何檔案
-// （index.html / main.js / 巢狀檔）若是 symlink 都可能把資料夾外、未經 PR 審查的
-// 內容偷渡進 gallery。一律禁止最簡單也最安全，且不影響任何正常 submission。
-async function assertNoSymlinks(dir, label) {
+// tasks/ 內不允許任何 symlink。gallery 會載入並部署整個資料夾，任何檔案
+// （task.json / submission.json / index.html / main.js / 巢狀檔）若是 symlink，
+// 都可能把資料夾外、未經 PR 審查的內容偷渡進 gallery。在讀取任何 metadata 前先
+// 掃過整棵 tasks/ 一律擋掉，最簡單也最安全，且不影響任何正常 submission。
+async function assertNoSymlinks(dir) {
   for (const entry of await readdir(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
     if (entry.isSymbolicLink()) {
-      fail(`${label}: submission 內不允許 symlink（${entry.name}）`);
+      fail(`tasks/ 內不允許 symlink：${webPath(full)}`);
     }
     if (entry.isDirectory()) {
-      await assertNoSymlinks(path.join(dir, entry.name), label);
+      await assertNoSymlinks(full);
     }
   }
 }
@@ -91,6 +93,11 @@ async function assertNoSymlinks(dir, label) {
 async function resolveMediaPath(submissionDir, value, trailingSlash = false) {
   if (/^[a-z][a-z\d+.-]*:/i.test(value)) {
     fail(`unsupported media reference "${value}": 請改用 submission 資料夾內的檔案路徑（不接受外部 URL）`);
+  }
+  // 反斜線在 POSIX 上是合法檔名字元、但瀏覽器 URL 常把 \ 正規化成 /，
+  // 會變成繞過分段檢查的路徑穿越（..\other/index.html）。一律拒絕，強制用 "/"。
+  if (value.includes('\\')) {
+    fail(`media reference 必須用 "/" 分隔、不可含反斜線：${value}`);
   }
   const absolutePath = path.resolve(submissionDir, value);
   if (!isInsideDir(submissionDir, absolutePath)) {
@@ -141,7 +148,6 @@ async function buildSubmission(task, taskId, submissionId) {
   const label = webPath(metadataPath);
 
   validateAgainstSchema(submissionSchema, metadata, label);
-  await assertNoSymlinks(submissionDir, label);
   if (metadata.client && !knownClients.has(metadata.client)) unknownClients.add(metadata.client);
 
   const type = metadata.type || task.type || 'iframe';
@@ -226,6 +232,8 @@ try {
   pricing = await loadPricing();
   submissionSchema = await readJson(path.join(schemaDir, 'submission.schema.json'));
   taskSchema = await readJson(path.join(schemaDir, 'task.schema.json'));
+  // 在讀取任何 task.json / submission.json 之前先擋掉 symlink，避免 readFile 跟著逃逸。
+  await assertNoSymlinks(tasksDir);
   const tasks = [];
   const ids = new Set();
 
