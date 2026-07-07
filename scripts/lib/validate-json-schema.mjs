@@ -1,10 +1,11 @@
 // 極簡、零相依的 JSON Schema (draft-07 子集) 驗證器。
-// 支援關鍵字：type、required、properties、enum、minimum、minLength。
+// 支援關鍵字：type、required、properties、enum、minimum、minLength、format(date-time)。
 // 未知關鍵字一律忽略（這正是 draft-07 的標準行為），所以 schema/*.json 仍是
 // 完整的 JSON Schema、可被編輯器（VS Code 等）用來做即時驗證與自動完成，
 // 而 build 階段只強制它看得懂的那個子集。回傳人類可讀的錯誤字串陣列（空 = 通過）。
 //
-// 資料一律來自 JSON.parse，所以不可能出現 NaN / Infinity，minimum + type 檢查即足夠。
+// 注意：JSON.parse 對過大的數字（例如 1e999）會回 Infinity，所以 number 型別
+// 仍必須明確檢查有限性，不能只靠 typeof。
 
 function typeOf(value) {
   if (value === null) return 'null';
@@ -32,6 +33,17 @@ export function validate(schema, data, path = '') {
   if (schema.type && !matchesType(data, schema.type)) {
     errors.push(`${at}: 型別應為 ${schema.type}，但收到 ${typeOf(data)}`);
     return errors; // 型別錯了，後續的 property/minimum 檢查沒有意義
+  }
+
+  if ((schema.type === 'number' || schema.type === 'integer')
+      && typeof data === 'number' && !Number.isFinite(data)) {
+    errors.push(`${at}: 必須是有限數字（收到 ${data}）`);
+    return errors; // 非有限值再往下比 minimum 沒有意義
+  }
+
+  if (schema.format === 'date-time' && typeof data === 'string'
+      && Number.isNaN(Date.parse(data))) {
+    errors.push(`${at}: 不是合法的 date-time（應為 ISO-8601，例如 2026-07-05T06:32:00Z）`);
   }
 
   if (typeof schema.minLength === 'number' && typeof data === 'string' && data.length < schema.minLength) {

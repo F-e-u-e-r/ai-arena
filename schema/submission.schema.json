@@ -51,11 +51,11 @@
     },
     "src": {
       "type": "string",
-      "description": "Non-iframe media source (image/video/model-viewer). MUST NOT be set for iframe submissions — the gallery always loads the in-repo files."
+      "description": "Non-iframe media source: a path to a file INSIDE the submission folder (image/video/model-viewer). No external URLs. MUST NOT be set for iframe submissions."
     },
     "poster": {
       "type": "string",
-      "description": "Optional poster image for video / model-viewer."
+      "description": "Optional poster image (a path inside the submission folder) for video / model-viewer."
     },
     "label": {
       "type": "string",

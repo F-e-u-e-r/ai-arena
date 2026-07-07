@@ -36,8 +36,12 @@ Security & data-integrity hardening (from the Fable code review):
   that honor `$schema` give contributors live validation.
 - **Pricing-coverage gate.** `build-manifest.mjs --strict` fails when a
   submission has token metrics but no resolvable price (default stays warn-only).
-- **Display/robustness.** `formatDuration` carries into hours; `isExternal`
-  requires a full `https://` scheme.
+- **All media confined to the submission folder.** image/video/model-viewer
+  `src`/`poster` must resolve to in-repo files inside the submitting folder —
+  no external URLs, no folder escape, symlink-safe — so *PR-visible ==
+  gallery-loaded* holds for every media type, not just iframes.
+- **Display/robustness.** `formatDuration` carries into hours; malformed
+  numeric/`https:` values are rejected by validation.
 
 ---
 
@@ -55,8 +59,9 @@ Security & data-integrity hardening (from the Fable code review):
      same price via one code path; a unit test covers both.
 3. **Tighten the schema + surface it to contributors.** Consider
    `additionalProperties:false` (with a friendly "unknown field / likely typo"
-   message) and document `"$schema": "…"` usage in `CONTRIBUTING.md`
-   (+ `CONTRIBUTING.zh-TW.md`).
+   message) — this also requires extending `validate-json-schema.mjs`, which
+   currently ignores that keyword — and document `"$schema": "…"` usage in
+   `CONTRIBUTING.md` (+ `CONTRIBUTING.zh-TW.md`).
    - *Accept:* a typo'd field (`modleId`) is reported by name; CONTRIBUTING shows
      the one-line `$schema` snippet.
 

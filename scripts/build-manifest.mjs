@@ -1,4 +1,4 @@
-import { readdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { readdir, readFile, realpath, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validate } from './lib/validate-json-schema.mjs';
@@ -22,7 +22,7 @@ const knownClients = new Set(['claude-code', 'codex', 'opencode', 'kiro', 'curso
 let pricing = {};
 let submissionSchema;
 let taskSchema;
-const missingPricing = new Set();
+const uncosted = new Set();
 const unknownClients = new Set();
 
 function fail(message) {
@@ -55,12 +55,6 @@ async function directories(parent) {
     .sort();
 }
 
-function isExternal(value) {
-  // 要求完整的 https:// scheme；像 "https:foo" 這種畸形值不算外部 URL，
-  // 會繼續往下走協定白名單檢查而被擋掉。
-  return /^https:\/\//.test(value);
-}
-
 function webPath(absolutePath, trailingSlash = false) {
   const relative = path.relative(rootDir, absolutePath);
   if (relative.startsWith('..') || path.isAbsolute(relative)) {
@@ -70,13 +64,25 @@ function webPath(absolutePath, trailingSlash = false) {
   return trailingSlash ? `${result.replace(/\/$/, '')}/` : result;
 }
 
+// 所有 media 一律指向 submission 資料夾內的實體檔案：不接受任何 URL scheme、
+// 不接受跳出資料夾的相對路徑，也不接受用 symlink 逃逸。這讓「PR 看到的檔案 =
+// gallery 實際載入的內容」對每一種 media 型別都成立（不只 iframe）。
 async function resolveMediaPath(submissionDir, value, trailingSlash = false) {
-  if (isExternal(value)) return value;
   if (/^[a-z][a-z\d+.-]*:/i.test(value)) {
-    fail(`unsupported media URL protocol: ${value}`);
+    fail(`unsupported media reference "${value}": 請改用 submission 資料夾內的檔案路徑（不接受外部 URL）`);
   }
   const absolutePath = path.resolve(submissionDir, value);
-  await stat(absolutePath).catch(() => fail(`missing media: ${webPath(absolutePath)}`));
+  const relToSubmission = path.relative(submissionDir, absolutePath);
+  if (relToSubmission.startsWith('..') || path.isAbsolute(relToSubmission)) {
+    fail(`media escapes the submission folder: ${value}`);
+  }
+  await stat(absolutePath).catch(() => fail(`missing media: ${value}`));
+  // 解析掉 symlink 後再確認實體目標仍在資料夾內，擋掉 evil -> /etc/passwd 這類逃逸。
+  const realTarget = await realpath(absolutePath);
+  const realSubmission = await realpath(submissionDir);
+  if (path.relative(realSubmission, realTarget).startsWith('..')) {
+    fail(`media escapes the submission folder via symlink: ${value}`);
+  }
   return webPath(absolutePath, trailingSlash);
 }
 
@@ -89,19 +95,17 @@ function validateAgainstSchema(schema, data, label) {
   }
 }
 
-// cost = (input·單價 + output·單價 + cached·快取價) / 1M。cached 省略單價時退回 input 價。
-function computeCost(modelId, metrics) {
-  if (!metrics) return undefined;
-  const hasTokens = ['inputTokens', 'outputTokens', 'cachedInputTokens']
+function hasTokenMetrics(metrics) {
+  return !!metrics && ['inputTokens', 'outputTokens', 'cachedInputTokens']
     .some(k => typeof metrics[k] === 'number');
-  if (!hasTokens) return undefined;
+}
+
+// cost = (input·單價 + output·單價 + cached·快取價) / 1M。cached 省略單價時退回 input 價。
+// 算不出來（沒 token / 缺 modelId / pricing 未收錄）一律回 undefined，由呼叫端記錄。
+function computeCost(modelId, metrics) {
+  if (!hasTokenMetrics(metrics)) return undefined;
   const rates = modelId ? pricing[modelId] : undefined;
-  if (!rates) {
-    if (modelId) missingPricing.add(modelId);
-    return undefined;
-  }
-  if (typeof rates.input !== 'number' || typeof rates.output !== 'number') {
-    if (modelId) missingPricing.add(modelId);
+  if (!rates || typeof rates.input !== 'number' || typeof rates.output !== 'number') {
     return undefined;
   }
   const input = metrics.inputTokens || 0;
@@ -129,7 +133,15 @@ async function buildSubmission(task, taskId, submissionId) {
   };
 
   const cost = computeCost(metadata.modelId, metadata.metrics);
-  if (cost !== undefined) submission.costUsd = cost;
+  if (cost !== undefined) {
+    submission.costUsd = cost;
+  } else if (hasTokenMetrics(metadata.metrics)) {
+    // 有 token 卻算不出 cost：modelId 拼錯、缺 modelId、或 pricing 未收錄都算，
+    // 記下來讓 --strict 能擋，避免成本欄無聲變 —。
+    uncosted.add(metadata.modelId
+      ? `${label}（modelId "${metadata.modelId}" 查無單價）`
+      : `${label}（缺 modelId）`);
+  }
 
   if (type === 'iframe') {
     // iframe 一律以 repo 內的檔案為準。禁止 src，否則它會在 UI 蓋掉 path
@@ -160,9 +172,10 @@ async function buildTask(taskId) {
   const taskDir = path.join(tasksDir, taskId);
   const metadataPath = path.join(taskDir, 'task.json');
   const metadata = await readJson(metadataPath);
-  const id = metadata.id || taskId;
-
+  // 先做 schema 驗證再取用欄位，否則 task.json 是 null / 非物件時會先丟出
+  // 原始 TypeError，繞過我們給貢獻者的清楚錯誤訊息。
   validateAgainstSchema(taskSchema, metadata, webPath(metadataPath));
+  const id = metadata.id || taskId;
 
   const submissions = [];
   const submissionIds = new Set();
@@ -222,10 +235,10 @@ try {
   if (unknownClients.size) {
     console.warn(`⚠ 未知 client（仍會顯示，請確認是否 typo）：${[...unknownClients].join(', ')}`);
   }
-  if (missingPricing.size) {
-    // 有 token metrics 卻查不到單價 → cost 欄會悄悄變 —。預設只 warn；
+  if (uncosted.size) {
+    // 有 token metrics 卻算不出 cost → cost 欄會悄悄變 —。預設只 warn；
     // 加 --strict（例如在 CI）則直接 fail，避免成本覆蓋率無聲流失。
-    const message = `這些 modelId 有 metrics 卻在 data/pricing.json 查無單價（costUsd 顯示 —）：${[...missingPricing].join(', ')}`;
+    const message = `這些 submission 有 token metrics 卻算不出 cost（costUsd 顯示 —）：\n  - ${[...uncosted].join('\n  - ')}`;
     if (strict) {
       console.error(`🚫 ${message}`);
       process.exitCode = 1;
