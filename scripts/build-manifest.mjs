@@ -1,4 +1,4 @@
-import { readdir, readFile, realpath, stat, writeFile } from 'node:fs/promises';
+import { readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validate } from './lib/validate-json-schema.mjs';
@@ -64,25 +64,39 @@ function webPath(absolutePath, trailingSlash = false) {
   return trailingSlash ? `${result.replace(/\/$/, '')}/` : result;
 }
 
-// 所有 media 一律指向 submission 資料夾內的實體檔案：不接受任何 URL scheme、
-// 不接受跳出資料夾的相對路徑，也不接受用 symlink 逃逸。這讓「PR 看到的檔案 =
-// gallery 實際載入的內容」對每一種 media 型別都成立（不只 iframe）。
+// targetPath 是否落在 parentDir 之內（含 parentDir 本身）。用「路徑分段」判斷，
+// 而不是字串 startsWith('..')，才不會把 ..foo 這種合法檔名誤判成逃逸。
+function isInsideDir(parentDir, targetPath) {
+  const rel = path.relative(parentDir, targetPath);
+  return rel === '' || (rel !== '..' && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel));
+}
+
+// submission 資料夾內不允許任何 symlink。iframe 會載入整個資料夾，任何檔案
+// （index.html / main.js / 巢狀檔）若是 symlink 都可能把資料夾外、未經 PR 審查的
+// 內容偷渡進 gallery。一律禁止最簡單也最安全，且不影響任何正常 submission。
+async function assertNoSymlinks(dir, label) {
+  for (const entry of await readdir(dir, { withFileTypes: true })) {
+    if (entry.isSymbolicLink()) {
+      fail(`${label}: submission 內不允許 symlink（${entry.name}）`);
+    }
+    if (entry.isDirectory()) {
+      await assertNoSymlinks(path.join(dir, entry.name), label);
+    }
+  }
+}
+
+// 所有 media 一律指向 submission 資料夾內的檔案：不接受任何 URL scheme、
+// 不接受跳出資料夾的相對路徑。symlink 逃逸由 assertNoSymlinks 統一擋下。
+// 這讓「PR 看到的檔案 = gallery 實際載入的內容」對每一種 media 型別都成立。
 async function resolveMediaPath(submissionDir, value, trailingSlash = false) {
   if (/^[a-z][a-z\d+.-]*:/i.test(value)) {
     fail(`unsupported media reference "${value}": 請改用 submission 資料夾內的檔案路徑（不接受外部 URL）`);
   }
   const absolutePath = path.resolve(submissionDir, value);
-  const relToSubmission = path.relative(submissionDir, absolutePath);
-  if (relToSubmission.startsWith('..') || path.isAbsolute(relToSubmission)) {
+  if (!isInsideDir(submissionDir, absolutePath)) {
     fail(`media escapes the submission folder: ${value}`);
   }
   await stat(absolutePath).catch(() => fail(`missing media: ${value}`));
-  // 解析掉 symlink 後再確認實體目標仍在資料夾內，擋掉 evil -> /etc/passwd 這類逃逸。
-  const realTarget = await realpath(absolutePath);
-  const realSubmission = await realpath(submissionDir);
-  if (path.relative(realSubmission, realTarget).startsWith('..')) {
-    fail(`media escapes the submission folder via symlink: ${value}`);
-  }
   return webPath(absolutePath, trailingSlash);
 }
 
@@ -95,15 +109,19 @@ function validateAgainstSchema(schema, data, label) {
   }
 }
 
-function hasTokenMetrics(metrics) {
-  return !!metrics && ['inputTokens', 'outputTokens', 'cachedInputTokens']
-    .some(k => typeof metrics[k] === 'number');
+// 只有這三個欄位能實際換算 cost；totalTokens 只是總量、無法拆出單價。
+const COSTABLE_TOKEN_FIELDS = ['inputTokens', 'outputTokens', 'cachedInputTokens'];
+// gate 用的「有回報用量」判斷則納入 totalTokens：只給 totalTokens 也算「有用量卻無 cost」。
+const REPORTED_TOKEN_FIELDS = [...COSTABLE_TOKEN_FIELDS, 'totalTokens'];
+
+function hasTokens(metrics, fields) {
+  return !!metrics && fields.some(k => typeof metrics[k] === 'number');
 }
 
 // cost = (input·單價 + output·單價 + cached·快取價) / 1M。cached 省略單價時退回 input 價。
-// 算不出來（沒 token / 缺 modelId / pricing 未收錄）一律回 undefined，由呼叫端記錄。
+// 算不出來（沒可計價 token / 缺 modelId / pricing 未收錄）一律回 undefined，由呼叫端記錄。
 function computeCost(modelId, metrics) {
-  if (!hasTokenMetrics(metrics)) return undefined;
+  if (!hasTokens(metrics, COSTABLE_TOKEN_FIELDS)) return undefined;
   const rates = modelId ? pricing[modelId] : undefined;
   if (!rates || typeof rates.input !== 'number' || typeof rates.output !== 'number') {
     return undefined;
@@ -123,6 +141,7 @@ async function buildSubmission(task, taskId, submissionId) {
   const label = webPath(metadataPath);
 
   validateAgainstSchema(submissionSchema, metadata, label);
+  await assertNoSymlinks(submissionDir, label);
   if (metadata.client && !knownClients.has(metadata.client)) unknownClients.add(metadata.client);
 
   const type = metadata.type || task.type || 'iframe';
@@ -135,12 +154,13 @@ async function buildSubmission(task, taskId, submissionId) {
   const cost = computeCost(metadata.modelId, metadata.metrics);
   if (cost !== undefined) {
     submission.costUsd = cost;
-  } else if (hasTokenMetrics(metadata.metrics)) {
-    // 有 token 卻算不出 cost：modelId 拼錯、缺 modelId、或 pricing 未收錄都算，
-    // 記下來讓 --strict 能擋，避免成本欄無聲變 —。
-    uncosted.add(metadata.modelId
-      ? `${label}（modelId "${metadata.modelId}" 查無單價）`
-      : `${label}（缺 modelId）`);
+  } else if (hasTokens(metadata.metrics, REPORTED_TOKEN_FIELDS)) {
+    // 有回報用量卻算不出 cost，記下確切原因讓 --strict 能擋，避免成本欄無聲變 —。
+    let reason;
+    if (!metadata.modelId) reason = '缺 modelId';
+    else if (!hasTokens(metadata.metrics, COSTABLE_TOKEN_FIELDS)) reason = '只提供 totalTokens，缺 input/output tokens';
+    else reason = `modelId "${metadata.modelId}" 查無單價`;
+    uncosted.add(`${label}（${reason}）`);
   }
 
   if (type === 'iframe') {

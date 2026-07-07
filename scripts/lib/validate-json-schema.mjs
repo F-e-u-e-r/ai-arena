@@ -41,9 +41,13 @@ export function validate(schema, data, path = '') {
     return errors; // 非有限值再往下比 minimum 沒有意義
   }
 
-  if (schema.format === 'date-time' && typeof data === 'string'
-      && Number.isNaN(Date.parse(data))) {
-    errors.push(`${at}: 不是合法的 date-time（應為 ISO-8601，例如 2026-07-05T06:32:00Z）`);
+  if (schema.format === 'date-time' && typeof data === 'string') {
+    // RFC3339 date-time：必須有日期 + T + 時間 + Z/時區位移。單靠 Date.parse 會誤放
+    // 純日期（2026-07-05）這類值，所以先用 regex 卡形狀，再用 Date.parse 卡真實性。
+    const rfc3339 = /^\d{4}-\d{2}-\d{2}[Tt]\d{2}:\d{2}:\d{2}(\.\d+)?([Zz]|[+-]\d{2}:\d{2})$/;
+    if (!rfc3339.test(data) || Number.isNaN(Date.parse(data))) {
+      errors.push(`${at}: 不是合法的 date-time（應為 RFC3339，例如 2026-07-05T06:32:00Z）`);
+    }
   }
 
   if (typeof schema.minLength === 'number' && typeof data === 'string' && data.length < schema.minLength) {
