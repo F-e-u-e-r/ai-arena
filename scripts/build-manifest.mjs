@@ -94,17 +94,20 @@ async function resolveMediaPath(submissionDir, value, trailingSlash = false) {
   if (/^[a-z][a-z\d+.-]*:/i.test(value)) {
     fail(`unsupported media reference "${value}": 請改用 submission 資料夾內的檔案路徑（不接受外部 URL）`);
   }
-  // 反斜線在 POSIX 上是合法檔名字元、但瀏覽器 URL 常把 \ 正規化成 /，
-  // 會變成繞過分段檢查的路徑穿越（..\other/index.html）。一律拒絕，強制用 "/"。
-  if (value.includes('\\')) {
-    fail(`media reference 必須用 "/" 分隔、不可含反斜線：${value}`);
+  // 反斜線與百分比編碼在 POSIX 上是合法檔名字元，但瀏覽器 URL 會把 \ 正規化成 /、
+  // 把 %2e/%2f 正規化成 ./ /，變成繞過分段檢查的路徑穿越（..\x、%2e%2e/x）。
+  // 一律拒絕，強制用單純的 "/" 分隔相對路徑。
+  if (/[\\%]/.test(value)) {
+    fail(`media reference 不可含反斜線或百分比編碼（瀏覽器可能正規化成路徑穿越）：${value}`);
   }
   const absolutePath = path.resolve(submissionDir, value);
   if (!isInsideDir(submissionDir, absolutePath)) {
     fail(`media escapes the submission folder: ${value}`);
   }
-  await stat(absolutePath).catch(() => fail(`missing media: ${value}`));
-  return webPath(absolutePath, trailingSlash);
+  const stats = await stat(absolutePath).catch(() => fail(`missing media: ${value}`));
+  // 只有目標是資料夾時才補結尾斜線（iframe 載入整個資料夾）；指向檔案就保持檔案 URL，
+  // 避免 path:"index.html" 變成 "…/index.html/" 這種指錯的目錄式 URL。
+  return webPath(absolutePath, trailingSlash && stats.isDirectory());
 }
 
 // 依 schema/*.json 做宣告式驗證（required / type / enum / minimum...），
