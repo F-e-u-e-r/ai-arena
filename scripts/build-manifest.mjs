@@ -1,6 +1,7 @@
 import { readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { validate } from './lib/validate-json-schema.mjs';
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const tasksDir = path.join(rootDir, 'tasks');
@@ -12,13 +13,15 @@ if (outputArg !== -1 && !process.argv[outputArg + 1]) {
 const outputPath = outputArg === -1
   ? path.join(rootDir, 'tasks.json')
   : path.resolve(process.cwd(), process.argv[outputArg + 1]);
-const mediaTypes = new Set(['iframe', 'image', 'video', 'model-viewer']);
+const schemaDir = path.join(rootDir, 'schema');
+const strict = process.argv.includes('--strict');
 
 // 已知 client 只用來提醒可能的 typo；未知值仍可正常顯示（比照 effort 的自由字串設計）。
 const knownClients = new Set(['claude-code', 'codex', 'opencode', 'kiro', 'cursor', 'api', 'other']);
-const metricFields = new Set(['durationMs', 'inputTokens', 'outputTokens', 'cachedInputTokens', 'totalTokens']);
 
 let pricing = {};
+let submissionSchema;
+let taskSchema;
 const missingPricing = new Set();
 const unknownClients = new Set();
 
@@ -77,23 +80,12 @@ async function resolveMediaPath(submissionDir, value, trailingSlash = false) {
   return webPath(absolutePath, trailingSlash);
 }
 
-function validateType(type, filePath) {
-  if (!mediaTypes.has(type)) {
-    fail(`${filePath}: unsupported type "${type}"`);
-  }
-}
-
-// metrics 內的每個欄位都必須是有限、非負的數字，避免髒資料破壞 cost 與排行。
-function validateMetrics(metrics, label) {
-  if (metrics == null) return;
-  if (typeof metrics !== 'object' || Array.isArray(metrics)) {
-    fail(`${label}: "metrics" must be an object`);
-  }
-  for (const [key, value] of Object.entries(metrics)) {
-    if (!metricFields.has(key)) continue; // 允許額外欄位通過，只驗證已知的數值欄位
-    if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
-      fail(`${label}: metrics.${key} must be a non-negative number`);
-    }
+// 依 schema/*.json 做宣告式驗證（required / type / enum / minimum...），
+// 把原本散在各處的手寫檢查收斂到單一份規格，並給貢獻者逐條錯誤訊息。
+function validateAgainstSchema(schema, data, label) {
+  const errors = validate(schema, data);
+  if (errors.length) {
+    fail(`${label}:\n  - ${errors.join('\n  - ')}`);
   }
 }
 
@@ -126,13 +118,10 @@ async function buildSubmission(task, taskId, submissionId) {
   const metadata = await readJson(metadataPath);
   const label = webPath(metadataPath);
 
-  if (!metadata.provider) fail(`${label}: "provider" is required`);
-  if (!metadata.model) fail(`${label}: "model" is required`);
+  validateAgainstSchema(submissionSchema, metadata, label);
   if (metadata.client && !knownClients.has(metadata.client)) unknownClients.add(metadata.client);
-  validateMetrics(metadata.metrics, label);
 
   const type = metadata.type || task.type || 'iframe';
-  validateType(type, label);
 
   const submission = {
     ...metadata,
@@ -173,8 +162,7 @@ async function buildTask(taskId) {
   const metadata = await readJson(metadataPath);
   const id = metadata.id || taskId;
 
-  if (!metadata.title) fail(`${webPath(metadataPath)}: "title" is required`);
-  validateType(metadata.type || 'iframe', webPath(metadataPath));
+  validateAgainstSchema(taskSchema, metadata, webPath(metadataPath));
 
   const submissions = [];
   const submissionIds = new Set();
@@ -203,6 +191,8 @@ async function buildTask(taskId) {
 
 try {
   pricing = await loadPricing();
+  submissionSchema = await readJson(path.join(schemaDir, 'submission.schema.json'));
+  taskSchema = await readJson(path.join(schemaDir, 'task.schema.json'));
   const tasks = [];
   const ids = new Set();
 
@@ -233,7 +223,15 @@ try {
     console.warn(`⚠ 未知 client（仍會顯示，請確認是否 typo）：${[...unknownClients].join(', ')}`);
   }
   if (missingPricing.size) {
-    console.warn(`⚠ data/pricing.json 缺這些 modelId 的價格（costUsd 顯示 —）：${[...missingPricing].join(', ')}`);
+    // 有 token metrics 卻查不到單價 → cost 欄會悄悄變 —。預設只 warn；
+    // 加 --strict（例如在 CI）則直接 fail，避免成本覆蓋率無聲流失。
+    const message = `這些 modelId 有 metrics 卻在 data/pricing.json 查無單價（costUsd 顯示 —）：${[...missingPricing].join(', ')}`;
+    if (strict) {
+      console.error(`🚫 ${message}`);
+      process.exitCode = 1;
+    } else {
+      console.warn(`⚠ ${message}`);
+    }
   }
 } catch (error) {
   console.error(`Manifest build failed: ${error.message}`);

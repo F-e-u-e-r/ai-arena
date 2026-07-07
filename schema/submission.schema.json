@@ -1,0 +1,84 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://f-e-u-e-r.github.io/ai-arena/schema/submission.schema.json",
+  "title": "AI Arena submission",
+  "description": "One model's output for a task. Lives at tasks/<task>/<submission>/submission.json. Add \"$schema\": \"../../../schema/submission.schema.json\" to your file for live editor validation.",
+  "type": "object",
+  "required": ["provider", "model"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Optional pointer to this schema for editor tooling."
+    },
+    "provider": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Model provider, e.g. anthropic, openai. Free-form and provider-neutral."
+    },
+    "model": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable model name shown on the card, e.g. \"Fable 5\"."
+    },
+    "modelId": {
+      "type": "string",
+      "description": "Pricing key into data/pricing.json (e.g. claude-fable-5). Required for cost to be computed."
+    },
+    "effort": {
+      "type": "string",
+      "description": "Reasoning effort label (free-form): low, medium, high, xhigh, max, ..."
+    },
+    "client": {
+      "type": "string",
+      "description": "Tool used to run the model, e.g. claude-code, codex. Unknown values still render (a build warning flags likely typos)."
+    },
+    "author": {
+      "type": "string",
+      "description": "GitHub handle of the contributor (a valid handle becomes a profile link)."
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC timestamp of when the output was produced."
+    },
+    "type": {
+      "enum": ["iframe", "image", "video", "model-viewer"],
+      "description": "Media type. Defaults to the task's type when omitted."
+    },
+    "path": {
+      "type": "string",
+      "description": "iframe only: folder or index.html to load. Defaults to the submission folder's index.html."
+    },
+    "src": {
+      "type": "string",
+      "description": "Non-iframe media source (image/video/model-viewer). MUST NOT be set for iframe submissions — the gallery always loads the in-repo files."
+    },
+    "poster": {
+      "type": "string",
+      "description": "Optional poster image for video / model-viewer."
+    },
+    "label": {
+      "type": "string",
+      "description": "Optional extra badge text."
+    },
+    "id": {
+      "type": "string",
+      "description": "Stable submission id; defaults to the folder name."
+    },
+    "order": {
+      "type": "number",
+      "description": "Sort order within the task (ascending)."
+    },
+    "metrics": {
+      "type": "object",
+      "description": "Usage metrics. Every numeric field must be finite and non-negative. Extra fields are allowed but not validated.",
+      "properties": {
+        "durationMs": { "type": "number", "minimum": 0 },
+        "inputTokens": { "type": "number", "minimum": 0 },
+        "outputTokens": { "type": "number", "minimum": 0 },
+        "cachedInputTokens": { "type": "number", "minimum": 0 },
+        "totalTokens": { "type": "number", "minimum": 0 }
+      }
+    }
+  }
+}
