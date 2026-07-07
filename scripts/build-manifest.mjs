@@ -53,7 +53,9 @@ async function directories(parent) {
 }
 
 function isExternal(value) {
-  return /^https:/.test(value);
+  // 要求完整的 https:// scheme；像 "https:foo" 這種畸形值不算外部 URL，
+  // 會繼續往下走協定白名單檢查而被擋掉。
+  return /^https:\/\//.test(value);
 }
 
 function webPath(absolutePath, trailingSlash = false) {
@@ -141,6 +143,12 @@ async function buildSubmission(task, taskId, submissionId) {
   if (cost !== undefined) submission.costUsd = cost;
 
   if (type === 'iframe') {
+    // iframe 一律以 repo 內的檔案為準。禁止 src，否則它會在 UI 蓋掉 path
+    // （app.js 的 renderMedia），讓 PR reviewer 看到的檔案 ≠ gallery 實際載入的內容，
+    // 繞過本專案的祕密掃描與協定白名單。改用資料夾內的 index.html 或明確的 path。
+    if (metadata.src) {
+      fail(`${label}: iframe submission must not set "src"; put files in the folder or use "path"`);
+    }
     if (metadata.path) {
       submission.path = await resolveMediaPath(submissionDir, metadata.path, true);
     } else {

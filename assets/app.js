@@ -202,8 +202,11 @@ function formatDuration(ms) {
   if (ms < 1000) return ms + ' ms';
   const s = ms / 1000;
   if (s < 60) return (s < 10 ? s.toFixed(1) : Math.round(s)) + ' s';
-  const m = Math.floor(s / 60);
-  return m + 'm ' + Math.round(s % 60) + 's';
+  const totalSec = Math.round(s);
+  const m = Math.floor(totalSec / 60);
+  if (m < 60) return m + 'm ' + (totalSec % 60) + 's';
+  const h = Math.floor(m / 60);
+  return h + 'h ' + (m % 60) + 'm';
 }
 
 function formatTokens(n) {
@@ -248,7 +251,9 @@ function fallbackCopy(text, done) {
 }
 
 function renderMedia(body, type, sub) {
-  const src = sub.src || sub.path || '';
+  // iframe 一律以 path（repo 內容）為準，不讓 src 有優先權——與 build-manifest.mjs
+  // 禁止 iframe src 的規則對齊，作為前端的第二層防護。其他 media 型別才用 src。
+  const src = (type === 'iframe' ? (sub.path || sub.src) : (sub.src || sub.path)) || '';
   switch (type) {
     case 'image': {
       const img = el('img');
@@ -318,13 +323,20 @@ function lazyIframe(body, src) {
   body.append(ph);
 }
 
+// 這支 script 跑在 gallery 自身的 origin（不像 submission 是隔離在 sandbox iframe 內），
+// 所以 pin 到明確版本並加 SRI：即使 unpkg 或套件被投毒，雜湊對不上瀏覽器就會拒絕執行。
+// 升級版本時，同步更新這兩個常數（integrity = sha384 of dist/model-viewer.min.js）。
+const MODEL_VIEWER_SRC = 'https://unpkg.com/@google/model-viewer@4.3.1/dist/model-viewer.min.js';
+const MODEL_VIEWER_SRI = 'sha384-sr9b4Ux0WhAUGclJ0ym0FSY2zSOMmNSn0bP/SA0e6bNCrpn/5W3QL8mm+LdlQMKw';
 let mvLoaded = false;
 function ensureModelViewer() {
   if (mvLoaded) return;
   mvLoaded = true;
   const s = document.createElement('script');
   s.type = 'module';
-  s.src = 'https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js';
+  s.src = MODEL_VIEWER_SRC;
+  s.integrity = MODEL_VIEWER_SRI;
+  s.crossOrigin = 'anonymous';
   document.head.append(s);
 }
 
