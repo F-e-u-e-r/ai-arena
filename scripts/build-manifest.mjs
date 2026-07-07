@@ -71,6 +71,15 @@ function isInsideDir(parentDir, targetPath) {
   return rel === '' || (rel !== '..' && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel));
 }
 
+// task / submission 的資料夾名稱會直接變成 URL 的 path segment（也是 hash id）。
+// 只允許英數字與 . _ -，並排除 . 與 ..，避免像 %2e%2e、..\other 這種名稱被瀏覽器
+// URL 正規化成路徑穿越、逃出預期的資料夾。所有現有資料夾名稱都符合這個規則。
+function assertSafeName(name, kind) {
+  if (name === '.' || name === '..' || !/^[A-Za-z0-9._-]+$/.test(name)) {
+    fail(`unsafe ${kind} 資料夾名稱 "${name}"：只允許英數字與 . _ -（且不可是 . 或 ..）`);
+  }
+}
+
 // tasks/ 內不允許任何 symlink。gallery 會載入並部署整個資料夾，任何檔案
 // （task.json / submission.json / index.html / main.js / 巢狀檔）若是 symlink，
 // 都可能把資料夾外、未經 PR 審查的內容偷渡進 gallery。在讀取任何 metadata 前先
@@ -145,6 +154,7 @@ function computeCost(modelId, metrics) {
 }
 
 async function buildSubmission(task, taskId, submissionId) {
+  assertSafeName(submissionId, 'submission');
   const submissionDir = path.join(tasksDir, taskId, submissionId);
   const metadataPath = path.join(submissionDir, 'submission.json');
   const metadata = await readJson(metadataPath);
@@ -198,6 +208,7 @@ async function buildSubmission(task, taskId, submissionId) {
 }
 
 async function buildTask(taskId) {
+  assertSafeName(taskId, 'task');
   const taskDir = path.join(tasksDir, taskId);
   const metadataPath = path.join(taskDir, 'task.json');
   const metadata = await readJson(metadataPath);
