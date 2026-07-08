@@ -1,6 +1,7 @@
 import { readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { validate } from './lib/validate-json-schema.mjs';
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const tasksDir = path.join(rootDir, 'tasks');
@@ -12,14 +13,16 @@ if (outputArg !== -1 && !process.argv[outputArg + 1]) {
 const outputPath = outputArg === -1
   ? path.join(rootDir, 'tasks.json')
   : path.resolve(process.cwd(), process.argv[outputArg + 1]);
-const mediaTypes = new Set(['iframe', 'image', 'video', 'model-viewer']);
+const schemaDir = path.join(rootDir, 'schema');
+const strict = process.argv.includes('--strict');
 
 // 已知 client 只用來提醒可能的 typo；未知值仍可正常顯示（比照 effort 的自由字串設計）。
 const knownClients = new Set(['claude-code', 'codex', 'opencode', 'kiro', 'cursor', 'api', 'other']);
-const metricFields = new Set(['durationMs', 'inputTokens', 'outputTokens', 'cachedInputTokens', 'totalTokens']);
 
 let pricing = {};
-const missingPricing = new Set();
+let submissionSchema;
+let taskSchema;
+const uncosted = new Set();
 const unknownClients = new Set();
 
 function fail(message) {
@@ -52,12 +55,6 @@ async function directories(parent) {
     .sort();
 }
 
-function isExternal(value) {
-  // 要求完整的 https:// scheme；像 "https:foo" 這種畸形值不算外部 URL，
-  // 會繼續往下走協定白名單檢查而被擋掉。
-  return /^https:\/\//.test(value);
-}
-
 function webPath(absolutePath, trailingSlash = false) {
   const relative = path.relative(rootDir, absolutePath);
   if (relative.startsWith('..') || path.isAbsolute(relative)) {
@@ -67,72 +64,113 @@ function webPath(absolutePath, trailingSlash = false) {
   return trailingSlash ? `${result.replace(/\/$/, '')}/` : result;
 }
 
-async function resolveMediaPath(submissionDir, value, trailingSlash = false) {
-  if (isExternal(value)) return value;
-  if (/^[a-z][a-z\d+.-]*:/i.test(value)) {
-    fail(`unsupported media URL protocol: ${value}`);
-  }
-  const absolutePath = path.resolve(submissionDir, value);
-  await stat(absolutePath).catch(() => fail(`missing media: ${webPath(absolutePath)}`));
-  return webPath(absolutePath, trailingSlash);
+// targetPath 是否落在 parentDir 之內（含 parentDir 本身）。用「路徑分段」判斷，
+// 而不是字串 startsWith('..')，才不會把 ..foo 這種合法檔名誤判成逃逸。
+function isInsideDir(parentDir, targetPath) {
+  const rel = path.relative(parentDir, targetPath);
+  return rel === '' || (rel !== '..' && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel));
 }
 
-function validateType(type, filePath) {
-  if (!mediaTypes.has(type)) {
-    fail(`${filePath}: unsupported type "${type}"`);
+// task / submission 的資料夾名稱會直接變成 URL 的 path segment（也是 hash id）。
+// 只允許英數字與 . _ -，並排除 . 與 ..，避免像 %2e%2e、..\other 這種名稱被瀏覽器
+// URL 正規化成路徑穿越、逃出預期的資料夾。所有現有資料夾名稱都符合這個規則。
+function assertSafeName(name, kind) {
+  if (name === '.' || name === '..' || !/^[A-Za-z0-9._-]+$/.test(name)) {
+    fail(`unsafe ${kind} 資料夾名稱 "${name}"：只允許英數字與 . _ -（且不可是 . 或 ..）`);
   }
 }
 
-// metrics 內的每個欄位都必須是有限、非負的數字，避免髒資料破壞 cost 與排行。
-function validateMetrics(metrics, label) {
-  if (metrics == null) return;
-  if (typeof metrics !== 'object' || Array.isArray(metrics)) {
-    fail(`${label}: "metrics" must be an object`);
-  }
-  for (const [key, value] of Object.entries(metrics)) {
-    if (!metricFields.has(key)) continue; // 允許額外欄位通過，只驗證已知的數值欄位
-    if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
-      fail(`${label}: metrics.${key} must be a non-negative number`);
+// tasks/ 內不允許任何 symlink。gallery 會載入並部署整個資料夾，任何檔案
+// （task.json / submission.json / index.html / main.js / 巢狀檔）若是 symlink，
+// 都可能把資料夾外、未經 PR 審查的內容偷渡進 gallery。在讀取任何 metadata 前先
+// 掃過整棵 tasks/ 一律擋掉，最簡單也最安全，且不影響任何正常 submission。
+async function assertNoSymlinks(dir) {
+  for (const entry of await readdir(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isSymbolicLink()) {
+      fail(`tasks/ 內不允許 symlink：${webPath(full)}`);
+    }
+    if (entry.isDirectory()) {
+      await assertNoSymlinks(full);
     }
   }
 }
 
-// cost = (input·單價 + output·單價 + cached·快取價) / 1M。cached 省略單價時退回 input 價。
-function computeCost(modelId, metrics) {
-  if (!metrics) return undefined;
-  const hasTokens = ['inputTokens', 'outputTokens', 'cachedInputTokens']
-    .some(k => typeof metrics[k] === 'number');
-  if (!hasTokens) return undefined;
+// 所有 media 一律指向 submission 資料夾內的檔案：不接受任何 URL scheme、
+// 不接受跳出資料夾的相對路徑。symlink 逃逸由 assertNoSymlinks 統一擋下。
+// 這讓「PR 看到的檔案 = gallery 實際載入的內容」對每一種 media 型別都成立。
+async function resolveMediaPath(submissionDir, value, trailingSlash = false) {
+  if (/^[a-z][a-z\d+.-]*:/i.test(value)) {
+    fail(`unsupported media reference "${value}": 請改用 submission 資料夾內的檔案路徑（不接受外部 URL）`);
+  }
+  // media 值只允許單純的相對路徑字元（英數字與 . _ - /）。任何其他字元在磁碟上或許
+  // 合法，但在瀏覽器 URL 裡可能被賦予特殊意義或正規化——# 開片段、? 開查詢、%2e 解碼成
+  // 點、\ 轉成 /——都能讓通過 stat 的路徑在瀏覽器端穿越出資料夾（例如 "..#x"、"%2e%2e/x"、
+  // "..\x"）。用白名單一次擋掉整個類別；真正的 ../ 穿越再交給下面的 isInsideDir。
+  if (!/^[A-Za-z0-9._/-]+$/.test(value)) {
+    fail(`media reference 只允許英數字與 . _ - /（避免瀏覽器 URL 正規化造成路徑穿越）：${value}`);
+  }
+  const absolutePath = path.resolve(submissionDir, value);
+  if (!isInsideDir(submissionDir, absolutePath)) {
+    fail(`media escapes the submission folder: ${value}`);
+  }
+  const stats = await stat(absolutePath).catch(() => fail(`missing media: ${value}`));
+  // 只有目標是資料夾時才補結尾斜線（iframe 載入整個資料夾）；指向檔案就保持檔案 URL，
+  // 避免 path:"index.html" 變成 "…/index.html/" 這種指錯的目錄式 URL。
+  return webPath(absolutePath, trailingSlash && stats.isDirectory());
+}
+
+// 依 schema/*.json 做宣告式驗證（required / type / enum / minimum...），
+// 把原本散在各處的手寫檢查收斂到單一份規格，並給貢獻者逐條錯誤訊息。
+function validateAgainstSchema(schema, data, label) {
+  const errors = validate(schema, data);
+  if (errors.length) {
+    fail(`${label}:\n  - ${errors.join('\n  - ')}`);
+  }
+}
+
+// 只有這三個欄位能實際換算 cost；totalTokens 只是總量、無法拆出單價。
+const COSTABLE_TOKEN_FIELDS = ['inputTokens', 'outputTokens', 'cachedInputTokens'];
+// gate 用的「有回報用量」判斷則納入 totalTokens：只給 totalTokens 也算「有用量卻無 cost」。
+const REPORTED_TOKEN_FIELDS = [...COSTABLE_TOKEN_FIELDS, 'totalTokens'];
+
+function hasTokens(metrics, fields) {
+  return !!metrics && fields.some(k => typeof metrics[k] === 'number');
+}
+
+// 這個 modelId 是否有可用單價（input/output 皆為數字）；有就回 rates，否則 undefined。
+// computeCost 與 uncosted 原因判斷共用同一份查詢，避免兩邊邏輯漂移。
+function priceFor(modelId) {
   const rates = modelId ? pricing[modelId] : undefined;
-  if (!rates) {
-    if (modelId) missingPricing.add(modelId);
-    return undefined;
-  }
-  if (typeof rates.input !== 'number' || typeof rates.output !== 'number') {
-    if (modelId) missingPricing.add(modelId);
-    return undefined;
-  }
+  return rates && typeof rates.input === 'number' && typeof rates.output === 'number' ? rates : undefined;
+}
+
+// cost = (input·單價 + output·單價 + cached·快取價) / 1M。cached 省略單價時退回 input 價。
+// 算不出來（沒可計價 token / 缺 modelId / pricing 未收錄 / 數值過大導致溢位）一律回
+// undefined，由呼叫端記錄，絕不讓 Infinity 進到 manifest（JSON.stringify 會變成 null）。
+function computeCost(modelId, metrics) {
+  if (!hasTokens(metrics, COSTABLE_TOKEN_FIELDS)) return undefined;
+  const rates = priceFor(modelId);
+  if (!rates) return undefined;
   const input = metrics.inputTokens || 0;
   const output = metrics.outputTokens || 0;
   const cached = metrics.cachedInputTokens || 0;
   const cachedRate = typeof rates.cachedInput === 'number' ? rates.cachedInput : rates.input;
   const usd = (input * rates.input + output * rates.output + cached * cachedRate) / 1e6;
-  return Math.round(usd * 1e6) / 1e6;
+  return Number.isFinite(usd) ? Math.round(usd * 1e6) / 1e6 : undefined;
 }
 
 async function buildSubmission(task, taskId, submissionId) {
+  assertSafeName(submissionId, 'submission');
   const submissionDir = path.join(tasksDir, taskId, submissionId);
   const metadataPath = path.join(submissionDir, 'submission.json');
   const metadata = await readJson(metadataPath);
   const label = webPath(metadataPath);
 
-  if (!metadata.provider) fail(`${label}: "provider" is required`);
-  if (!metadata.model) fail(`${label}: "model" is required`);
+  validateAgainstSchema(submissionSchema, metadata, label);
   if (metadata.client && !knownClients.has(metadata.client)) unknownClients.add(metadata.client);
-  validateMetrics(metadata.metrics, label);
 
   const type = metadata.type || task.type || 'iframe';
-  validateType(type, label);
 
   const submission = {
     ...metadata,
@@ -140,7 +178,17 @@ async function buildSubmission(task, taskId, submissionId) {
   };
 
   const cost = computeCost(metadata.modelId, metadata.metrics);
-  if (cost !== undefined) submission.costUsd = cost;
+  if (cost !== undefined) {
+    submission.costUsd = cost;
+  } else if (hasTokens(metadata.metrics, REPORTED_TOKEN_FIELDS)) {
+    // 有回報用量卻算不出 cost，記下確切原因讓 --strict 能擋，避免成本欄無聲變 —。
+    let reason;
+    if (!metadata.modelId) reason = '缺 modelId';
+    else if (!hasTokens(metadata.metrics, COSTABLE_TOKEN_FIELDS)) reason = '只提供 totalTokens，缺 input/output tokens';
+    else if (!priceFor(metadata.modelId)) reason = `modelId "${metadata.modelId}" 查無單價`;
+    else reason = 'token 數過大導致 cost 溢位（請確認 metrics 數值）';
+    uncosted.add(`${label}（${reason}）`);
+  }
 
   if (type === 'iframe') {
     // iframe 一律以 repo 內的檔案為準。禁止 src，否則它會在 UI 蓋掉 path
@@ -168,13 +216,14 @@ async function buildSubmission(task, taskId, submissionId) {
 }
 
 async function buildTask(taskId) {
+  assertSafeName(taskId, 'task');
   const taskDir = path.join(tasksDir, taskId);
   const metadataPath = path.join(taskDir, 'task.json');
   const metadata = await readJson(metadataPath);
+  // 先做 schema 驗證再取用欄位，否則 task.json 是 null / 非物件時會先丟出
+  // 原始 TypeError，繞過我們給貢獻者的清楚錯誤訊息。
+  validateAgainstSchema(taskSchema, metadata, webPath(metadataPath));
   const id = metadata.id || taskId;
-
-  if (!metadata.title) fail(`${webPath(metadataPath)}: "title" is required`);
-  validateType(metadata.type || 'iframe', webPath(metadataPath));
 
   const submissions = [];
   const submissionIds = new Set();
@@ -203,6 +252,10 @@ async function buildTask(taskId) {
 
 try {
   pricing = await loadPricing();
+  submissionSchema = await readJson(path.join(schemaDir, 'submission.schema.json'));
+  taskSchema = await readJson(path.join(schemaDir, 'task.schema.json'));
+  // 在讀取任何 task.json / submission.json 之前先擋掉 symlink，避免 readFile 跟著逃逸。
+  await assertNoSymlinks(tasksDir);
   const tasks = [];
   const ids = new Set();
 
@@ -232,8 +285,16 @@ try {
   if (unknownClients.size) {
     console.warn(`⚠ 未知 client（仍會顯示，請確認是否 typo）：${[...unknownClients].join(', ')}`);
   }
-  if (missingPricing.size) {
-    console.warn(`⚠ data/pricing.json 缺這些 modelId 的價格（costUsd 顯示 —）：${[...missingPricing].join(', ')}`);
+  if (uncosted.size) {
+    // 有 token metrics 卻算不出 cost → cost 欄會悄悄變 —。預設只 warn；
+    // 加 --strict（例如在 CI）則直接 fail，避免成本覆蓋率無聲流失。
+    const message = `這些 submission 有 token metrics 卻算不出 cost（costUsd 顯示 —）：\n  - ${[...uncosted].join('\n  - ')}`;
+    if (strict) {
+      console.error(`🚫 ${message}`);
+      process.exitCode = 1;
+    } else {
+      console.warn(`⚠ ${message}`);
+    }
   }
 } catch (error) {
   console.error(`Manifest build failed: ${error.message}`);

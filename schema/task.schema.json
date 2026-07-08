@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://f-e-u-e-r.github.io/ai-arena/schema/task.schema.json",
+  "title": "AI Arena task",
+  "description": "A challenge that submissions answer. Lives at tasks/<task>/task.json. Add \"$schema\": \"../../schema/task.schema.json\" to your file for live editor validation.",
+  "type": "object",
+  "required": ["title"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Optional pointer to this schema for editor tooling."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Task title shown in the sidebar and header."
+    },
+    "type": {
+      "enum": ["iframe", "image", "video", "model-viewer"],
+      "description": "Default media type inherited by submissions that don't set their own."
+    },
+    "runtime": {
+      "type": "string",
+      "description": "Optional runtime hint, e.g. webgl / unity — used to warn about WebGL context limits."
+    },
+    "prompt": {
+      "type": "string",
+      "description": "The full challenge prompt (rendered with a copy button)."
+    },
+    "description": {
+      "type": "string",
+      "description": "Short summary shown under the title."
+    },
+    "id": {
+      "type": "string",
+      "description": "Stable task id; defaults to the folder name. Used in the URL hash."
+    },
+    "order": {
+      "type": "number",
+      "description": "Sort order in the sidebar (ascending)."
+    }
+  }
+}
