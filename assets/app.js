@@ -77,8 +77,8 @@ function renderMain() {
 
   const subs = task.submissions || [];
   const grid = el('div', 'grid');
-  // 卡片只建立一次，之後 filter 用 hidden、sort 用 CSS order 就地調整——不重建 DOM，
-  // 已載入的 iframe demo 不會因為排序/篩選被卸載重跑。
+  // 卡片只建立一次並以 id 索引：filter 切換 hidden（不動位置、也不重載已載入的 demo），
+  // sort 重排 DOM 節點順序（視覺=focus 順序）。
   const cardById = new Map();
   subs.forEach(sub => {
     const card = makeCard(task, sub);
@@ -128,21 +128,37 @@ function chipLabel(sub, subs) {
 
 function sortValue(sub, key) {
   if (key === 'cost') return typeof sub.costUsd === 'number' ? sub.costUsd : undefined;
-  const field = { duration: 'durationMs', input: 'inputTokens', output: 'outputTokens', total: 'totalTokens' }[key];
-  const value = field && sub.metrics ? sub.metrics[field] : undefined;
+  const m = sub.metrics;
+  if (!m) return undefined;
+  if (key === 'total') {
+    // 沒有明確 totalTokens 時，用實際會計費的三個欄位相加當總量（否則此選項對現有資料無效）。
+    if (typeof m.totalTokens === 'number') return m.totalTokens;
+    const parts = ['inputTokens', 'outputTokens', 'cachedInputTokens']
+      .map(field => m[field])
+      .filter(value => typeof value === 'number');
+    return parts.length ? parts.reduce((sum, value) => sum + value, 0) : undefined;
+  }
+  const field = { duration: 'durationMs', input: 'inputTokens', output: 'outputTokens' }[key];
+  const value = field ? m[field] : undefined;
   return typeof value === 'number' ? value : undefined;
 }
 
-// 以 CSS order 排序（不動 DOM 位置），一律遞增、缺值排最後、平手退回原始順序。
+// 排序直接重排 DOM 節點順序（不是只改 CSS order），讓視覺順序 = tab / 螢幕報讀順序，
+// 避免鍵盤使用者排序後焦點在網格內亂跳（CSS order 只改視覺、不改 focus 順序）。
+// 代價：已載入的 demo 會在重排時重載——demo 本來就是點擊才載入，尚可接受。
+// 一律遞增、缺值排最後、平手退回原始順序。
 function applySort(subs, cardById, key) {
-  if (key === 'default') {
-    subs.forEach(sub => { cardById.get(sub.id).style.order = ''; });
-    return;
-  }
-  subs
-    .map((sub, index) => ({ id: sub.id, index, value: sortValue(sub, key) }))
-    .sort((a, b) => (a.value ?? Infinity) - (b.value ?? Infinity) || a.index - b.index)
-    .forEach((entry, position) => { cardById.get(entry.id).style.order = String(position); });
+  const firstCard = cardById.get(subs[0].id);
+  const grid = firstCard && firstCard.parentNode;
+  if (!grid) return;
+  const orderedIds = key === 'default'
+    ? subs.map(sub => sub.id)
+    : subs
+        .map((sub, index) => ({ id: sub.id, index, value: sortValue(sub, key) }))
+        .sort((a, b) => (a.value ?? Infinity) - (b.value ?? Infinity) || a.index - b.index)
+        .map(entry => entry.id);
+  // append 已在文件中的節點 = 移動到尾端；依序 append 即得排序後的 DOM 次序。
+  orderedIds.forEach(id => grid.append(cardById.get(id)));
 }
 
 function buildCompareControls(subs, cardById) {
