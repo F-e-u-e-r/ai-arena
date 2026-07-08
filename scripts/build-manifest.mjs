@@ -132,6 +132,19 @@ function validateAgainstSchema(schema, data, label) {
   }
 }
 
+// 只把 schema 認得的來源欄位投影進 manifest（保留原始欄位順序），順便濾掉純供編輯器
+// 用的 "$schema" 指標，避免它漏進 tasks.json。id / costUsd / submissions 這些衍生欄位
+// 由呼叫端在投影後再補上。
+function projectFields(metadata, schema) {
+  const props = schema.properties || {};
+  const out = {};
+  for (const key of Object.keys(metadata)) {
+    if (key === '$schema') continue;
+    if (Object.prototype.hasOwnProperty.call(props, key)) out[key] = metadata[key];
+  }
+  return out;
+}
+
 // 只有這三個欄位能實際換算 cost；totalTokens 只是總量、無法拆出單價。
 const COSTABLE_TOKEN_FIELDS = ['inputTokens', 'outputTokens', 'cachedInputTokens'];
 // gate 用的「有回報用量」判斷則納入 totalTokens：只給 totalTokens 也算「有用量卻無 cost」。
@@ -176,7 +189,7 @@ async function buildSubmission(task, taskId, submissionId) {
   const type = metadata.type || task.type || 'iframe';
 
   const submission = {
-    ...metadata,
+    ...projectFields(metadata, submissionSchema),
     id: metadata.id || submissionId
   };
 
@@ -250,7 +263,7 @@ async function buildTask(taskId) {
     a.id.localeCompare(b.id)
   );
 
-  return { ...metadata, id, submissions };
+  return { ...projectFields(metadata, taskSchema), id, submissions };
 }
 
 try {

@@ -5,6 +5,7 @@
   "description": "One model's output for a task. Lives at tasks/<task>/<submission>/submission.json. Add \"$schema\": \"../../../schema/submission.schema.json\" to your file for live editor validation.",
   "type": "object",
   "required": ["provider", "model"],
+  "additionalProperties": false,
   "properties": {
     "$schema": {
       "type": "string",
@@ -71,7 +72,8 @@
     },
     "metrics": {
       "type": "object",
-      "description": "Usage metrics. Every numeric field must be finite and non-negative. Extra fields are allowed but not validated.",
+      "description": "Usage metrics. Every numeric field must be finite and non-negative. Unknown fields are rejected — a mistyped metric (e.g. inputToken) would otherwise silently drop from the cost calculation.",
+      "additionalProperties": false,
       "properties": {
         "durationMs": { "type": "number", "minimum": 0 },
         "inputTokens": { "type": "number", "minimum": 0 },

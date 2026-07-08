@@ -69,13 +69,23 @@ export function validate(schema, data, path = '') {
   }
 
   if (typeOf(data) === 'object') {
+    const owns = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
     for (const key of schema.required || []) {
-      if (!(key in data)) errors.push(`${at}: 缺少必填欄位 "${key}"`);
+      if (!owns(data, key)) errors.push(`${at}: 缺少必填欄位 "${key}"`);
     }
     if (schema.properties) {
       for (const [key, subSchema] of Object.entries(schema.properties)) {
-        if (key in data) {
+        if (owns(data, key)) {
           errors.push(...validate(subSchema, data[key], path ? `${path}.${key}` : key));
+        }
+      }
+      // additionalProperties:false → 任何不在 properties 的欄位都報錯（抓 modleId 這類拼字）。
+      // 只支援布林 false；用 hasOwnProperty 比對，避免 constructor 等原型名被誤判為已知欄位。
+      if (schema.additionalProperties === false) {
+        for (const key of Object.keys(data)) {
+          if (!owns(schema.properties, key)) {
+            errors.push(`${at}: 未知欄位 "${key}"（可能拼錯？）`);
+          }
         }
       }
     }
