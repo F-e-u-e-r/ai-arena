@@ -30,7 +30,7 @@ jobs:
           node-version: "22"
 
       - name: Generate task manifest
-        run: node scripts/build-manifest.mjs
+        run: node scripts/build-manifest.mjs --strict
 
       - name: Verify generated manifest is committed
         run: |
@@ -63,7 +63,7 @@ jobs:
         uses: actions/configure-pages@v6
 
       - name: Generate task manifest
-        run: node scripts/build-manifest.mjs
+        run: node scripts/build-manifest.mjs --strict
 
       - name: Build static site
         run: |
