@@ -103,11 +103,12 @@ async function resolveMediaPath(submissionDir, value, trailingSlash = false) {
   if (/^[a-z][a-z\d+.-]*:/i.test(value)) {
     fail(`unsupported media reference "${value}": 請改用 submission 資料夾內的檔案路徑（不接受外部 URL）`);
   }
-  // 反斜線與百分比編碼在 POSIX 上是合法檔名字元，但瀏覽器 URL 會把 \ 正規化成 /、
-  // 把 %2e/%2f 正規化成 ./ /，變成繞過分段檢查的路徑穿越（..\x、%2e%2e/x）。
-  // 一律拒絕，強制用單純的 "/" 分隔相對路徑。
-  if (/[\\%]/.test(value)) {
-    fail(`media reference 不可含反斜線或百分比編碼（瀏覽器可能正規化成路徑穿越）：${value}`);
+  // media 值只允許單純的相對路徑字元（英數字與 . _ - /）。任何其他字元在磁碟上或許
+  // 合法，但在瀏覽器 URL 裡可能被賦予特殊意義或正規化——# 開片段、? 開查詢、%2e 解碼成
+  // 點、\ 轉成 /——都能讓通過 stat 的路徑在瀏覽器端穿越出資料夾（例如 "..#x"、"%2e%2e/x"、
+  // "..\x"）。用白名單一次擋掉整個類別；真正的 ../ 穿越再交給下面的 isInsideDir。
+  if (!/^[A-Za-z0-9._/-]+$/.test(value)) {
+    fail(`media reference 只允許英數字與 . _ - /（避免瀏覽器 URL 正規化造成路徑穿越）：${value}`);
   }
   const absolutePath = path.resolve(submissionDir, value);
   if (!isInsideDir(submissionDir, absolutePath)) {
