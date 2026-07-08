@@ -137,20 +137,26 @@ function hasTokens(metrics, fields) {
   return !!metrics && fields.some(k => typeof metrics[k] === 'number');
 }
 
+// 這個 modelId 是否有可用單價（input/output 皆為數字）；有就回 rates，否則 undefined。
+// computeCost 與 uncosted 原因判斷共用同一份查詢，避免兩邊邏輯漂移。
+function priceFor(modelId) {
+  const rates = modelId ? pricing[modelId] : undefined;
+  return rates && typeof rates.input === 'number' && typeof rates.output === 'number' ? rates : undefined;
+}
+
 // cost = (input·單價 + output·單價 + cached·快取價) / 1M。cached 省略單價時退回 input 價。
-// 算不出來（沒可計價 token / 缺 modelId / pricing 未收錄）一律回 undefined，由呼叫端記錄。
+// 算不出來（沒可計價 token / 缺 modelId / pricing 未收錄 / 數值過大導致溢位）一律回
+// undefined，由呼叫端記錄，絕不讓 Infinity 進到 manifest（JSON.stringify 會變成 null）。
 function computeCost(modelId, metrics) {
   if (!hasTokens(metrics, COSTABLE_TOKEN_FIELDS)) return undefined;
-  const rates = modelId ? pricing[modelId] : undefined;
-  if (!rates || typeof rates.input !== 'number' || typeof rates.output !== 'number') {
-    return undefined;
-  }
+  const rates = priceFor(modelId);
+  if (!rates) return undefined;
   const input = metrics.inputTokens || 0;
   const output = metrics.outputTokens || 0;
   const cached = metrics.cachedInputTokens || 0;
   const cachedRate = typeof rates.cachedInput === 'number' ? rates.cachedInput : rates.input;
   const usd = (input * rates.input + output * rates.output + cached * cachedRate) / 1e6;
-  return Math.round(usd * 1e6) / 1e6;
+  return Number.isFinite(usd) ? Math.round(usd * 1e6) / 1e6 : undefined;
 }
 
 async function buildSubmission(task, taskId, submissionId) {
@@ -178,7 +184,8 @@ async function buildSubmission(task, taskId, submissionId) {
     let reason;
     if (!metadata.modelId) reason = '缺 modelId';
     else if (!hasTokens(metadata.metrics, COSTABLE_TOKEN_FIELDS)) reason = '只提供 totalTokens，缺 input/output tokens';
-    else reason = `modelId "${metadata.modelId}" 查無單價`;
+    else if (!priceFor(metadata.modelId)) reason = `modelId "${metadata.modelId}" 查無單價`;
+    else reason = 'token 數過大導致 cost 溢位（請確認 metrics 數值）';
     uncosted.add(`${label}（${reason}）`);
   }
 
