@@ -2,6 +2,7 @@ import { readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validate } from './lib/validate-json-schema.mjs';
+import { normalizePricing } from './lib/pricing.mjs';
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const tasksDir = path.join(rootDir, 'tasks');
@@ -45,7 +46,9 @@ async function loadPricing() {
     return {};
   }
   const data = await readJson(pricingPath);
-  return data.models && typeof data.models === 'object' ? data.models : {};
+  const models = data.models && typeof data.models === 'object' ? data.models : {};
+  // 正規化：讓 aliasFor 的短 id 與 canonical id 都解析到同一份單價（見 lib/pricing.mjs）。
+  return normalizePricing(models);
 }
 
 async function directories(parent) {

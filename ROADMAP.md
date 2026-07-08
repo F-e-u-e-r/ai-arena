@@ -34,8 +34,15 @@ Security & data-integrity hardening (from the Fable code review):
   truth for the contribution contract, enforced at build time by a tiny
   zero-dependency validator (`scripts/lib/validate-json-schema.mjs`). Editors
   that honor `$schema` give contributors live validation.
-- **Pricing-coverage gate.** `build-manifest.mjs --strict` fails when a
-  submission has token metrics but no resolvable price (default stays warn-only).
+- **Pricing-coverage gate (on in CI).** `build-manifest.mjs --strict` fails when
+  a submission has token metrics but no resolvable price; both the `validate` and
+  `deploy` CI jobs now run with `--strict`, so a new model without a price fails
+  the PR instead of silently showing `—`.
+- **modelId normalization.** `scripts/lib/pricing.mjs` `normalizePricing()`
+  resolves `aliasFor` pairs so a short id (`claude-fable-5`) and its canonical
+  form (`anthropic/claude-fable-5`) map to one validated rates object, in either
+  direction. Conflicting duplicate rates, self-aliases, and alias chains/cycles
+  fail the build instead of silently picking one.
 - **All media confined to the submission folder.** image/video/model-viewer
   `src`/`poster` must resolve to in-repo files inside the submitting folder —
   no external URLs, no folder escape, symlink-safe — so *PR-visible ==
@@ -47,17 +54,7 @@ Security & data-integrity hardening (from the Fable code review):
 
 ## 🔜 Now (finish the contribution-pipeline hardening)
 
-1. **Turn on the pricing gate in CI.** Add `--strict` to the `validate` job once
-   modelId coverage is confirmed, so a new model without a price fails loudly
-   instead of silently showing `—`.
-   - *Accept:* a submission with tokens + an unpriced `modelId` fails CI with a
-     clear message naming the id.
-2. **modelId normalization.** Resolve `provider/model` ↔ short-id aliases from a
-   single table (pricing.json already carries `aliasFor`) so cost lookup is not
-   position-sensitive.
-   - *Accept:* `claude-fable-5` and `anthropic/claude-fable-5` resolve to the
-     same price via one code path; a unit test covers both.
-3. **Tighten the schema + surface it to contributors.** Consider
+1. **Tighten the schema + surface it to contributors.** Consider
    `additionalProperties:false` (with a friendly "unknown field / likely typo"
    message) — this also requires extending `validate-json-schema.mjs`, which
    currently ignores that keyword — and document `"$schema": "…"` usage in
