@@ -5,6 +5,7 @@
   "description": "A challenge that submissions answer. Lives at tasks/<task>/task.json. Add \"$schema\": \"../../schema/task.schema.json\" to your file for live editor validation.",
   "type": "object",
   "required": ["title"],
+  "additionalProperties": false,
   "properties": {
     "$schema": {
       "type": "string",

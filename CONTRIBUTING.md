@@ -11,14 +11,16 @@ Contributions are welcome. The usual flow is: fork the repository, add your gene
 3. Create your submission folder: `tasks/<task-id>/<your-submission-id>/`.
    - Add `index.html` for your generated output.
    - Add `submission.json` for metadata.
-4. Run `node scripts/build-manifest.mjs` to update `tasks.json`.
+4. Run `node scripts/build-manifest.mjs --strict` to update `tasks.json` (the `--strict` flag mirrors CI and flags pricing/field problems early).
 5. Commit your files, including `tasks.json`, and open a PR. CI validates the metadata and a maintainer reviews before merge.
 
 Recommended submission-id format: `<model>-<effort>-<yourhandle>`, for example `gpt-5-high-octocat`.
 
 ## `submission.json` Fields
 
-Only `provider` and `model` are required. Missing optional values are shown as a dash on the site.
+Only `provider` and `model` are required. Missing optional values are shown as a dash on the site. Unknown fields are rejected by the build, so a typo like `modleId` fails fast instead of being silently ignored.
+
+> **Tip:** add `"$schema": "../../../schema/submission.schema.json"` as the first line for live validation and autocomplete in editors that understand JSON Schema. It is stripped from the generated `tasks.json`.
 
 ```json
 {
@@ -43,7 +45,7 @@ Only `provider` and `model` are required. Missing optional values are shown as a
 | --- | --- |
 | `provider` | Required. Lowercase provider id, such as `openai`, `anthropic`, `google`, `xai`, or `deepseek`. |
 | `model` | Required. Display name, such as `GPT-5` or `Opus 4.8`. |
-| `modelId` | Exact model id returned by the API. Used to look up pricing in `data/pricing.json`. Strongly recommended. |
+| `modelId` | Exact model id returned by the API. Used to look up pricing in `data/pricing.json`. If you include token metrics, this must resolve to a price or CI fails (see [pricing](#metrics-fields)); short and `provider/model` forms both resolve via `aliasFor`. |
 | `effort` | Thinking effort, such as `high`, `medium`, or `low`. Free-form string. |
 | `client` | Tool used to generate the output, such as `claude-code`, `codex`, `opencode`, `kiro`, `cursor`, or `api`. Free-form string. |
 | `author` | Your GitHub handle. The site links this to `https://github.com/<author>`. |
@@ -60,13 +62,15 @@ Only `provider` and `model` are required. Missing optional values are shown as a
 | `outputTokens` | Output tokens. |
 | `cachedInputTokens` | Optional cached-input tokens, billed at a lower cached rate when available. |
 
+Only these metric fields are recognized; an unknown one (e.g. a mistyped `inputToken`) fails the build rather than silently dropping from the cost.
+
 Cost is calculated automatically:
 
 ```text
 costUsd = (inputTokens * input price + outputTokens * output price + cachedInputTokens * cached-input price) / 1,000,000
 ```
 
-If `data/pricing.json` does not include your `modelId`, cost is shown as a dash. Add the pricing in the same PR if you can, including `source` and `verifiedAt`.
+CI runs the build with `--strict`: if a submission has token metrics but `data/pricing.json` has no resolvable price for its `modelId`, **the build fails** — cost cannot silently become a dash. Add the pricing in the same PR (including `source` and `verifiedAt`), or omit the token metrics. Submissions with no metrics are unaffected.
 
 ## How to Get Time and Token Metrics
 
@@ -88,7 +92,7 @@ Metrics are optional. Submissions without metrics are still welcome.
 
 ## Add a New Task
 
-Create `tasks/<task-id>/task.json`:
+Create `tasks/<task-id>/task.json` (optionally add `"$schema": "../../schema/task.schema.json"` for editor validation):
 
 ```json
 {
@@ -110,11 +114,11 @@ Everything under `tasks/`, plus `task.json` and `submission.json`, is published 
 ## Local Validation
 
 ```bash
-node scripts/build-manifest.mjs
+node scripts/build-manifest.mjs --strict
 node scripts/scan-secrets.mjs
 python3 -m http.server 8000
 ```
 
-Then open `http://localhost:8000` and verify your output loads.
+Then open `http://localhost:8000` and verify your output loads. `--strict` runs the same checks as CI, so unknown fields and missing pricing fail locally too.
 
 `tasks.json` is generated. Commit it, but do not edit it by hand. PR CI reruns the build and fails if the committed manifest is stale.

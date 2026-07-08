@@ -5,6 +5,7 @@
   "description": "One model's output for a task. Lives at tasks/<task>/<submission>/submission.json. Add \"$schema\": \"../../../schema/submission.schema.json\" to your file for live editor validation.",
   "type": "object",
   "required": ["provider", "model"],
+  "additionalProperties": false,
   "properties": {
     "$schema": {
       "type": "string",
@@ -45,6 +46,10 @@
       "enum": ["iframe", "image", "video", "model-viewer"],
       "description": "Media type. Defaults to the task's type when omitted."
     },
+    "runtime": {
+      "type": "string",
+      "description": "Optional runtime hint (e.g. webgl / unity) overriding the task's runtime — drives the WebGL context-limit warning."
+    },
     "path": {
       "type": "string",
       "description": "iframe only: folder or index.html to load. Defaults to the submission folder's index.html."
@@ -71,7 +76,8 @@
     },
     "metrics": {
       "type": "object",
-      "description": "Usage metrics. Every numeric field must be finite and non-negative. Extra fields are allowed but not validated.",
+      "description": "Usage metrics. Every numeric field must be finite and non-negative. Unknown fields are rejected — a mistyped metric (e.g. inputToken) would otherwise silently drop from the cost calculation.",
+      "additionalProperties": false,
       "properties": {
         "durationMs": { "type": "number", "minimum": 0 },
         "inputTokens": { "type": "number", "minimum": 0 },
