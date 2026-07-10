@@ -1,0 +1,110 @@
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #2a2418;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+#world {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+#controls {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  padding: 4px 6px;
+  pointer-events: none;
+}
+
+#controls > * { pointer-events: auto; }
+
+#ctrl-toggle {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: rgba(40, 32, 20, 0.9);
+  color: #f0e0c0;
+  font-size: 14px;
+  cursor: pointer;
+  margin-bottom: 4px;
+}
+
+#drawer {
+  width: 100%;
+  max-width: 100%;
+  background: rgba(36, 28, 18, 0.92);
+  border: 1px solid rgba(255, 220, 160, 0.15);
+  border-radius: 8px 8px 0 0;
+  padding: 6px 8px;
+  transition: max-height 0.25s, opacity 0.2s;
+  max-height: 120px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+#drawer.collapsed {
+  max-height: 0;
+  opacity: 0;
+  padding: 0;
+  border: none;
+  pointer-events: none;
+}
+
+.section {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  flex-wrap: nowrap;
+}
+
+.tag {
+  font-size: 9px;
+  color: #b8a070;
+  min-width: 42px;
+  flex-shrink: 0;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.chips button {
+  font-size: 8px;
+  padding: 3px 6px;
+  border: 1px solid rgba(255, 220, 160, 0.2);
+  border-radius: 10px;
+  background: rgba(60, 48, 28, 0.85);
+  color: #f5e8c8;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.chips button.active {
+  background: #8a6830;
+  border-color: #d4a850;
+}
+
+.debug {
+  font-size: 8px;
+  color: #908060;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 400px) {
+  .chips button { font-size: 7px; padding: 2px 5px; }
+}

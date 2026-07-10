@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Savannah Field · Ecosystem</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="field" aria-label="African savannah ecosystem">
+    <canvas id="canvas"></canvas>
+    <header class="hud">
+      <div class="identity"><span class="sun-mark">◒</span><div><span class="eyebrow">WILDLIFE OBSERVATORY · 03</span><h1>SAVANNAH FIELD</h1></div></div>
+      <div class="readout"><span class="live"></span><span id="seasonReadout">DRY SEASON</span><span class="slash">/</span><span id="weatherReadout">SUNNY</span></div>
+    </header>
+    <div class="hint">LIVING LANDSCAPE <span id="animalReadout">06 ANIMALS · 0 PARTICLES</span></div>
+    <section class="controls" aria-label="Weather and season controls">
+      <div class="weather-buttons" role="group" aria-label="Weather">
+        <button class="weather active" data-weather="sunny">SUN</button>
+        <button class="weather" data-weather="rain">RAIN</button>
+        <button class="weather" data-weather="heavy-rain">HEAVY</button>
+        <button class="weather" data-weather="snow">SNOW</button>
+        <button class="weather" data-weather="thunderstorm">STORM</button>
+        <button class="weather" data-weather="tornado">TORNADO</button>
+      </div>
+      <button id="seasonButton" class="season-button">DRY SEASON <span>↻</span></button>
+    </section>
+    <div class="vignette"></div>
+  </main>
+  <script src="main.js"></script>
+</body>
+</html>

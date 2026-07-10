@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1b3b45">
+  <title>London Weather Works</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="app">
+    <canvas id="scene" aria-label="Interactive floating London island"></canvas>
+
+    <header class="identity" aria-label="London Weather Works">
+      <span>London</span>
+      <strong>Weather Works</strong>
+    </header>
+
+    <div class="time-chip" aria-live="polite">
+      <i id="time-orb" aria-hidden="true"></i>
+      <span id="time-label">Daybreak</span>
+      <span id="time-value">06:00</span>
+    </div>
+
+    <button id="reset-view" class="icon-button" type="button" aria-label="Reset view" title="Reset view">
+      <span aria-hidden="true">&#8634;</span>
+    </button>
+
+    <nav class="season-control" aria-label="Choose a season">
+      <button type="button" data-season="0" aria-pressed="true"><i class="spring"></i><span>Spring</span><b>SP</b></button>
+      <button type="button" data-season="1" aria-pressed="false"><i class="summer"></i><span>Summer</span><b>SU</b></button>
+      <button type="button" data-season="2" aria-pressed="false"><i class="autumn"></i><span>Autumn</span><b>AU</b></button>
+      <button type="button" data-season="3" aria-pressed="false"><i class="winter"></i><span>Winter</span><b>WI</b></button>
+    </nav>
+
+    <div class="weather-status" aria-live="polite">
+      <span id="season-label">Spring mist</span>
+      <i></i>
+      <span id="particle-count">36 droplets</span>
+    </div>
+
+    <div id="loading" role="status">
+      <span></span>
+      <b>Raising London</b>
+    </div>
+
+    <div id="error" hidden>
+      <strong>WebGL unavailable</strong>
+      <span>This scene needs a WebGL-enabled browser.</span>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>

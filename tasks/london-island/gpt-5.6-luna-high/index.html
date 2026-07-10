@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>London Island · Four Seasons</title>
+  <link rel="stylesheet" href="style.css" />
+  <script type="importmap">
+    { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+  </script>
+</head>
+<body>
+  <main class="experience" aria-label="漂浮倫敦島四季體驗">
+    <div id="scene" class="scene"></div>
+    <header class="hud">
+      <div class="brand"><span class="mark">✦</span><div><p class="kicker">SKYLINE STUDIES · 01</p><h1>LONDON ISLAND</h1></div></div>
+      <div class="status"><span class="pulse"></span><span id="timeLabel">DAYLIGHT</span><span class="dot">·</span><span id="seasonLabel">SPRING</span></div>
+    </header>
+    <aside class="season-panel" aria-label="季節控制">
+      <p class="panel-label">WEATHER SHIFT</p>
+      <div class="season-buttons" role="group">
+        <button class="season active" data-season="spring"><i class="spring-dot"></i>Spring</button>
+        <button class="season" data-season="summer"><i class="summer-dot"></i>Summer</button>
+        <button class="season" data-season="autumn"><i class="autumn-dot"></i>Autumn</button>
+        <button class="season" data-season="winter"><i class="winter-dot"></i>Winter</button>
+      </div>
+      <p class="hint">15 sec daylight cycle <span>↔ drag to orbit</span></p>
+    </aside>
+    <div class="location-tag"><span>51.5074° N</span><span>0.1278° W</span></div>
+    <div class="help">LIGHTS FOLLOW THE SUN</div>
+    <div class="vignette"></div>
+  </main>
+  <script type="module" src="main.js"></script>
+</body>
+</html>

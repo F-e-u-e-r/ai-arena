@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>非洲大草原生態系統 · Savannah Ecosystem</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="c"></canvas>
+    <div id="hud" class="hud">
+      <div class="top">
+        <span class="badge" id="season-badge">WET</span>
+        <span class="badge weather" id="weather-badge">SUNNY</span>
+        <span class="stats" id="stats">—</span>
+      </div>
+      <div class="bar" id="control-bar">
+        <div class="group weather-group" role="group" aria-label="Weather">
+          <button type="button" data-weather="sunny" class="active" title="Sunny">☀️</button>
+          <button type="button" data-weather="rain" title="Rain">🌧️</button>
+          <button type="button" data-weather="heavy" title="Heavy Rain">💧</button>
+          <button type="button" data-weather="snow" title="Snow">❄️</button>
+          <button type="button" data-weather="thunder" title="Thunderstorm">⚡</button>
+          <button type="button" data-weather="tornado" title="Tornado">🌪️</button>
+        </div>
+        <button type="button" id="btn-season" class="season-btn" title="Toggle season">🌿 Wet</button>
+      </div>
+    </div>
+  </div>
+  <script src="main.js"></script>
+</body>
+</html>

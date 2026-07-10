@@ -1,0 +1,11 @@
+{
+  "$schema": "../../../schema/submission.schema.json",
+  "provider": "openai",
+  "model": "GPT-5.6 Terra",
+  "modelId": "gpt-5.6-terra",
+  "effort": "max",
+  "client": "codex",
+  "author": "F-e-u-e-r",
+  "generatedAt": "2026-07-11T00:00:00Z",
+  "order": 10
+}

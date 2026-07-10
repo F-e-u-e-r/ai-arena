@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Tokyo Island · Maple Sky</title>
+  <link rel="stylesheet" href="style.css" />
+  <script type="importmap">
+    { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+  </script>
+</head>
+<body>
+  <main class="experience" aria-label="漂浮東京島楓葉天空體驗">
+    <div id="scene" class="scene"></div>
+    <header class="hud">
+      <div class="brand"><span class="mark">鳥</span><div><p class="kicker">SKYLINE STUDIES · 02</p><h1>TOKYO ISLAND</h1></div></div>
+      <div class="status"><span class="pulse"></span><span id="timeLabel">DAYLIGHT</span><span class="dot">·</span><span>MAPLE SKY</span></div>
+    </header>
+    <aside class="info-panel">
+      <span class="jp">東京 / TOKYO</span>
+      <span class="note">an island between seasons</span>
+    </aside>
+    <div class="controls"><button id="pause">PAUSE SKY</button><span>15 SEC CYCLE</span><span>↔ DRAG TO ORBIT</span></div>
+    <div class="vignette"></div>
+  </main>
+  <script type="module" src="main.js"></script>
+</body>
+</html>

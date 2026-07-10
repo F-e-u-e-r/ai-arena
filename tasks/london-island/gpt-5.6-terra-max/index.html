@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#172945">
+    <title>London Sky Isle</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <main class="app" aria-label="Animated floating London island">
+      <canvas id="scene" aria-label="Floating London island. Drag horizontally to orbit the camera."></canvas>
+
+      <header class="hud">
+        <div class="brand"><i></i><span>LONDON SKY ISLE</span><b id="day-phase">DAY</b></div>
+        <div class="drag-hint" aria-hidden="true">↔ DRAG</div>
+      </header>
+
+      <div class="status" aria-live="polite">
+        <span id="season-name">SPRING · MIST</span>
+        <span id="particle-count">0 FX</span>
+      </div>
+
+      <nav class="season-bar" aria-label="Choose a season">
+        <button class="active" type="button" data-season="0" aria-pressed="true">SPR</button>
+        <button type="button" data-season="1" aria-pressed="false">SUM</button>
+        <button type="button" data-season="2" aria-pressed="false">AUT</button>
+        <button type="button" data-season="3" aria-pressed="false">WIN</button>
+      </nav>
+    </main>
+
+    <script type="module" src="main.js"></script>
+  </body>
+</html>

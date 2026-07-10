@@ -106,6 +106,8 @@ Each card shows four comparable values: time, input tokens, output tokens, and c
 - If a `modelId` is not in the pricing file, cost is shown as a dash. Add that model's pricing in the same PR if possible.
 - Claude Code users can run `node scripts/metrics-from-claude-code.mjs <session.jsonl>` to generate a ready-to-paste `metrics` block.
 
+> **Metrics completeness:** Not every submission ships full time/token metrics, and some models are not yet in `data/pricing.json`. For those, the time, token, and cost cells show a dash (`—`). Treat the gallery primarily as a comparison of **output quality** — the per-submission time / token / cost data is **not comprehensive**.
+
 Security note: files under `tasks/`, `task.json`, `submission.json`, and regular assets are published as public website content. Do not commit API keys, tokens, `.env` files, private prompts, internal logs, or other sensitive data.
 
 ## Add a New Task

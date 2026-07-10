@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#6a5228">
+    <title>Savannah Field Notes</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <main class="app" aria-label="Animated African savannah ecosystem">
+      <canvas id="world" aria-label="Animated savannah with lions, elephants, leopards and weather"></canvas>
+
+      <header class="hud">
+        <div class="mark"><i></i><span>SAVANNAH / FIELD NOTES</span></div>
+        <div id="weather-name">SUNNY · DRY</div>
+      </header>
+
+      <div class="wildlife-count"><span>06</span> WILDLIFE</div>
+
+      <nav class="weather-controls" aria-label="Weather controls">
+        <button class="active" type="button" data-weather="sunny" aria-label="Sunny" title="Sunny">☀</button>
+        <button type="button" data-weather="rain" aria-label="Rain" title="Rain">☂</button>
+        <button type="button" data-weather="heavy" aria-label="Heavy rain" title="Heavy rain">☔</button>
+        <button type="button" data-weather="snow" aria-label="Snow" title="Snow">✦</button>
+        <button type="button" data-weather="storm" aria-label="Thunderstorm" title="Thunderstorm">ϟ</button>
+        <button type="button" data-weather="tornado" aria-label="Tornado" title="Tornado">◎</button>
+        <button class="season-toggle" id="season-toggle" type="button" aria-label="Toggle dry or wet season">DRY</button>
+      </nav>
+    </main>
+
+    <script src="main.js"></script>
+  </body>
+</html>

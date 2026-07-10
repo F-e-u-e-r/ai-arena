@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Savannah Ecosystem — Composer 2.5</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="world"></canvas>
+  <div id="controls">
+    <button id="ctrl-toggle" type="button" aria-label="Controls">☰</button>
+    <div id="drawer" class="collapsed">
+      <div class="section">
+        <span class="tag">Weather</span>
+        <div id="weather-btns" class="chips"></div>
+      </div>
+      <div class="section">
+        <span class="tag">Season</span>
+        <div id="season-btns" class="chips"></div>
+      </div>
+      <div id="debug" class="debug"></div>
+    </div>
+  </div>
+  <script type="module" src="main.js"></script>
+</body>
+</html>

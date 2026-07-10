@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Tokyo in the Falling Red</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="app" aria-label="漂浮東京島互動場景">
+    <canvas id="scene"></canvas>
+    <header class="title">
+      <span>浮世 · SKY GARDEN 35°N</span>
+      <h1>東京、<i>紅葉の中</i></h1>
+      <p>Tokyo in the falling red</p>
+    </header>
+    <button id="timeJump" class="time" aria-label="快轉日夜"><b id="timeIcon">☀</b><span id="clock">08:00</span><i></i><em>15 SEC LOOP</em></button>
+    <div class="drag" id="drag"><span>↔</span><b>DRAG TO ORBIT</b></div>
+    <div class="landmarks" aria-hidden="true"><span>富士山</span><i></i><span>東京タワー</span><i></i><span>鳥居</span></div>
+    <div id="loading" class="loading"><i></i><span>東京を描いています</span></div>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>

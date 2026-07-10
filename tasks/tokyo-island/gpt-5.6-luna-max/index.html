@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Tokyo Island / Maple Hour</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+</head>
+<body>
+  <main id="stage" aria-label="Animated floating Tokyo island">
+    <div class="hud">
+      <div class="topline">
+        <div class="brand">
+          <span class="kicker">ISLAND ARCHIVE / 02</span>
+          <strong>Tokyo <em>maple hour</em></strong>
+        </div>
+        <div class="status" aria-live="polite">
+          <span class="status-light"></span>
+          <span id="time-name">DAYLIGHT</span>
+          <span class="divider">/</span>
+          <span id="leaf-count">180 LEAVES</span>
+        </div>
+      </div>
+      <div class="bottomline">
+        <div class="legend"><span class="legend-swatch"></span> TOKYO TOWER · FUJI · TORII</div>
+        <button id="cycle-toggle" class="mode-button" type="button">CYCLE · ON</button>
+        <span class="gesture-hint">DRAG TO ORBIT · SPACE PAUSES</span>
+      </div>
+    </div>
+    <div id="loading" class="loading">WARMING THE CITY LIGHTS<span>···</span></div>
+  </main>
+  <script src="main.js"></script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>London in the Clouds</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+</head>
+<body>
+  <main class="app-shell">
+    <section id="stage" aria-label="Animated floating London island">
+      <div class="hud">
+        <div class="topline">
+          <div class="brand">
+            <span class="kicker">SKYLINE STUDIES / 01</span>
+            <strong>London <em>in the clouds</em></strong>
+          </div>
+          <div class="status" aria-live="polite">
+            <span id="season-dot" class="season-dot"></span>
+            <span id="season-name">SPRING</span>
+            <span class="divider">/</span>
+            <span id="time-name">DAYLIGHT</span>
+          </div>
+        </div>
+
+        <div class="bottomline">
+          <div class="season-picker" aria-label="Choose season">
+            <button class="season-button active" data-season="0" title="Spring">SPR</button>
+            <button class="season-button" data-season="1" title="Summer">SUM</button>
+            <button class="season-button" data-season="2" title="Autumn">AUT</button>
+            <button class="season-button" data-season="3" title="Winter">WIN</button>
+          </div>
+          <button id="auto-toggle" class="mode-button" type="button">AUTO · ON</button>
+          <span class="gesture-hint">DRAG TO ORBIT · 1—4 SEASONS</span>
+        </div>
+      </div>
+      <div class="loading" id="loading">BUILDING THE SKYLINE<span>···</span></div>
+    </section>
+  </main>
+  <script src="main.js"></script>
+</body>
+</html>

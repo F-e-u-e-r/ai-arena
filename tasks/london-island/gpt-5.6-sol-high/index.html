@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>London Above the Clouds</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="app" aria-label="漂浮倫敦島互動場景">
+    <canvas id="scene"></canvas>
+    <header class="brand">
+      <span class="eyebrow">POSTCARD · 51.5072° N</span>
+      <h1>London <i>Above</i></h1>
+      <p id="status">春霧 · Morning tide</p>
+    </header>
+    <div class="hint" id="hint"><span>↔</span> 拖曳環遊小島</div>
+    <nav class="season-picker" aria-label="季節選擇">
+      <button data-season="0" class="active" aria-label="春季"><b>✿</b><span>SPRING</span></button>
+      <button data-season="1" aria-label="夏季"><b>☀</b><span>SUMMER</span></button>
+      <button data-season="2" aria-label="秋季"><b>◆</b><span>AUTUMN</span></button>
+      <button data-season="3" aria-label="冬季"><b>❄</b><span>WINTER</span></button>
+    </nav>
+    <div class="telemetry"><span id="clock">08:00</span><i></i><span id="fps">60 FPS</span></div>
+    <div class="loading" id="loading"><span></span><em>Preparing the skyline</em></div>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>

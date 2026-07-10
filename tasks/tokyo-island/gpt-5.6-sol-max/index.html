@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#13283a">
+  <title>Tokyo Sky Garden</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="app">
+    <canvas id="scene" aria-label="Interactive floating Tokyo island"></canvas>
+
+    <header class="identity" aria-label="Tokyo Sky Garden">
+      <span>Tokyo</span>
+      <strong>Sky Garden</strong>
+    </header>
+
+    <div class="time-chip" aria-live="polite">
+      <i id="time-orb" aria-hidden="true"></i>
+      <span id="time-label">Daybreak</span>
+      <span id="time-value">06:00</span>
+    </div>
+
+    <button id="reset-view" class="icon-button" type="button" aria-label="Reset view" title="Reset view">
+      <span aria-hidden="true">&#8634;</span>
+    </button>
+
+    <div class="leaf-status" aria-label="Maple leaf particle count">
+      <i aria-hidden="true"></i>
+      <span id="leaf-count">120 maple leaves</span>
+    </div>
+
+    <div id="loading" role="status">
+      <span></span>
+      <b>Building Tokyo</b>
+    </div>
+
+    <div id="error" hidden>
+      <strong>WebGL unavailable</strong>
+      <span>This scene needs a WebGL-enabled browser.</span>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>

@@ -1,0 +1,216 @@
+:root {
+  color-scheme: dark;
+  --ink: #eef7f2;
+  --muted: rgba(238, 247, 242, .64);
+  --line: rgba(238, 247, 242, .18);
+  --glass: rgba(11, 26, 40, .52);
+}
+
+* { box-sizing: border-box; }
+
+html, body { width: 100%; height: 100%; margin: 0; }
+
+body {
+  overflow: hidden;
+  background: #0b1420;
+  color: var(--ink);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+button { font: inherit; }
+
+.app-shell,
+#stage {
+  width: 100%;
+  height: 100%;
+}
+
+#stage {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background: #10263b;
+}
+
+#stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: linear-gradient(115deg, rgba(255,255,255,.08), transparent 32%, transparent 72%, rgba(5,13,25,.18));
+  mix-blend-mode: screen;
+}
+
+#stage canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.hud {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: clamp(10px, 2.8vw, 26px);
+  pointer-events: none;
+}
+
+.topline,
+.bottomline {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.topline { justify-content: space-between; }
+
+.brand,
+.status,
+.season-picker,
+.mode-button {
+  border: 1px solid var(--line);
+  background: var(--glass);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .12);
+  backdrop-filter: blur(12px);
+}
+
+.brand {
+  padding: 8px 12px 9px;
+  border-radius: 13px;
+  min-width: 140px;
+}
+
+.kicker {
+  display: block;
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .2em;
+  line-height: 1.2;
+}
+
+.brand strong {
+  display: block;
+  margin-top: 2px;
+  font-family: Georgia, serif;
+  font-size: clamp(15px, 2.4vw, 23px);
+  font-weight: 500;
+  letter-spacing: -.035em;
+  line-height: 1.05;
+}
+
+.brand em {
+  color: #ffd28a;
+  font-style: normal;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 11px;
+  border-radius: 99px;
+  color: rgba(255,255,255,.9);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .13em;
+  white-space: nowrap;
+}
+
+.season-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #9bd3c0;
+  box-shadow: 0 0 12px currentColor;
+}
+
+.divider { color: rgba(255,255,255,.35); }
+
+.bottomline { align-items: flex-end; }
+
+.season-picker {
+  display: flex;
+  padding: 3px;
+  border-radius: 11px;
+  pointer-events: auto;
+}
+
+.season-button,
+.mode-button {
+  border: 0;
+  color: rgba(255,255,255,.62);
+  cursor: pointer;
+  transition: color .2s ease, background .2s ease, transform .2s ease;
+}
+
+.season-button {
+  min-width: 35px;
+  padding: 6px 7px;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+
+.season-button:hover,
+.season-button:focus-visible { color: #fff; background: rgba(255,255,255,.1); }
+
+.season-button.active {
+  color: #112435;
+  background: #e3f2e7;
+}
+
+.mode-button {
+  padding: 10px 12px;
+  border-radius: 10px;
+  pointer-events: auto;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .1em;
+}
+
+.mode-button:hover,
+.mode-button:focus-visible { color: #fff; background: rgba(255,255,255,.12); }
+
+.gesture-hint {
+  margin-left: auto;
+  padding-bottom: 9px;
+  color: rgba(255,255,255,.55);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  white-space: nowrap;
+}
+
+.loading {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  z-index: 3;
+  transform: translate(-50%, -50%);
+  color: rgba(255,255,255,.82);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .17em;
+  transition: opacity .7s ease;
+}
+
+.loading span { color: #ffd28a; }
+
+@media (max-width: 520px) {
+  .hud { padding: 9px; }
+  .kicker, .gesture-hint { display: none; }
+  .brand { min-width: 0; padding: 7px 9px; }
+  .brand strong { font-size: 15px; }
+  .status { padding: 8px 9px; font-size: 8px; gap: 5px; }
+  .bottomline { gap: 6px; }
+  .season-button { min-width: 29px; padding: 6px 4px; font-size: 8px; }
+  .mode-button { padding: 9px 8px; font-size: 8px; }
+}
