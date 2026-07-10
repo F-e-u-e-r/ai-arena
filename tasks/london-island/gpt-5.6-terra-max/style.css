@@ -1,0 +1,187 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #081322;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+.app {
+  width: 100%;
+  height: 100%;
+  min-height: 200px;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  background: #081322;
+}
+
+.app {
+  position: relative;
+  isolation: isolate;
+}
+
+#scene {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: grab;
+}
+
+#scene:active {
+  cursor: grabbing;
+}
+
+.hud,
+.status,
+.season-bar {
+  position: absolute;
+  z-index: 2;
+  user-select: none;
+  pointer-events: none;
+}
+
+.hud {
+  top: 9px;
+  right: 10px;
+  left: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: rgba(247, 251, 255, 0.9);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-shadow: 0 1px 10px rgba(6, 20, 35, 0.65);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.brand i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #f8c86d;
+  box-shadow: 0 0 9px #f8c86d;
+}
+
+.brand b {
+  padding-left: 5px;
+  color: #ffe1a6;
+  font-size: 7px;
+  letter-spacing: 0.11em;
+}
+
+.drag-hint {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 8px;
+  letter-spacing: 0.12em;
+}
+
+.status {
+  bottom: 10px;
+  left: 10px;
+  display: flex;
+  gap: 7px;
+  color: rgba(255, 255, 255, 0.91);
+  font-size: 8px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6);
+}
+
+.status span + span {
+  color: rgba(220, 238, 246, 0.64);
+}
+
+.season-bar {
+  right: 8px;
+  bottom: 7px;
+  display: flex;
+  gap: 3px;
+  pointer-events: auto;
+}
+
+.season-bar button {
+  width: 29px;
+  height: 23px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  border-radius: 7px;
+  background: rgba(5, 16, 33, 0.36);
+  color: rgba(255, 255, 255, 0.88);
+  font: 800 8px/1 inherit;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  backdrop-filter: blur(5px);
+  transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.season-bar button:hover,
+.season-bar button:focus-visible {
+  transform: translateY(-1px);
+  border-color: #fff2c4;
+  outline: none;
+}
+
+.season-bar button.active {
+  border-color: #ffe6ab;
+  background: rgba(255, 214, 132, 0.88);
+  color: #233044;
+  box-shadow: 0 2px 12px rgba(255, 204, 103, 0.3);
+}
+
+@media (max-width: 420px) {
+  .hud {
+    top: 7px;
+    right: 8px;
+    left: 8px;
+    font-size: 8px;
+  }
+
+  .brand {
+    gap: 4px;
+  }
+
+  .brand i {
+    width: 6px;
+    height: 6px;
+  }
+
+  .drag-hint {
+    font-size: 7px;
+  }
+
+  .status {
+    bottom: 8px;
+    left: 8px;
+    gap: 4px;
+    font-size: 7px;
+  }
+
+  .season-bar {
+    right: 6px;
+    bottom: 5px;
+    gap: 2px;
+  }
+
+  .season-bar button {
+    width: 27px;
+    height: 21px;
+    font-size: 7px;
+  }
+}

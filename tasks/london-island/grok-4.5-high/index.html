@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>漂浮倫敦島 · Floating London Island</title>
+  <link rel="stylesheet" href="style.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="app">
+    <canvas id="c"></canvas>
+    <div id="hud" class="hud">
+      <div class="row">
+        <span class="badge" id="season-label">SPRING</span>
+        <span class="badge night" id="phase-label">DAY</span>
+        <span class="stats" id="stats">—</span>
+      </div>
+      <div class="controls" id="controls">
+        <button type="button" data-season="0" class="active" title="Spring">🌸</button>
+        <button type="button" data-season="1" title="Summer">☀️</button>
+        <button type="button" data-season="2" title="Autumn">🍂</button>
+        <button type="button" data-season="3" title="Winter">❄️</button>
+        <button type="button" id="btn-cycle" title="Toggle day speed">⏱️</button>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="main.js"></script>
+</body>
+</html>

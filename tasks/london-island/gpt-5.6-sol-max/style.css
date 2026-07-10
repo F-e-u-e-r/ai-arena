@@ -1,0 +1,354 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-synthesis: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  background: #17333d;
+}
+
+#app {
+  position: relative;
+  isolation: isolate;
+  min-width: 240px;
+  min-height: 160px;
+}
+
+#scene {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  touch-action: none;
+  outline: none;
+}
+
+#scene:active {
+  cursor: grabbing;
+}
+
+.identity,
+.time-chip,
+.icon-button,
+.season-control,
+.weather-status {
+  position: absolute;
+  z-index: 2;
+  user-select: none;
+}
+
+.identity {
+  top: max(14px, env(safe-area-inset-top));
+  left: max(16px, env(safe-area-inset-left));
+  display: grid;
+  color: #fff;
+  text-transform: uppercase;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 9px rgb(6 17 27 / 35%));
+}
+
+.identity span {
+  color: #ffc75d;
+  font-size: 10px;
+  font-weight: 850;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.identity strong {
+  margin-top: 4px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(17px, 3vh, 28px);
+  font-weight: 700;
+  line-height: .9;
+  letter-spacing: 0;
+}
+
+.time-chip {
+  top: max(14px, env(safe-area-inset-top));
+  left: 50%;
+  display: flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 10px;
+  gap: 6px;
+  border: 1px solid rgb(255 255 255 / 30%);
+  border-radius: 6px;
+  background: rgb(12 30 35 / 48%);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 750;
+  text-transform: uppercase;
+  transform: translateX(-50%);
+  pointer-events: none;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 5px 20px rgb(5 17 27 / 12%);
+}
+
+#time-orb {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: #ffe39a;
+  box-shadow: 0 0 8px #ffcd6b;
+}
+
+#time-value {
+  color: rgb(255 255 255 / 62%);
+  font-variant-numeric: tabular-nums;
+}
+
+.icon-button {
+  top: max(14px, env(safe-area-inset-top));
+  right: max(14px, env(safe-area-inset-right));
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgb(255 255 255 / 34%);
+  border-radius: 6px;
+  background: rgb(12 30 35 / 48%);
+  color: #fff;
+  font: 700 21px/1 Georgia, serif;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  transition: background .18s ease, transform .18s ease;
+}
+
+.icon-button:hover,
+.icon-button:focus-visible {
+  background: rgb(216 75 59 / 88%);
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.icon-button:active {
+  transform: scale(.94);
+}
+
+.season-control {
+  bottom: max(15px, env(safe-area-inset-bottom));
+  left: 50%;
+  display: flex;
+  gap: 3px;
+  padding: 4px;
+  border: 1px solid rgb(255 255 255 / 28%);
+  border-radius: 7px;
+  background: rgb(12 30 35 / 52%);
+  transform: translateX(-50%);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 7px 24px rgb(5 17 27 / 20%);
+}
+
+.season-control button {
+  display: flex;
+  align-items: center;
+  min-width: 70px;
+  height: 30px;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: rgb(255 255 255 / 68%);
+  font: 750 9px/1 inherit;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color .18s ease, background .18s ease;
+}
+
+.season-control button:hover,
+.season-control button:focus-visible {
+  color: #fff;
+  outline: 2px solid rgb(255 255 255 / 85%);
+  outline-offset: -2px;
+}
+
+.season-control button[aria-pressed="true"] {
+  background: rgb(255 255 255 / 94%);
+  color: #19343d;
+}
+
+.season-control i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.season-control .spring { background: #84c99b; }
+.season-control .summer { background: #ffc75d; }
+.season-control .autumn { background: #e76f51; }
+.season-control .winter { background: #bfe3ed; }
+
+.season-control b {
+  display: none;
+  font-weight: 800;
+}
+
+.weather-status {
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(18px, env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: rgb(255 255 255 / 78%);
+  font-size: 9px;
+  font-weight: 750;
+  text-transform: uppercase;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 5px rgb(5 17 27 / 55%));
+}
+
+.weather-status i {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 55%);
+}
+
+#loading,
+#error {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  background: #17333d;
+  color: #fff;
+  text-align: center;
+  transition: opacity .45s ease, visibility .45s ease;
+}
+
+#loading span {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgb(255 255 255 / 24%);
+  border-top-color: #e76f51;
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+
+#loading b,
+#error strong {
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+#loading.ready {
+  visibility: hidden;
+  opacity: 0;
+}
+
+#error[hidden] {
+  display: none;
+}
+
+#error span {
+  max-width: 240px;
+  color: rgb(255 255 255 / 65%);
+  font-size: 11px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 720px) {
+  .weather-status {
+    display: none;
+  }
+}
+
+@media (max-width: 520px), (max-height: 300px) {
+  .identity {
+    top: 9px;
+    left: 9px;
+  }
+
+  .identity span {
+    font-size: 8px;
+  }
+
+  .identity strong {
+    margin-top: 2px;
+    max-width: 76px;
+    font-size: 13px;
+  }
+
+  .time-chip {
+    top: 8px;
+    min-height: 26px;
+    padding: 0 7px;
+    gap: 4px;
+    font-size: 8px;
+  }
+
+  .icon-button {
+    top: 7px;
+    right: 7px;
+    width: 28px;
+    height: 28px;
+    font-size: 18px;
+  }
+
+  .season-control {
+    bottom: 7px;
+    padding: 3px;
+    gap: 2px;
+  }
+
+  .season-control button {
+    min-width: 34px;
+    width: 34px;
+    height: 25px;
+    padding: 0;
+    gap: 3px;
+    font-size: 7px;
+  }
+
+  .season-control button span {
+    display: none;
+  }
+
+  .season-control button b {
+    display: inline;
+  }
+
+  .season-control i {
+    width: 6px;
+    height: 6px;
+  }
+}
+
+@media (max-width: 350px) {
+  #time-label {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #loading span {
+    animation-duration: 1.6s;
+  }
+}

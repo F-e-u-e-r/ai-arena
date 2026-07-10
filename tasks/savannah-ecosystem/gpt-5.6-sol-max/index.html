@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#d98b47">
+  <title>Savannah Field Notes</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="app">
+    <canvas id="ecosystem" aria-label="Animated African savannah ecosystem"></canvas>
+
+    <header class="identity" aria-label="Savannah Field Notes">
+      <span>Savannah</span>
+      <strong>Field Notes</strong>
+    </header>
+
+    <div class="scene-status" aria-live="polite">
+      <i id="status-icon" aria-hidden="true">&#9728;</i>
+      <span id="weather-label">Sunny</span>
+      <b id="temperature">34 C</b>
+    </div>
+
+    <div class="season-control" role="group" aria-label="Choose a season">
+      <button type="button" data-season="dry" aria-pressed="true"><i></i><span>Dry</span></button>
+      <button type="button" data-season="wet" aria-pressed="false"><i></i><span>Wet</span></button>
+    </div>
+
+    <nav class="weather-control" aria-label="Choose weather">
+      <button type="button" data-weather="sunny" aria-pressed="true" title="Sunny"><i aria-hidden="true">&#9728;</i><span>Sunny</span></button>
+      <button type="button" data-weather="rain" aria-pressed="false" title="Rain"><i aria-hidden="true">&#9730;</i><span>Rain</span></button>
+      <button type="button" data-weather="heavy-rain" aria-pressed="false" title="Heavy rain"><i aria-hidden="true">&#9729;</i><span>Heavy</span></button>
+      <button type="button" data-weather="snow" aria-pressed="false" title="Snow"><i aria-hidden="true">&#10052;</i><span>Snow</span></button>
+      <button type="button" data-weather="thunderstorm" aria-pressed="false" title="Thunderstorm"><i aria-hidden="true">&#9889;</i><span>Storm</span></button>
+      <button type="button" data-weather="tornado" aria-pressed="false" title="Tornado"><i aria-hidden="true">&#8635;</i><span>Tornado</span></button>
+    </nav>
+
+    <div id="loading" role="status">
+      <span></span>
+      <b>Tracking wildlife</b>
+    </div>
+  </main>
+  <script src="main.js"></script>
+</body>
+</html>

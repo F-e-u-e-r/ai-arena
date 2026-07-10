@@ -18,7 +18,7 @@ const schemaDir = path.join(rootDir, 'schema');
 const strict = process.argv.includes('--strict');
 
 // 已知 client 只用來提醒可能的 typo；未知值仍可正常顯示（比照 effort 的自由字串設計）。
-const knownClients = new Set(['claude-code', 'codex', 'opencode', 'kiro', 'cursor', 'api', 'other']);
+const knownClients = new Set(['claude-code', 'codex', 'opencode', 'kiro', 'cursor', 'grok', 'api', 'other']);
 
 let pricing = {};
 let submissionSchema;

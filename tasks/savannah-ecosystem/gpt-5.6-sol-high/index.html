@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Wild Rhythm — Savannah Ecosystem</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="app">
+    <canvas id="world" aria-label="動態非洲大草原生態系"></canvas>
+    <header class="masthead">
+      <span class="kicker">LIVE FIELD NOTES · SERENGETI</span>
+      <h1>Wild <i>Rhythm</i></h1>
+      <p><b id="seasonLabel">DRY SEASON</b><span></span><em id="weatherLabel">SUNNY</em></p>
+    </header>
+    <aside class="stats" aria-label="模擬資訊">
+      <span><i id="animalCount">9</i> ANIMALS</span>
+      <span><i id="particleCount">0</i> PARTICLES</span>
+      <span><i id="fps">60</i> FPS</span>
+    </aside>
+    <nav class="controls" aria-label="天氣控制">
+      <div class="weather-buttons" role="radiogroup" aria-label="天氣">
+        <button data-weather="sunny" class="active" aria-label="晴天"><b>☀</b><span>Sunny</span></button>
+        <button data-weather="rain" aria-label="雨天"><b>╱</b><span>Rain</span></button>
+        <button data-weather="heavy" aria-label="大雨"><b>☂</b><span>Heavy</span></button>
+        <button data-weather="snow" aria-label="下雪"><b>❄</b><span>Snow</span></button>
+        <button data-weather="storm" aria-label="雷暴"><b>ϟ</b><span>Storm</span></button>
+        <button data-weather="tornado" aria-label="龍捲風"><b>↯</b><span>Tornado</span></button>
+      </div>
+      <button id="seasonButton" class="season-button" aria-label="切換乾濕季"><i></i><span>Dry</span></button>
+    </nav>
+    <div class="tip" id="tip">點選天氣，觀察動物如何回應</div>
+  </main>
+  <script src="main.js"></script>
+</body>
+</html>

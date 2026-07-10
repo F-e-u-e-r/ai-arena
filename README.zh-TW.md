@@ -106,6 +106,8 @@ Manifest 產生器會保留額外欄位。
 - 如果 `modelId` 不在 pricing 檔案中，成本會顯示為 —。可以的話，請在同一個 PR 補上該模型價格。
 - Claude Code 使用者可以執行 `node scripts/metrics-from-claude-code.mjs <session.jsonl>` 產生可直接貼入的 `metrics` 區塊。
 
+> **Metrics 完整性：** 並非每個 submission 都附有完整的時間／token metrics，部分模型也尚未收錄於 `data/pricing.json`。這些情況下，時間、token 與成本欄位會顯示為 `—`。此藝廊主要用於比較**輸出品質**；各 submission 的時間／token／成本資料**並不完整**。
+
 安全提醒：`tasks/`、`task.json`、`submission.json` 與一般 assets 都會作為公開網站內容發布。請不要 commit API keys、tokens、`.env` 檔、私人 prompts、內部 logs 或其他敏感資料。
 
 ## 新增任務

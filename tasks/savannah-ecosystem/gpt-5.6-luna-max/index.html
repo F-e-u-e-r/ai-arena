@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Savannah / Living Weather</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app-shell">
+    <section class="ecosystem" aria-label="Animated African savannah ecosystem">
+      <canvas id="savannah-canvas" aria-label="African savannah animation"></canvas>
+      <div class="hud">
+        <div class="topline">
+          <div class="brand">
+            <span class="kicker">FIELD NOTES / 03</span>
+            <strong>Savannah <em>after rain</em></strong>
+          </div>
+          <button id="season-toggle" class="season-toggle" type="button" aria-label="Toggle season">
+            <span class="season-mark"></span>
+            <span id="season-name">DRY SEASON</span>
+          </button>
+        </div>
+        <div class="readouts">
+          <span class="readout-chip"><span class="pulse"></span><span id="weather-name">SUNNY</span></span>
+          <span class="readout-chip"><span id="animal-count">06</span> WILDLIFE</span>
+          <span class="readout-chip"><span id="particle-count">0</span> PARTICLES</span>
+        </div>
+        <div id="event-note" class="event-note" aria-live="polite">A quiet crossing at first light</div>
+        <div class="controls">
+          <div class="weather-controls" role="group" aria-label="Choose weather">
+            <button class="weather-button active" data-weather="sunny" title="Sunny"><span class="full-label">SUNNY</span><span class="short-label">☀</span></button>
+            <button class="weather-button" data-weather="rain" title="Rain"><span class="full-label">RAIN</span><span class="short-label">RAIN</span></button>
+            <button class="weather-button" data-weather="heavy-rain" title="Heavy rain"><span class="full-label">HEAVY RAIN</span><span class="short-label">HEAVY</span></button>
+            <button class="weather-button" data-weather="snow" title="Snow"><span class="full-label">SNOW</span><span class="short-label">SNOW</span></button>
+            <button class="weather-button" data-weather="thunderstorm" title="Thunderstorm"><span class="full-label">THUNDER</span><span class="short-label">STORM</span></button>
+            <button class="weather-button" data-weather="tornado" title="Tornado"><span class="full-label">TORNADO</span><span class="short-label">TORN</span></button>
+          </div>
+          <div class="control-foot">1—6 WEATHER · S SEASON</div>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="main.js"></script>
+</body>
+</html>

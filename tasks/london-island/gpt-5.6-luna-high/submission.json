@@ -1,0 +1,9 @@
+{
+  "provider": "openai",
+  "model": "GPT-5.6 Luna",
+  "modelId": "gpt-5.6-luna",
+  "effort": "high",
+  "client": "codex",
+  "author": "F-e-u-e-r",
+  "generatedAt": "2026-07-11T00:00:00Z"
+}

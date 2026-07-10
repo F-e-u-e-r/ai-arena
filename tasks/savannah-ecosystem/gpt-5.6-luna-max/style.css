@@ -1,0 +1,224 @@
+:root {
+  color-scheme: dark;
+  --ink: #fff6df;
+  --muted: rgba(255, 246, 223, .65);
+  --line: rgba(255, 246, 223, .2);
+  --glass: rgba(40, 34, 27, .48);
+}
+
+* { box-sizing: border-box; }
+html, body { width: 100%; height: 100%; margin: 0; }
+
+body {
+  overflow: hidden;
+  background: #1b282a;
+  color: var(--ink);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+button { font: inherit; }
+
+.app-shell,
+.ecosystem {
+  width: 100%;
+  height: 100%;
+}
+
+.ecosystem {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background: #496b6a;
+}
+
+#savannah-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.ecosystem::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(110deg, rgba(255,248,217,.12), transparent 32%, transparent 74%, rgba(20,27,25,.23));
+  mix-blend-mode: screen;
+}
+
+.hud {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(10px, 2.8vw, 26px);
+  pointer-events: none;
+}
+
+.topline,
+.readouts,
+.controls,
+.weather-controls {
+  display: flex;
+  align-items: center;
+}
+
+.topline { justify-content: space-between; }
+
+.brand,
+.season-toggle,
+.readout-chip,
+.weather-controls,
+.control-foot {
+  border: 1px solid var(--line);
+  background: var(--glass);
+  box-shadow: 0 12px 30px rgba(0,0,0,.13);
+  backdrop-filter: blur(12px);
+}
+
+.brand {
+  padding: 8px 12px 9px;
+  border-radius: 13px;
+  min-width: 153px;
+}
+
+.kicker {
+  display: block;
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .2em;
+  line-height: 1.2;
+}
+
+.brand strong {
+  display: block;
+  margin-top: 2px;
+  font-family: Georgia, serif;
+  font-size: clamp(15px, 2.4vw, 23px);
+  font-weight: 500;
+  letter-spacing: -.04em;
+  line-height: 1.05;
+}
+
+.brand em { color: #ffd187; font-style: normal; }
+
+.season-toggle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 11px;
+  border-radius: 99px;
+  color: rgba(255,255,255,.9);
+  cursor: pointer;
+  pointer-events: auto;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .13em;
+  white-space: nowrap;
+}
+
+.season-mark,
+.pulse {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #d8aa63;
+  box-shadow: 0 0 12px currentColor;
+}
+
+.readouts {
+  gap: 6px;
+  margin-top: 9px;
+}
+
+.readout-chip {
+  padding: 6px 8px;
+  border-radius: 99px;
+  color: rgba(255,246,223,.76);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  white-space: nowrap;
+}
+
+.pulse { width: 6px; height: 6px; margin-right: 5px; background: #a8d3a3; }
+
+.event-note {
+  margin: auto 0 11px;
+  color: rgba(255,246,223,.78);
+  font-family: Georgia, serif;
+  font-size: clamp(12px, 1.8vw, 16px);
+  font-style: italic;
+  letter-spacing: -.01em;
+  text-shadow: 0 2px 10px rgba(0,0,0,.24);
+  transition: opacity .2s ease;
+}
+
+.controls {
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.weather-controls {
+  width: min(100%, 625px);
+  padding: 3px;
+  border-radius: 11px;
+  gap: 2px;
+  pointer-events: auto;
+}
+
+.weather-button {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 8px 5px;
+  border: 0;
+  border-radius: 8px;
+  color: rgba(255,255,255,.62);
+  background: transparent;
+  cursor: pointer;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  line-height: 1;
+  white-space: nowrap;
+  transition: color .2s ease, background .2s ease;
+}
+
+.weather-button:hover,
+.weather-button:focus-visible { color: #fff; background: rgba(255,255,255,.1); }
+
+.weather-button.active { color: #2b322b; background: #f7d89d; }
+
+.short-label { display: none; }
+
+.control-foot {
+  padding: 9px 10px;
+  border-radius: 10px;
+  color: rgba(255,246,223,.55);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  white-space: nowrap;
+}
+
+@media (max-width: 520px) {
+  .hud { padding: 9px; }
+  .kicker, .control-foot { display: none; }
+  .brand { min-width: 0; padding: 7px 9px; }
+  .brand strong { font-size: 15px; }
+  .season-toggle { padding: 8px 9px; font-size: 8px; gap: 5px; }
+  .readouts { margin-top: 6px; gap: 3px; }
+  .readout-chip { padding: 5px 6px; font-size: 7px; }
+  .event-note { margin-bottom: 8px; font-size: 11px; }
+  .controls { display: block; }
+  .weather-controls { width: 100%; gap: 1px; }
+  .weather-button { padding: 8px 2px; font-size: 8px; }
+  .full-label { display: none; }
+  .short-label { display: inline; }
+}

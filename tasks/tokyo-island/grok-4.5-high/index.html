@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>漂浮東京島 · Floating Tokyo Island</title>
+  <link rel="stylesheet" href="style.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="app">
+    <canvas id="c"></canvas>
+    <div id="hud" class="hud">
+      <div class="badge" id="phase-label">DAY</div>
+      <div class="stats" id="stats">—</div>
+      <div class="hint">拖曳旋轉 · 1–4 加速日夜</div>
+    </div>
+  </div>
+  <script type="module" src="main.js"></script>
+</body>
+</html>

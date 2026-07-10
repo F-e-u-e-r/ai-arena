@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#251a38">
+    <title>Tokyo Maple Float</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <main class="app" aria-label="Animated floating Tokyo island">
+      <canvas id="scene" aria-label="Floating Tokyo island with falling maple leaves. Drag horizontally to orbit."></canvas>
+
+      <header class="hud">
+        <div class="brand"><i></i><span>TOKYO / AERIAL GARDEN</span><b id="day-phase">DAWN</b></div>
+        <div class="drag-hint" aria-hidden="true">↔ ORBIT</div>
+      </header>
+
+      <div class="status">
+        <span id="leaf-count">0 MAPLES</span>
+        <span>15s SKY</span>
+      </div>
+
+      <button class="time-button" id="time-button" type="button" aria-label="Toggle day night cycle speed">TIME ×1</button>
+    </main>
+
+    <script type="module" src="main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>London Island — Composer 2.5</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <canvas id="scene"></canvas>
+  <div id="hud">
+    <button id="hud-toggle" type="button" aria-label="Toggle panel">☰</button>
+    <div id="panel" class="collapsed">
+      <div class="row">
+        <span class="label">Season</span>
+        <div id="season-btns" class="btn-group"></div>
+      </div>
+      <div class="row">
+        <span class="label">Time</span>
+        <button id="time-speed" type="button">1×</button>
+      </div>
+      <div id="debug" class="debug"></div>
+    </div>
+  </div>
+  <script type="module" src="main.js"></script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "$schema": "../../../schema/submission.schema.json",
+  "provider": "cursor",
+  "model": "Composer 2.5",
+  "effort": "max",
+  "client": "cursor",
+  "author": "F-e-u-e-r",
+  "generatedAt": "2026-07-11T12:00:00Z",
+  "metrics": {
+    "durationMs": 150000
+  },
+  "order": 10
+}

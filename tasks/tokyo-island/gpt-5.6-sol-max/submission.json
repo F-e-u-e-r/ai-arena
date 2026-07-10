@@ -1,0 +1,12 @@
+{
+  "$schema": "../../../schema/submission.schema.json",
+  "provider": "openai",
+  "model": "GPT-5.6 Sol",
+  "modelId": "gpt-5.6-sol",
+  "effort": "max",
+  "client": "codex",
+  "author": "F-e-u-e-r",
+  "generatedAt": "2026-07-10T16:32:55Z",
+  "type": "iframe",
+  "runtime": "webgl"
+}

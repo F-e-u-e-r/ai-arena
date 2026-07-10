@@ -1,0 +1,26 @@
+:root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+* { box-sizing: border-box; }
+html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #d49b65; }
+.field { position: relative; width: 100vw; height: 100vh; min-height: 200px; overflow: hidden; }
+canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+.hud, .hint, .controls { position: absolute; z-index: 2; }
+.hud { top: clamp(12px, 4vw, 38px); left: clamp(14px, 5vw, 56px); right: clamp(14px, 5vw, 56px); display: flex; justify-content: space-between; align-items: flex-start; text-shadow: 0 2px 12px #4b291655; pointer-events: none; }
+.identity { display: flex; align-items: center; gap: 10px; }
+.sun-mark { display: grid; place-items: center; width: 29px; height: 29px; border: 1px solid #fff0be99; border-radius: 50%; color: #fff0bd; font-size: 17px; }
+.eyebrow, .hint { color: #fff1d1b8; letter-spacing: .18em; font-size: 8px; }
+h1 { margin: 3px 0 0; color: #fff6da; font-size: clamp(14px, 2vw, 20px); letter-spacing: .16em; font-weight: 700; }
+.readout { margin-top: 5px; color: #fff5d5; font-size: 9px; font-weight: 700; letter-spacing: .13em; }
+.live { display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; background: #cbe888; box-shadow: 0 0 10px #e0f5a4; }
+.slash { margin: 0 5px; opacity: .55; }
+.hint { left: clamp(14px, 5vw, 56px); top: 23%; color: #55372caa; font-weight: 700; text-shadow: none; }
+.hint span { margin-left: 10px; font-weight: 500; letter-spacing: .06em; }
+.controls { left: clamp(14px, 5vw, 56px); right: clamp(14px, 5vw, 56px); bottom: clamp(11px, 4vw, 38px); display: flex; justify-content: space-between; align-items: center; gap: 9px; padding: 8px; border: 1px solid #fff3cf55; border-radius: 12px; background: #553b3780; backdrop-filter: blur(12px); box-shadow: 0 10px 24px #4b261833; pointer-events: auto; }
+.weather-buttons { display: flex; gap: 4px; flex-wrap: wrap; }
+button { font: inherit; }
+.weather, .season-button { border: 1px solid transparent; border-radius: 7px; color: #ffeac1; background: #ffffff12; padding: 7px 8px; font-size: 8px; letter-spacing: .08em; cursor: pointer; transition: .2s ease; white-space: nowrap; }
+.weather:hover, .weather.active, .season-button:hover { border-color: #ffe6a477; background: #fff0bd2c; color: #fff8dd; }
+.season-button { border-color: #fff0c944; background: #9a593c88; }
+.season-button span { margin-left: 4px; color: #d4f098; font-size: 13px; vertical-align: -1px; }
+.vignette { position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 100px #49302233; }
+@media (max-width: 620px) { .hint { display: none; } .controls { left: 9px; right: 9px; bottom: 8px; padding: 6px; } .weather-buttons { flex: 1; gap: 3px; } .weather, .season-button { padding: 6px 5px; font-size: 7px; } .season-button { min-height: 27px; } .readout { font-size: 8px; } }
+@media (max-height: 270px) { .hud { top: 8px; } .controls { bottom: 6px; } }

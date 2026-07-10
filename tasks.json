@@ -107,6 +107,20 @@
     "id": "savannah-ecosystem",
     "submissions": [
       {
+        "provider": "cursor",
+        "model": "Composer 2.5",
+        "effort": "max",
+        "client": "cursor",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-07-11T12:00:00Z",
+        "metrics": {
+          "durationMs": 210000
+        },
+        "order": 10,
+        "id": "composer-2.5-max",
+        "path": "tasks/savannah-ecosystem/composer-2.5-max/"
+      },
+      {
         "provider": "anthropic",
         "model": "Fable 5",
         "modelId": "claude-fable-5",
@@ -136,6 +150,30 @@
         "order": 10,
         "id": "gpt-5.5-medium-f-e-u-e-r",
         "path": "tasks/savannah-ecosystem/gpt-5.5-medium-f-e-u-e-r/"
+      },
+      {
+        "provider": "openai",
+        "model": "GPT-5.6 Terra",
+        "modelId": "gpt-5.6-terra",
+        "effort": "high",
+        "client": "codex",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-07-11T00:00:00Z",
+        "order": 10,
+        "id": "gpt-5.6-terra-high",
+        "path": "tasks/savannah-ecosystem/gpt-5.6-terra-high/"
+      },
+      {
+        "provider": "openai",
+        "model": "GPT-5.6 Terra",
+        "modelId": "gpt-5.6-terra",
+        "effort": "max",
+        "client": "codex",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-07-11T00:00:00Z",
+        "order": 10,
+        "id": "gpt-5.6-terra-max",
+        "path": "tasks/savannah-ecosystem/gpt-5.6-terra-max/"
       },
       {
         "provider": "openai",
@@ -198,6 +236,63 @@
         "id": "sonnet-5-max-f-e-u-e-r",
         "costUsd": 2.154451,
         "path": "tasks/savannah-ecosystem/sonnet-5-max-f-e-u-e-r/"
+      },
+      {
+        "provider": "openai",
+        "model": "GPT-5.6 Luna",
+        "modelId": "gpt-5.6-luna",
+        "effort": "high",
+        "client": "codex",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-07-11T00:00:00Z",
+        "id": "gpt-5.6-luna-high",
+        "path": "tasks/savannah-ecosystem/gpt-5.6-luna-high/"
+      },
+      {
+        "provider": "openai",
+        "model": "GPT-5.6 Luna",
+        "modelId": "gpt-5.6-luna",
+        "effort": "max",
+        "client": "codex",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-07-11T00:00:00Z",
+        "id": "gpt-5.6-luna-max",
+        "path": "tasks/savannah-ecosystem/gpt-5.6-luna-max/"
+      },
+      {
+        "provider": "openai",
+        "model": "GPT-5.6 Sol",
+        "modelId": "gpt-5.6-sol",
+        "effort": "high",
+        "client": "codex",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-07-10T16:03:34Z",
+        "id": "gpt-5.6-sol-high",
+        "path": "tasks/savannah-ecosystem/gpt-5.6-sol-high/"
+      },
+      {
+        "provider": "openai",
+        "model": "GPT-5.6 Sol",
+        "modelId": "gpt-5.6-sol",
+        "effort": "max",
+        "client": "codex",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-07-10T16:32:55Z",
+        "type": "iframe",
+        "runtime": "canvas",
+        "id": "gpt-5.6-sol-max",
+        "path": "tasks/savannah-ecosystem/gpt-5.6-sol-max/"
+      },
+      {
+        "provider": "xai",
+        "model": "Grok 4.5",
+        "modelId": "grok-4.5",
+        "effort": "high",
+        "client": "grok",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-07-10T16:20:42Z",
+        "id": "grok-4.5-high",
+        "path": "tasks/savannah-ecosystem/grok-4.5-high/"
       }
     ]
   },
@@ -210,6 +305,20 @@
     "order": 40,
     "id": "tokyo-island",
     "submissions": [
+      {
+        "provider": "cursor",
+        "model": "Composer 2.5",
+        "effort": "max",
+        "client": "cursor",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-07-11T12:00:00Z",
+        "metrics": {
+          "durationMs": 150000
+        },
+        "order": 10,
+        "id": "composer-2.5-max",
+        "path": "tasks/tokyo-island/composer-2.5-max/"
+      },
       {
         "provider": "anthropic",
         "model": "Fable 5",
@@ -240,6 +349,30 @@
         "order": 10,
         "id": "gpt-5.5-medium-f-e-u-e-r",
         "path": "tasks/tokyo-island/gpt-5.5-medium-f-e-u-e-r/"
+      },
+      {
+        "provider": "openai",
+        "model": "GPT-5.6 Terra",
+        "modelId": "gpt-5.6-terra",
+        "effort": "high",
+        "client": "codex",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-07-11T00:00:00Z",
+        "order": 10,
+        "id": "gpt-5.6-terra-high",
+        "path": "tasks/tokyo-island/gpt-5.6-terra-high/"
+      },
+      {
+        "provider": "openai",
+        "model": "GPT-5.6 Terra",
+        "modelId": "gpt-5.6-terra",
+        "effort": "max",
+        "client": "codex",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-07-11T00:00:00Z",
+        "order": 10,
+        "id": "gpt-5.6-terra-max",
+        "path": "tasks/tokyo-island/gpt-5.6-terra-max/"
       },
       {
         "provider": "openai",
@@ -302,6 +435,63 @@
         "id": "sonnet-5-max-f-e-u-e-r",
         "costUsd": 2.154461,
         "path": "tasks/tokyo-island/sonnet-5-max-f-e-u-e-r/"
+      },
+      {
+        "provider": "openai",
+        "model": "GPT-5.6 Luna",
+        "modelId": "gpt-5.6-luna",
+        "effort": "high",
+        "client": "codex",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-07-11T00:00:00Z",
+        "id": "gpt-5.6-luna-high",
+        "path": "tasks/tokyo-island/gpt-5.6-luna-high/"
+      },
+      {
+        "provider": "openai",
+        "model": "GPT-5.6 Luna",
+        "modelId": "gpt-5.6-luna",
+        "effort": "max",
+        "client": "codex",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-07-11T00:00:00Z",
+        "id": "gpt-5.6-luna-max",
+        "path": "tasks/tokyo-island/gpt-5.6-luna-max/"
+      },
+      {
+        "provider": "openai",
+        "model": "GPT-5.6 Sol",
+        "modelId": "gpt-5.6-sol",
+        "effort": "high",
+        "client": "codex",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-07-10T16:03:34Z",
+        "id": "gpt-5.6-sol-high",
+        "path": "tasks/tokyo-island/gpt-5.6-sol-high/"
+      },
+      {
+        "provider": "openai",
+        "model": "GPT-5.6 Sol",
+        "modelId": "gpt-5.6-sol",
+        "effort": "max",
+        "client": "codex",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-07-10T16:32:55Z",
+        "type": "iframe",
+        "runtime": "webgl",
+        "id": "gpt-5.6-sol-max",
+        "path": "tasks/tokyo-island/gpt-5.6-sol-max/"
+      },
+      {
+        "provider": "xai",
+        "model": "Grok 4.5",
+        "modelId": "grok-4.5",
+        "effort": "high",
+        "client": "grok",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-07-10T16:20:42Z",
+        "id": "grok-4.5-high",
+        "path": "tasks/tokyo-island/grok-4.5-high/"
       }
     ]
   },
@@ -314,6 +504,20 @@
     "order": 50,
     "id": "london-island",
     "submissions": [
+      {
+        "provider": "cursor",
+        "model": "Composer 2.5",
+        "effort": "max",
+        "client": "cursor",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-07-11T12:00:00Z",
+        "metrics": {
+          "durationMs": 180000
+        },
+        "order": 10,
+        "id": "composer-2.5-max",
+        "path": "tasks/london-island/composer-2.5-max/"
+      },
       {
         "provider": "anthropic",
         "model": "Fable 5",
@@ -351,6 +555,87 @@
         "id": "fable-5-max",
         "costUsd": 45.143874,
         "path": "tasks/london-island/fable-5-max/"
+      },
+      {
+        "provider": "openai",
+        "model": "GPT-5.6 Terra",
+        "modelId": "gpt-5.6-terra",
+        "effort": "high",
+        "client": "codex",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-07-11T00:00:00Z",
+        "order": 10,
+        "id": "gpt-5.6-terra-high",
+        "path": "tasks/london-island/gpt-5.6-terra-high/"
+      },
+      {
+        "provider": "openai",
+        "model": "GPT-5.6 Terra",
+        "modelId": "gpt-5.6-terra",
+        "effort": "max",
+        "client": "codex",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-07-11T00:00:00Z",
+        "order": 10,
+        "id": "gpt-5.6-terra-max",
+        "path": "tasks/london-island/gpt-5.6-terra-max/"
+      },
+      {
+        "provider": "openai",
+        "model": "GPT-5.6 Luna",
+        "modelId": "gpt-5.6-luna",
+        "effort": "high",
+        "client": "codex",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-07-11T00:00:00Z",
+        "id": "gpt-5.6-luna-high",
+        "path": "tasks/london-island/gpt-5.6-luna-high/"
+      },
+      {
+        "provider": "openai",
+        "model": "GPT-5.6 Luna",
+        "modelId": "gpt-5.6-luna",
+        "effort": "max",
+        "client": "codex",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-07-11T00:00:00Z",
+        "id": "gpt-5.6-luna-max",
+        "path": "tasks/london-island/gpt-5.6-luna-max/"
+      },
+      {
+        "provider": "openai",
+        "model": "GPT-5.6 Sol",
+        "modelId": "gpt-5.6-sol",
+        "effort": "high",
+        "client": "codex",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-07-10T16:03:34Z",
+        "id": "gpt-5.6-sol-high",
+        "path": "tasks/london-island/gpt-5.6-sol-high/"
+      },
+      {
+        "provider": "openai",
+        "model": "GPT-5.6 Sol",
+        "modelId": "gpt-5.6-sol",
+        "effort": "max",
+        "client": "codex",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-07-10T16:32:55Z",
+        "type": "iframe",
+        "runtime": "webgl",
+        "id": "gpt-5.6-sol-max",
+        "path": "tasks/london-island/gpt-5.6-sol-max/"
+      },
+      {
+        "provider": "xai",
+        "model": "Grok 4.5",
+        "modelId": "grok-4.5",
+        "effort": "high",
+        "client": "grok",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-07-10T16:20:42Z",
+        "id": "grok-4.5-high",
+        "path": "tasks/london-island/grok-4.5-high/"
       }
     ]
   }

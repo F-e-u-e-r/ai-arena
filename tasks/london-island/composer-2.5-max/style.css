@@ -1,0 +1,113 @@
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #1a2030;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+#scene {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+#hud {
+  position: fixed;
+  right: 6px;
+  bottom: 6px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  pointer-events: none;
+}
+
+#hud > * { pointer-events: auto; }
+
+#hud-toggle {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: rgba(20, 28, 42, 0.85);
+  color: #e8eef8;
+  font-size: 14px;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+}
+
+#panel {
+  background: rgba(16, 22, 34, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 8px;
+  min-width: 140px;
+  backdrop-filter: blur(6px);
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+#panel.collapsed {
+  opacity: 0;
+  transform: translateY(6px);
+  pointer-events: none;
+  height: 0;
+  padding: 0;
+  overflow: hidden;
+  border: none;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.row:last-child { margin-bottom: 0; }
+
+.label {
+  font-size: 10px;
+  color: #9ab0cc;
+  min-width: 36px;
+}
+
+.btn-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.btn-group button,
+#time-speed {
+  font-size: 9px;
+  padding: 3px 5px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  background: rgba(40, 55, 80, 0.8);
+  color: #dce8f8;
+  cursor: pointer;
+}
+
+.btn-group button.active {
+  background: #3d6ea8;
+  border-color: #5a9ae0;
+}
+
+.debug {
+  font-size: 9px;
+  color: #7a9ab8;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 400px), (max-height: 260px) {
+  #panel:not(.collapsed) .row:first-child .btn-group button {
+    padding: 2px 4px;
+    font-size: 8px;
+  }
+}
