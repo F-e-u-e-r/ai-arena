@@ -147,7 +147,7 @@ body {
 }
 .dir-btn:hover { color: var(--text); border-color: var(--accent); }
 .facet { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.facet-label { font-size: 12px; color: var(--muted); min-width: 3em; }
+.facet-label { font-size: 12px; color: var(--muted); min-width: 4em; }
 .filter-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip {
   font-size: 12px;
@@ -159,8 +159,11 @@ body {
   cursor: pointer;
 }
 .chip:hover { border-color: var(--accent); }
-/* 未選取仍是可操作控制項：opacity .6 讓 12px 文字對比 ≈5.6:1（≥WCAG 4.5:1），.45 只有 3.66:1 不及格 */
-.chip[aria-pressed="false"] { opacity: .6; text-decoration: line-through; }
+/* 選取狀態用 ✓/✕ 前綴表達（不只靠顏色、也不用像 disabled 的刪除線），固定寬度避免切換跳動；
+   未選取＝虛線框 + muted 文字（muted on bg 6.32:1、accent on panel-2 5.07:1，皆 ≥WCAG AA 4.5:1） */
+.chip::before { content: '✓'; display: inline-block; width: 1.1em; color: var(--accent); }
+.chip[aria-pressed="false"]::before { content: '✕'; color: var(--muted); }
+.chip[aria-pressed="false"] { background: transparent; border-style: dashed; color: var(--muted); }
 .filter-actions { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .chip-action {
   font-size: 12px;
@@ -173,6 +176,7 @@ body {
 }
 .chip-action:hover { color: var(--text); border-color: var(--accent); }
 .filter-count { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.filter-hint { font-size: 12px; color: var(--muted); }
 
 /* ---- grid of submissions ---- */
 .grid {

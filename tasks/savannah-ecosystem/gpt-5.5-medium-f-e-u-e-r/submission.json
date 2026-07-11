@@ -1,6 +1,6 @@
 {
   "provider": "openai",
-  "model": "GPT 5.5",
+  "model": "GPT-5.5",
   "modelId": "gpt-5.5",
   "effort": "medium",
   "client": "codex",

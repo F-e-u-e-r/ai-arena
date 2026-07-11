@@ -94,7 +94,8 @@ function renderMain() {
   const hasWebGL = subs.some(s => ['webgl', 'unity'].includes(s.runtime || task.runtime));
   if (hasIframe) {
     const toolbar = el('div', 'toolbar');
-    const loadAll = el('button', 'btn', '全部載入');
+    // 「載入顯示中」而非「全部載入」：這顆只載入未被 filter 隱藏的卡片。
+    const loadAll = el('button', 'btn', '載入顯示中');
     loadAll.type = 'button';
     loadAll.addEventListener('click', () => {
       // 只載入目前顯示（未被 filter 隱藏）的卡片。
@@ -123,7 +124,7 @@ function submissionBaseLabel(sub) {
 const FILTER_FACETS = [
   { key: 'client', label: '工具' },
   { key: 'model', label: '模型' },
-  { key: 'effort', label: 'Effort' }
+  { key: 'effort', label: '推理強度' }
 ];
 // client 原始值 → 展示名；沒列在映射裡的沿用原始值（卡片 badge 仍顯示 metadata 原值）。
 const CLIENT_LABELS = { 'claude-code': 'Claude', codex: 'Codex', cursor: 'Cursor', grok: 'Grok' };
@@ -291,7 +292,9 @@ function buildCompareControls(subs, cardById) {
   const none = el('button', 'chip-action', '全不選');
   none.type = 'button';
   none.addEventListener('click', () => setAll(false, none));
-  actions.append(all, none, count);
+  // 跨 facet 的 AND 語意不直觀（例如工具+推理強度各關一個就可能只剩 1 張卡），給一行提示。
+  const hint = el('span', 'filter-hint', '同一列可複選；不同列的條件須同時符合');
+  actions.append(all, none, count, hint);
   controls.append(actions);
 
   updateCount();
