@@ -123,8 +123,9 @@ body {
 .btn:hover { filter: brightness(1.08); }
 .toolbar-note { font-size: 12px; color: var(--muted); }
 
-/* ---- compare controls: sort + filter ---- */
-.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-bottom: 14px; }
+/* ---- compare controls: sort + facet filter ---- */
+.controls { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; margin-bottom: 14px; }
+.sort-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .sort-ctrl { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
 .sort-select {
   font-size: 13px;
@@ -135,6 +136,18 @@ body {
   border: 1px solid var(--border);
   cursor: pointer;
 }
+.dir-btn {
+  font-size: 12px;
+  padding: 5px 10px;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+.dir-btn:hover { color: var(--text); border-color: var(--accent); }
+.facet { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.facet-label { font-size: 12px; color: var(--muted); min-width: 3em; }
 .filter-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip {
   font-size: 12px;
@@ -146,7 +159,8 @@ body {
   cursor: pointer;
 }
 .chip:hover { border-color: var(--accent); }
-.chip[aria-pressed="false"] { opacity: .45; text-decoration: line-through; }
+/* 未選取仍是可操作控制項：opacity .6 讓 12px 文字對比 ≈5.6:1（≥WCAG 4.5:1），.45 只有 3.66:1 不及格 */
+.chip[aria-pressed="false"] { opacity: .6; text-decoration: line-through; }
 .filter-actions { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .chip-action {
   font-size: 12px;

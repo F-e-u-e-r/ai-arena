@@ -119,28 +119,38 @@ function submissionBaseLabel(sub) {
   return [sub.model, sub.effort, sub.client].filter(Boolean).join(' · ') || sub.id;
 }
 
-// 標籤撞名時（同一 task 內有相同 model·effort·client）才附上唯一的 id 區分。
-function chipLabel(sub, subs) {
-  const base = submissionBaseLabel(sub);
-  const collides = subs.filter(s => submissionBaseLabel(s) === base).length > 1;
-  return collides ? `${base} · ${sub.id}` : base;
+// filter 的三個 facet：工具（client）、模型、effort。facet 內 OR、facet 間 AND。
+const FILTER_FACETS = [
+  { key: 'client', label: '工具' },
+  { key: 'model', label: '模型' },
+  { key: 'effort', label: 'Effort' }
+];
+// client 原始值 → 展示名；沒列在映射裡的沿用原始值（卡片 badge 仍顯示 metadata 原值）。
+const CLIENT_LABELS = { 'claude-code': 'Claude', codex: 'Codex', cursor: 'Cursor', grok: 'Grok' };
+// effort chip 依強度排序（不是字母序），沒見過的值排在已知檔位之後。
+const EFFORT_RANK = { none: 0, minimal: 1, low: 2, medium: 3, high: 4, xhigh: 5, max: 6, ultra: 7 };
+
+function facetValue(sub, key) {
+  return sub[key] || '—';
 }
 
+function facetDisplay(key, value) {
+  return key === 'client' ? (CLIENT_LABELS[value] || value) : value;
+}
+
+// 數字感知的字母序（讓 GPT 5.5 < GPT 5.6，而不是逐字元比較）。
+function compareText(a, b) {
+  return String(a).localeCompare(String(b), 'en', { numeric: true, sensitivity: 'base' });
+}
+
+// 只有兩種排序鍵：name（預設，model · effort · client 全標籤字母序）與 time（generatedAt）。
 function sortValue(sub, key) {
-  if (key === 'cost') return typeof sub.costUsd === 'number' ? sub.costUsd : undefined;
-  const m = sub.metrics;
-  if (!m) return undefined;
-  if (key === 'total') {
-    // 沒有明確 totalTokens 時，用實際會計費的三個欄位相加當總量（否則此選項對現有資料無效）。
-    if (typeof m.totalTokens === 'number') return m.totalTokens;
-    const parts = ['inputTokens', 'outputTokens', 'cachedInputTokens']
-      .map(field => m[field])
-      .filter(value => typeof value === 'number');
-    return parts.length ? parts.reduce((sum, value) => sum + value, 0) : undefined;
+  if (key === 'name') return submissionBaseLabel(sub);
+  if (key === 'time') {
+    const t = Date.parse(sub.generatedAt);
+    return Number.isNaN(t) ? undefined : t;
   }
-  const field = { duration: 'durationMs', input: 'inputTokens', output: 'outputTokens' }[key];
-  const value = field ? m[field] : undefined;
-  return typeof value === 'number' ? value : undefined;
+  return undefined;
 }
 
 // 排序直接重排 DOM 節點順序（不是只改 CSS order），讓視覺順序 = tab / 螢幕報讀順序，
@@ -148,50 +158,65 @@ function sortValue(sub, key) {
 // 搬移用 moveBefore（state-preserving atomic move），已載入的 demo 不會重載；
 // 沒有 moveBefore 的瀏覽器（Safari ≤26.x、Chrome/Edge <133、Firefox <144）退回 append——
 // DOM 順序一樣正確，但已載入的 demo 會重載（demo 本來就是點擊才載入，尚可接受）。
-// 一律遞增、缺值排最後、平手退回原始順序。
-function applySort(subs, cardById, key) {
+// dir：1 = 遞增、-1 = 遞減。缺值永遠排最後（不受方向影響），平手退回原始順序。
+function applySort(subs, cardById, key, dir) {
   const firstCard = cardById.get(subs[0].id);
   const grid = firstCard && firstCard.parentNode;
   if (!grid) return;
-  const orderedIds = key === 'default'
-    ? subs.map(sub => sub.id)
-    : subs
-        .map((sub, index) => ({ id: sub.id, index, value: sortValue(sub, key) }))
-        .sort((a, b) => (a.value ?? Infinity) - (b.value ?? Infinity) || a.index - b.index)
-        .map(entry => entry.id);
+  const entries = subs.map((sub, index) => ({ id: sub.id, index, value: sortValue(sub, key) }));
+  entries.sort((a, b) => {
+    const aMissing = a.value == null;
+    const bMissing = b.value == null;
+    if (aMissing || bMissing) return (aMissing - bMissing) || (a.index - b.index);
+    const cmp = typeof a.value === 'string' ? compareText(a.value, b.value) : a.value - b.value;
+    return (dir * cmp) || (a.index - b.index);
+  });
   // 依序把節點移到尾端即得排序後的 DOM 次序；moveBefore(node, null) 等同 append 但保留狀態。
   const move = typeof grid.moveBefore === 'function'
     ? (card) => grid.moveBefore(card, null)
     : (card) => grid.append(card);
-  orderedIds.forEach(id => move(cardById.get(id)));
+  entries.forEach(entry => move(cardById.get(entry.id)));
 }
 
 function buildCompareControls(subs, cardById) {
   const controls = el('div', 'controls');
 
-  // --- sort ---
+  // --- sort：key 下拉 + 升／降序切換。預設「名稱」遞增（字母序）。 ---
+  // key 一律即時讀 select.value（不留 JS 副本），瀏覽器還原表單狀態時行為也一致。
+  const sortState = { dir: 1 };
   const sortLabel = el('label', 'sort-ctrl');
   sortLabel.append(el('span', 'sort-label', '排序'));
   const select = document.createElement('select');
   select.className = 'sort-select';
   [
-    ['default', '預設順序'],
-    ['cost', '成本 ↑'],
-    ['duration', '耗時 ↑'],
-    ['input', 'input tokens ↑'],
-    ['output', 'output tokens ↑'],
-    ['total', 'total tokens ↑']
+    ['name', '名稱（預設）'],
+    ['time', '上傳時間']
   ].forEach(([value, text]) => {
     const option = document.createElement('option');
     option.value = value;
     option.textContent = text;
     select.append(option);
   });
-  select.addEventListener('change', () => applySort(subs, cardById, select.value));
+  const resort = () => applySort(subs, cardById, select.value, sortState.dir);
+  select.addEventListener('change', resort);
   sortLabel.append(select);
-  controls.append(sortLabel);
 
-  // --- filter chips ---
+  const dirBtn = el('button', 'dir-btn', '↑ 遞增');
+  dirBtn.type = 'button';
+  dirBtn.setAttribute('aria-label', '排序方向：遞增');
+  dirBtn.addEventListener('click', () => {
+    sortState.dir = -sortState.dir;
+    const asc = sortState.dir === 1;
+    dirBtn.textContent = asc ? '↑ 遞增' : '↓ 遞減';
+    dirBtn.setAttribute('aria-label', '排序方向：' + (asc ? '遞增' : '遞減'));
+    resort();
+  });
+
+  const sortRow = el('div', 'sort-row');
+  sortRow.append(sortLabel, dirBtn);
+  controls.append(sortRow);
+
+  // --- faceted filter：每個 facet 一排 chip。 ---
   const count = el('span', 'filter-count');
   count.setAttribute('aria-live', 'polite');
   const updateCount = () => {
@@ -205,32 +230,60 @@ function buildCompareControls(subs, cardById) {
     card.hidden = !visible;
   };
 
-  const chips = el('div', 'filter-chips');
-  chips.setAttribute('role', 'group');
-  chips.setAttribute('aria-label', '篩選要顯示的 model');
-  const chipById = new Map();
-  subs.forEach(sub => {
-    const chip = el('button', 'chip', chipLabel(sub, subs));
-    chip.type = 'button';
-    chip.setAttribute('aria-pressed', 'true');
-    chip.addEventListener('click', () => {
-      const next = chip.getAttribute('aria-pressed') !== 'true';
-      chip.setAttribute('aria-pressed', String(next));
-      setVisible(sub.id, next, chip);
-      updateCount();
+  const selected = new Map();      // facet key -> Set（目前選取的原始值）
+  const chipsByFacet = new Map();  // facet key -> Map(原始值 -> chip 按鈕)
+
+  const subVisible = (sub) =>
+    FILTER_FACETS.every(facet => selected.get(facet.key).has(facetValue(sub, facet.key)));
+
+  const applyFilter = (focusFallback) => {
+    subs.forEach(sub => setVisible(sub.id, subVisible(sub), focusFallback));
+    updateCount();
+  };
+
+  FILTER_FACETS.forEach(facet => {
+    const values = [...new Set(subs.map(sub => facetValue(sub, facet.key)))];
+    values.sort(facet.key === 'effort'
+      ? (a, b) => ((EFFORT_RANK[a] ?? 99) - (EFFORT_RANK[b] ?? 99)) || compareText(a, b)
+      : (a, b) => compareText(facetDisplay(facet.key, a), facetDisplay(facet.key, b)));
+
+    selected.set(facet.key, new Set(values));
+    const chipMap = new Map();
+    chipsByFacet.set(facet.key, chipMap);
+
+    const row = el('div', 'facet');
+    row.append(el('span', 'facet-label', facet.label));
+    const chips = el('div', 'filter-chips');
+    chips.setAttribute('role', 'group');
+    chips.setAttribute('aria-label', '篩選' + facet.label);
+    values.forEach(value => {
+      const chip = el('button', 'chip', facetDisplay(facet.key, value));
+      chip.type = 'button';
+      chip.setAttribute('aria-pressed', 'true');
+      chip.addEventListener('click', () => {
+        const set = selected.get(facet.key);
+        const next = !set.has(value);
+        if (next) set.add(value); else set.delete(value);
+        chip.setAttribute('aria-pressed', String(next));
+        applyFilter(chip);
+      });
+      chipMap.set(value, chip);
+      chips.append(chip);
     });
-    chipById.set(sub.id, chip);
-    chips.append(chip);
+    row.append(chips);
+    controls.append(row);
   });
-  controls.append(chips);
 
   const actions = el('div', 'filter-actions');
-  const setAll = (visible, trigger) => {
-    subs.forEach(sub => {
-      chipById.get(sub.id).setAttribute('aria-pressed', String(visible));
-      setVisible(sub.id, visible, trigger);
+  const setAll = (on, trigger) => {
+    FILTER_FACETS.forEach(facet => {
+      const set = selected.get(facet.key);
+      chipsByFacet.get(facet.key).forEach((chip, value) => {
+        if (on) set.add(value); else set.delete(value);
+        chip.setAttribute('aria-pressed', String(on));
+      });
     });
-    updateCount();
+    applyFilter(trigger);
   };
   const all = el('button', 'chip-action', '全選');
   all.type = 'button';
@@ -242,6 +295,7 @@ function buildCompareControls(subs, cardById) {
   controls.append(actions);
 
   updateCount();
+  resort(); // 初始就套用預設排序（名稱 A→Z），卡片此時都已在 grid 裡。
   return controls;
 }
 
