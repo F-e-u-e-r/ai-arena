@@ -123,6 +123,43 @@ body {
 .btn:hover { filter: brightness(1.08); }
 .toolbar-note { font-size: 12px; color: var(--muted); }
 
+/* ---- compare controls: sort + filter ---- */
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-bottom: 14px; }
+.sort-ctrl { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.sort-select {
+  font-size: 13px;
+  padding: 5px 8px;
+  border-radius: 7px;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+.filter-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+.chip:hover { border-color: var(--accent); }
+.chip[aria-pressed="false"] { opacity: .45; text-decoration: line-through; }
+.filter-actions { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.chip-action {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+.chip-action:hover { color: var(--text); border-color: var(--accent); }
+.filter-count { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
 /* ---- grid of submissions ---- */
 .grid {
   display: grid;
@@ -137,6 +174,8 @@ body {
   display: flex;
   flex-direction: column;
 }
+/* .card 有 display:flex，光靠 [hidden] 的 UA display:none 蓋不掉，需要這條更高權重規則 */
+.card[hidden] { display: none; }
 .card-head {
   display: flex;
   align-items: center;

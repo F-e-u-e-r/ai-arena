@@ -77,6 +77,17 @@ function renderMain() {
 
   const subs = task.submissions || [];
   const grid = el('div', 'grid');
+  // 卡片只建立一次並以 id 索引：filter 切換 hidden（不動位置、也不重載已載入的 demo），
+  // sort 重排 DOM 節點順序（視覺=focus 順序）。
+  const cardById = new Map();
+  subs.forEach(sub => {
+    const card = makeCard(task, sub);
+    cardById.set(sub.id, card);
+    grid.append(card);
+  });
+
+  // filter + sort 控制：submission 有兩份以上才有意義。
+  if (subs.length >= 2) main.append(buildCompareControls(subs, cardById));
 
   // 多個 iframe demo 一次全開可能撞到瀏覽器 WebGL context 上限，所以預設點擊才載入。
   const hasIframe = subs.some(s => (s.type || task.type || 'iframe') === 'iframe');
@@ -86,7 +97,8 @@ function renderMain() {
     const loadAll = el('button', 'btn', '全部載入');
     loadAll.type = 'button';
     loadAll.addEventListener('click', () => {
-      grid.querySelectorAll('.placeholder').forEach(b => b.click());
+      // 只載入目前顯示（未被 filter 隱藏）的卡片。
+      grid.querySelectorAll('.card:not([hidden]) .placeholder').forEach(b => b.click());
     });
     toolbar.append(loadAll);
     toolbar.append(el(
@@ -99,8 +111,138 @@ function renderMain() {
     main.append(toolbar);
   }
 
-  subs.forEach(sub => grid.append(makeCard(task, sub)));
   main.append(grid);
+}
+
+// submission 的基礎標籤：model · effort · client（都缺就退回 id）。
+function submissionBaseLabel(sub) {
+  return [sub.model, sub.effort, sub.client].filter(Boolean).join(' · ') || sub.id;
+}
+
+// 標籤撞名時（同一 task 內有相同 model·effort·client）才附上唯一的 id 區分。
+function chipLabel(sub, subs) {
+  const base = submissionBaseLabel(sub);
+  const collides = subs.filter(s => submissionBaseLabel(s) === base).length > 1;
+  return collides ? `${base} · ${sub.id}` : base;
+}
+
+function sortValue(sub, key) {
+  if (key === 'cost') return typeof sub.costUsd === 'number' ? sub.costUsd : undefined;
+  const m = sub.metrics;
+  if (!m) return undefined;
+  if (key === 'total') {
+    // 沒有明確 totalTokens 時，用實際會計費的三個欄位相加當總量（否則此選項對現有資料無效）。
+    if (typeof m.totalTokens === 'number') return m.totalTokens;
+    const parts = ['inputTokens', 'outputTokens', 'cachedInputTokens']
+      .map(field => m[field])
+      .filter(value => typeof value === 'number');
+    return parts.length ? parts.reduce((sum, value) => sum + value, 0) : undefined;
+  }
+  const field = { duration: 'durationMs', input: 'inputTokens', output: 'outputTokens' }[key];
+  const value = field ? m[field] : undefined;
+  return typeof value === 'number' ? value : undefined;
+}
+
+// 排序直接重排 DOM 節點順序（不是只改 CSS order），讓視覺順序 = tab / 螢幕報讀順序，
+// 避免鍵盤使用者排序後焦點在網格內亂跳（CSS order 只改視覺、不改 focus 順序）。
+// 搬移用 moveBefore（state-preserving atomic move），已載入的 demo 不會重載；
+// 沒有 moveBefore 的瀏覽器（Safari ≤26.x、Chrome/Edge <133、Firefox <144）退回 append——
+// DOM 順序一樣正確，但已載入的 demo 會重載（demo 本來就是點擊才載入，尚可接受）。
+// 一律遞增、缺值排最後、平手退回原始順序。
+function applySort(subs, cardById, key) {
+  const firstCard = cardById.get(subs[0].id);
+  const grid = firstCard && firstCard.parentNode;
+  if (!grid) return;
+  const orderedIds = key === 'default'
+    ? subs.map(sub => sub.id)
+    : subs
+        .map((sub, index) => ({ id: sub.id, index, value: sortValue(sub, key) }))
+        .sort((a, b) => (a.value ?? Infinity) - (b.value ?? Infinity) || a.index - b.index)
+        .map(entry => entry.id);
+  // 依序把節點移到尾端即得排序後的 DOM 次序；moveBefore(node, null) 等同 append 但保留狀態。
+  const move = typeof grid.moveBefore === 'function'
+    ? (card) => grid.moveBefore(card, null)
+    : (card) => grid.append(card);
+  orderedIds.forEach(id => move(cardById.get(id)));
+}
+
+function buildCompareControls(subs, cardById) {
+  const controls = el('div', 'controls');
+
+  // --- sort ---
+  const sortLabel = el('label', 'sort-ctrl');
+  sortLabel.append(el('span', 'sort-label', '排序'));
+  const select = document.createElement('select');
+  select.className = 'sort-select';
+  [
+    ['default', '預設順序'],
+    ['cost', '成本 ↑'],
+    ['duration', '耗時 ↑'],
+    ['input', 'input tokens ↑'],
+    ['output', 'output tokens ↑'],
+    ['total', 'total tokens ↑']
+  ].forEach(([value, text]) => {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = text;
+    select.append(option);
+  });
+  select.addEventListener('change', () => applySort(subs, cardById, select.value));
+  sortLabel.append(select);
+  controls.append(sortLabel);
+
+  // --- filter chips ---
+  const count = el('span', 'filter-count');
+  count.setAttribute('aria-live', 'polite');
+  const updateCount = () => {
+    const shown = subs.filter(sub => !cardById.get(sub.id).hidden).length;
+    count.textContent = `顯示 ${shown}/${subs.length}`;
+  };
+  // 隱藏卡片前，若焦點還在卡內（例如被 focus 的 iframe），先把焦點移到觸發的按鈕，避免焦點掉到 body。
+  const setVisible = (id, visible, focusFallback) => {
+    const card = cardById.get(id);
+    if (!visible && focusFallback && card.contains(document.activeElement)) focusFallback.focus();
+    card.hidden = !visible;
+  };
+
+  const chips = el('div', 'filter-chips');
+  chips.setAttribute('role', 'group');
+  chips.setAttribute('aria-label', '篩選要顯示的 model');
+  const chipById = new Map();
+  subs.forEach(sub => {
+    const chip = el('button', 'chip', chipLabel(sub, subs));
+    chip.type = 'button';
+    chip.setAttribute('aria-pressed', 'true');
+    chip.addEventListener('click', () => {
+      const next = chip.getAttribute('aria-pressed') !== 'true';
+      chip.setAttribute('aria-pressed', String(next));
+      setVisible(sub.id, next, chip);
+      updateCount();
+    });
+    chipById.set(sub.id, chip);
+    chips.append(chip);
+  });
+  controls.append(chips);
+
+  const actions = el('div', 'filter-actions');
+  const setAll = (visible, trigger) => {
+    subs.forEach(sub => {
+      chipById.get(sub.id).setAttribute('aria-pressed', String(visible));
+      setVisible(sub.id, visible, trigger);
+    });
+    updateCount();
+  };
+  const all = el('button', 'chip-action', '全選');
+  all.type = 'button';
+  all.addEventListener('click', () => setAll(true, all));
+  const none = el('button', 'chip-action', '全不選');
+  none.type = 'button';
+  none.addEventListener('click', () => setAll(false, none));
+  actions.append(all, none, count);
+  controls.append(actions);
+
+  updateCount();
+  return controls;
 }
 
 function makeCard(task, sub) {
