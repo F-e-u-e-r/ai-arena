@@ -123,8 +123,9 @@ body {
 .btn:hover { filter: brightness(1.08); }
 .toolbar-note { font-size: 12px; color: var(--muted); }
 
-/* ---- compare controls: sort + filter ---- */
-.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-bottom: 14px; }
+/* ---- compare controls: sort + facet filter ---- */
+.controls { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; margin-bottom: 14px; }
+.sort-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .sort-ctrl { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
 .sort-select {
   font-size: 13px;
@@ -135,6 +136,18 @@ body {
   border: 1px solid var(--border);
   cursor: pointer;
 }
+.dir-btn {
+  font-size: 12px;
+  padding: 5px 10px;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+.dir-btn:hover { color: var(--text); border-color: var(--accent); }
+.facet { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.facet-label { font-size: 12px; color: var(--muted); min-width: 4em; }
 .filter-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip {
   font-size: 12px;
@@ -146,7 +159,11 @@ body {
   cursor: pointer;
 }
 .chip:hover { border-color: var(--accent); }
-.chip[aria-pressed="false"] { opacity: .45; text-decoration: line-through; }
+/* 選取狀態用 ✓/✕ 前綴表達（不只靠顏色、也不用像 disabled 的刪除線），固定寬度避免切換跳動；
+   未選取＝虛線框 + muted 文字（muted on bg 6.32:1、accent on panel-2 5.07:1，皆 ≥WCAG AA 4.5:1） */
+.chip::before { content: '✓'; display: inline-block; width: 1.1em; color: var(--accent); }
+.chip[aria-pressed="false"]::before { content: '✕'; color: var(--muted); }
+.chip[aria-pressed="false"] { background: transparent; border-style: dashed; color: var(--muted); }
 .filter-actions { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .chip-action {
   font-size: 12px;
@@ -159,6 +176,7 @@ body {
 }
 .chip-action:hover { color: var(--text); border-color: var(--accent); }
 .filter-count { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.filter-hint { font-size: 12px; color: var(--muted); }
 
 /* ---- grid of submissions ---- */
 .grid {
