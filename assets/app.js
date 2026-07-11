@@ -145,7 +145,9 @@ function sortValue(sub, key) {
 
 // 排序直接重排 DOM 節點順序（不是只改 CSS order），讓視覺順序 = tab / 螢幕報讀順序，
 // 避免鍵盤使用者排序後焦點在網格內亂跳（CSS order 只改視覺、不改 focus 順序）。
-// 代價：已載入的 demo 會在重排時重載——demo 本來就是點擊才載入，尚可接受。
+// 搬移用 moveBefore（state-preserving atomic move），已載入的 demo 不會重載；
+// 沒有 moveBefore 的瀏覽器（Safari ≤26.x、Chrome/Edge <133、Firefox <144）退回 append——
+// DOM 順序一樣正確，但已載入的 demo 會重載（demo 本來就是點擊才載入，尚可接受）。
 // 一律遞增、缺值排最後、平手退回原始順序。
 function applySort(subs, cardById, key) {
   const firstCard = cardById.get(subs[0].id);
@@ -157,8 +159,11 @@ function applySort(subs, cardById, key) {
         .map((sub, index) => ({ id: sub.id, index, value: sortValue(sub, key) }))
         .sort((a, b) => (a.value ?? Infinity) - (b.value ?? Infinity) || a.index - b.index)
         .map(entry => entry.id);
-  // append 已在文件中的節點 = 移動到尾端；依序 append 即得排序後的 DOM 次序。
-  orderedIds.forEach(id => grid.append(cardById.get(id)));
+  // 依序把節點移到尾端即得排序後的 DOM 次序；moveBefore(node, null) 等同 append 但保留狀態。
+  const move = typeof grid.moveBefore === 'function'
+    ? (card) => grid.moveBefore(card, null)
+    : (card) => grid.append(card);
+  orderedIds.forEach(id => move(cardById.get(id)));
 }
 
 function buildCompareControls(subs, cardById) {
