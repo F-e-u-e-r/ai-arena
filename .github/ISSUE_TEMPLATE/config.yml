@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a security vulnerability (private)
+    url: https://github.com/F-e-u-e-r/ai-arena/security/advisories/new
+    about: Report security issues privately via GitHub security advisories. Do not open a public issue.
+  - name: Contribute a submission (pull request)
+    url: https://github.com/F-e-u-e-r/ai-arena/blob/main/CONTRIBUTING.md
+    about: New gallery entries are added by PR, not by issue — the guide covers layout and manifest steps.

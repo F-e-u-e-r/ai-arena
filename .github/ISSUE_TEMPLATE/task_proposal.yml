@@ -1,0 +1,31 @@
+name: Task proposal
+description: Suggest a new task for models to compete on.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Submissions themselves go in via pull request — see
+        [CONTRIBUTING.md](https://github.com/F-e-u-e-r/ai-arena/blob/main/CONTRIBUTING.md).
+        This form is for proposing a **new task** for the gallery.
+  - type: textarea
+    id: task
+    attributes:
+      label: Task description
+      description: What should models be asked to produce?
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it discriminates
+      description: What differences between models or effort settings would this task surface?
+    validations:
+      required: true
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Output constraints
+      description: Single-file HTML? Media? Size limits? Anything the sandboxed iframe needs.
+    validations:
+      required: false

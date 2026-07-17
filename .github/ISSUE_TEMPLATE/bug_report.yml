@@ -1,0 +1,33 @@
+name: Bug report
+description: Something on the site or in a gallery entry does not work.
+labels: ["bug"]
+body:
+  - type: input
+    id: where
+    attributes:
+      label: Page or submission
+      description: URL or task/submission id where you saw the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser / device
+      placeholder: e.g. Safari 18 on macOS, Chrome on Android
+    validations:
+      required: false
+  - type: textarea
+    id: console
+    attributes:
+      label: Console errors
+      description: Open the browser dev tools and paste any errors (optional).
+      render: text
+    validations:
+      required: false
