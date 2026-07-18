@@ -4,6 +4,8 @@
   "modelId": "claude-fable-5",
   "effort": "max",
   "client": "claude-code",
+  "skills": "Nil",
+  "subagents": "Nil",
   "author": "F-e-u-e-r",
   "generatedAt": "2026-07-05T09:48:09Z",
   "metrics": {

@@ -324,7 +324,8 @@ function makeCard(task, sub) {
   return card;
 }
 
-// 固定四格：時間 / input tokens / output tokens / cost，缺的顯示 —，方便橫向對比。
+// 固定兩排：第一排 時間 / input tokens / output tokens / cost，第二排 skills / sub-agents
+// （執行設定，各跨兩欄）。缺的顯示 —，方便橫向對比。
 function renderMetrics(sub) {
   const m = sub.metrics || {};
   const row = el('div', 'card-meta');
@@ -332,7 +333,18 @@ function renderMetrics(sub) {
   row.append(metric('in', formatTokens(m.inputTokens), 'input tokens'));
   row.append(metric('out', formatTokens(m.outputTokens), 'output tokens'));
   row.append(metric('cost', formatCost(sub.costUsd), '依 data/pricing.json 換算的 USD'));
+  // 「Nil」= 明確回報未使用；缺欄位（顯示 —）= 未回報。tooltip 帶上完整值，
+  // 因為 .metric-v 會把過長的清單截成省略號。
+  row.append(runConfigMetric('skills', sub.skills, '執行時掛載的 skills'));
+  row.append(runConfigMetric('sub-agents', sub.subagents, '用於 cross-check 的 sub-agents'));
   return row;
+}
+
+function runConfigMetric(key, value, label) {
+  const title = label + '：' + (value == null ? '未回報' : value) + '（Nil = 明確未使用）';
+  const cell = metric(key, value, title);
+  cell.classList.add('metric-wide');
+  return cell;
 }
 
 function metric(key, value, title) {

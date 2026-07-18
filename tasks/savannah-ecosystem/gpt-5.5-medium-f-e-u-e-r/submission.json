@@ -4,6 +4,8 @@
   "modelId": "gpt-5.5",
   "effort": "medium",
   "client": "codex",
+  "skills": "Nil",
+  "subagents": "Nil",
   "author": "f-e-u-e-r",
   "generatedAt": "2026-07-05T00:00:00Z",
   "order": 10

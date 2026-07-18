@@ -65,6 +65,8 @@ tasks/spinning-cube/openai-gpt-high/
   "modelId": "<exact model ID returned by the API>",
   "effort": "high",
   "client": "codex",
+  "skills": "Nil",
+  "subagents": "Nil",
   "author": "<your GitHub handle>",
   "generatedAt": "2026-06-07T12:00:00Z",
   "metrics": {
@@ -77,24 +79,9 @@ tasks/spinning-cube/openai-gpt-high/
 }
 ```
 
-`client` 是用來產生輸出的工具，例如 `claude-code`、`codex`、`opencode`、`kiro`、`cursor` 或 `api`。`generatedAt` 會以 UTC 顯示在 GitHub author 連結前，例如 `2026-07-02 18:00 @F-e-u-e-r`。更多 metrics 與成本細節請見 [CONTRIBUTING.zh-TW.md](CONTRIBUTING.zh-TW.md)。
+`client` 是用來產生輸出的工具，例如 `claude-code`、`codex`、`opencode`、`kiro`、`cursor` 或 `api`。`skills` 與 `subagents` 記錄這次執行的方式：執行時掛載的 skills / 指示包，以及用來 cross-check 產出的 sub-agent 模型——填 `Nil` 表示明確未使用，不確定就省略該欄位（顯示為 —）。`generatedAt` 會以 UTC 顯示在 GitHub author 連結前，例如 `2026-07-02 18:00 @F-e-u-e-r`。更多 metrics 與成本細節請見 [CONTRIBUTING.zh-TW.md](CONTRIBUTING.zh-TW.md)。
 
-你可以加入更多 metadata，供比較或未來篩選使用：
-
-```json
-{
-  "provider": "google",
-  "model": "Gemini",
-  "modelId": "<exact-model-id>",
-  "effort": "high",
-  "temperature": 0.7,
-  "seed": 42,
-  "tools": [],
-  "attempt": 1
-}
-```
-
-Manifest 產生器會保留額外欄位。
+未知欄位會被 build 擋下（拼錯會直接失敗，而不是被無聲忽略）。想記錄新種類的比較 metadata，請在同一個 PR 把欄位加進 `schema/submission.schema.json`——`skills` 與 `subagents` 就是這樣加入的。
 
 `effort` 是自由格式字串。`high`、`medium`、`low` 有專用徽章顏色；其他值仍會使用預設徽章樣式。
 

@@ -33,6 +33,16 @@
       "type": "string",
       "description": "Tool used to run the model, e.g. claude-code, codex. Unknown values still render (a build warning flags likely typos)."
     },
+    "skills": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Skills / instruction packs mounted during the run. Free-form; use \"Nil\" to state explicitly that none were used. Omit when unknown (renders as a dash)."
+    },
+    "subagents": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Sub-agent models used to cross-check the output, e.g. \"grok-4.5 cross-check\". Free-form; use \"Nil\" to state explicitly that none were used. Omit when unknown (renders as a dash)."
+    },
     "author": {
       "type": "string",
       "description": "GitHub handle of the contributor (a valid handle becomes a profile link)."

@@ -29,6 +29,8 @@
   "modelId": "gpt-5",
   "effort": "high",
   "client": "codex",
+  "skills": "Nil",
+  "subagents": "Nil",
   "author": "octocat",
   "generatedAt": "2026-07-02T12:00:00Z",
   "metrics": {
@@ -48,6 +50,8 @@
 | `modelId` | API 回傳的精確 model id。用來在 `data/pricing.json` 查詢價格。若你有填 token metrics，這個必須查得到單價，否則 CI 會失敗（見 [pricing](#metrics-欄位)）；短寫法與 `provider/model` 寫法都會透過 `aliasFor` 解析。 |
 | `effort` | 思考強度，例如 `high`、`medium` 或 `low`。自由格式字串。 |
 | `client` | 用來產生輸出的工具，例如 `claude-code`、`codex`、`opencode`、`kiro`、`cursor` 或 `api`。自由格式字串。 |
+| `skills` | 執行時掛載的 skills / 指示包。自由格式字串；填 `Nil` 表示明確未使用。不確定就省略（顯示為 —）。 |
+| `subagents` | 用來 cross-check 產出的 sub-agent 模型，例如 `grok-4.5 cross-check`。自由格式字串；填 `Nil` 表示明確未使用。不確定就省略（顯示為 —）。 |
 | `author` | 你的 GitHub handle。網站會連到 `https://github.com/<author>`。 |
 | `generatedAt` | ISO 8601 timestamp。會以 UTC 顯示在 GitHub author 連結前。 |
 | `metrics` | 請見 [metrics 欄位](#metrics-欄位)。 |

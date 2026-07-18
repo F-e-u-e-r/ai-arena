@@ -5,6 +5,8 @@
   "modelId": "grok-4.5",
   "effort": "high",
   "client": "grok",
+  "skills": "Nil",
+  "subagents": "Nil",
   "author": "F-e-u-e-r",
   "generatedAt": "2026-07-10T16:20:42Z"
 }

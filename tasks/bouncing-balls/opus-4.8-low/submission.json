@@ -4,6 +4,8 @@
   "modelId": "claude-opus-4-8",
   "effort": "low",
   "client": "claude-code",
+  "skills": "Nil",
+  "subagents": "Nil",
   "author": "F-e-u-e-r",
   "generatedAt": "2026-07-02T09:41:00Z",
   "metrics": {
