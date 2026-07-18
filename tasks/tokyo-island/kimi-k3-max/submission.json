@@ -1,0 +1,13 @@
+{
+  "$schema": "../../../schema/submission.schema.json",
+  "provider": "moonshotai",
+  "model": "Kimi K3",
+  "modelId": "moonshotai/kimi-k3",
+  "effort": "max",
+  "client": "opencode",
+  "skills": "Nil",
+  "subagents": "Nil",
+  "author": "F-e-u-e-r",
+  "generatedAt": "2026-07-18T21:48:00Z",
+  "order": 10
+}

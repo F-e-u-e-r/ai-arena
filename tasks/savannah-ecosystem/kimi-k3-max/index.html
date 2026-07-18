@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>非洲大草原生態系統 — Kimi K3 max</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="scene"></canvas>
+
+<!-- 狀態列:目前天氣 / 季節 / debug 資訊(小尺寸下自動縮小,不遮主要場景) -->
+<div id="hud" class="hud" aria-live="polite">
+  <span id="hud-status">☀️ Sunny · 🌾 乾季</span>
+  <span id="hud-debug" class="hud-debug hidden"></span>
+</div>
+
+<!-- 主控制列:6 種天氣(單選)+ 季節切換;小螢幕自動收成 icon -->
+<div id="bar" class="bar" role="toolbar" aria-label="天氣與季節控制">
+  <div class="bar-row" id="weather-row"><!-- 天氣按鈕由 main.js 產生 --></div>
+  <span class="sep" aria-hidden="true"></span>
+  <div class="bar-row">
+    <button id="btn-season" class="btn season" type="button" title="切換季節 (S)">🌾 <span>乾季</span><em id="season-timer">60s</em></button>
+    <button id="btn-debug" class="btn ghost" type="button" title="FPS / 粒子數 (D)">📊</button>
+  </div>
+</div>
+
+<script src="js/utils.js"></script>
+<script src="js/particles.js"></script>
+<script src="js/environment.js"></script>
+<script src="js/animals.js"></script>
+<script src="js/weather.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>漂浮倫敦島與四季天氣 — Kimi K3</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="hud">
+  <div class="panel info">
+    <div class="title">🇬🇧 漂浮倫敦島</div>
+    <div class="status"><span id="seasonLabel">🌸 春季</span><span class="dot">·</span><span id="timeLabel">☀️ 白天</span></div>
+    <div class="debug" id="debugLabel">FPS --</div>
+  </div>
+  <div class="panel controls" id="controls">
+    <button data-season="0" class="active" title="春季 (1)">🌸<span>春</span></button>
+    <button data-season="1" title="夏季 (2)">☀️<span>夏</span></button>
+    <button data-season="2" title="秋季 (3)">🍁<span>秋</span></button>
+    <button data-season="3" title="冬季 (4)">❄️<span>冬</span></button>
+    <button id="autoBtn" title="自動輪轉四季 (A)">⏸<span>自動</span></button>
+    <button id="phaseBtn" title="跳轉日夜 (N)">🌗<span>日夜</span></button>
+  </div>
+  <div class="hint">拖曳旋轉 · 滾輪縮放 · 1-4 切換季節</div>
+</div>
+<div id="loading">Loading London…</div>
+<div id="fatal" hidden></div>
+
+<!-- Three.js r160 UMD（classic script，讓 file:// 直接開啟也能運作；gallery 以 http(s) iframe 載入亦相同） -->
+<script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+<script src="main.js"></script>
+</body>
+</html>
