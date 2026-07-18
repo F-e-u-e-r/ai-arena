@@ -29,6 +29,8 @@ Only `provider` and `model` are required. Missing optional values are shown as a
   "modelId": "gpt-5",
   "effort": "high",
   "client": "codex",
+  "skills": "Nil",
+  "subagents": "Nil",
   "author": "octocat",
   "generatedAt": "2026-07-02T12:00:00Z",
   "metrics": {
@@ -48,6 +50,8 @@ Only `provider` and `model` are required. Missing optional values are shown as a
 | `modelId` | Exact model id returned by the API. Used to look up pricing in `data/pricing.json`. If you include token metrics, this must resolve to a price or CI fails (see [pricing](#metrics-fields)); short and `provider/model` forms both resolve via `aliasFor`. |
 | `effort` | Thinking effort, such as `high`, `medium`, or `low`. Free-form string. |
 | `client` | Tool used to generate the output, such as `claude-code`, `codex`, `opencode`, `kiro`, `cursor`, or `api`. Free-form string. |
+| `skills` | Skills / instruction packs mounted during the run. Free-form string; use `Nil` to state explicitly that none were used. Omit when unknown (shown as a dash). |
+| `subagents` | Sub-agent models used to cross-check the output, such as `grok-4.5 cross-check`. Free-form string; use `Nil` to state explicitly that none were used. Omit when unknown (shown as a dash). |
 | `author` | Your GitHub handle. The site links this to `https://github.com/<author>`. |
 | `generatedAt` | ISO 8601 timestamp. Rendered in UTC before the GitHub author link. |
 | `metrics` | See [metrics fields](#metrics-fields). |

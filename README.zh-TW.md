@@ -65,6 +65,8 @@ tasks/spinning-cube/openai-gpt-high/
   "modelId": "<exact model ID returned by the API>",
   "effort": "high",
   "client": "codex",
+  "skills": "Nil",
+  "subagents": "Nil",
   "author": "<your GitHub handle>",
   "generatedAt": "2026-06-07T12:00:00Z",
   "metrics": {
@@ -77,30 +79,15 @@ tasks/spinning-cube/openai-gpt-high/
 }
 ```
 
-`client` 是用來產生輸出的工具，例如 `claude-code`、`codex`、`opencode`、`kiro`、`cursor` 或 `api`。`generatedAt` 會以 UTC 顯示在 GitHub author 連結前，例如 `2026-07-02 18:00 @F-e-u-e-r`。更多 metrics 與成本細節請見 [CONTRIBUTING.zh-TW.md](CONTRIBUTING.zh-TW.md)。
+`client` 是用來產生輸出的工具，例如 `claude-code`、`codex`、`opencode`、`kiro`、`cursor` 或 `api`。`skills` 與 `subagents` 記錄這次執行的方式：執行時掛載的 skills / 指示包，以及用來 cross-check 產出的 sub-agent 模型——填 `Nil` 表示明確未使用，不確定就省略該欄位（顯示為 —）。`generatedAt` 會以 UTC 顯示在 GitHub author 連結前，例如 `2026-07-02 18:00 @F-e-u-e-r`。更多 metrics 與成本細節請見 [CONTRIBUTING.zh-TW.md](CONTRIBUTING.zh-TW.md)。
 
-你可以加入更多 metadata，供比較或未來篩選使用：
-
-```json
-{
-  "provider": "google",
-  "model": "Gemini",
-  "modelId": "<exact-model-id>",
-  "effort": "high",
-  "temperature": 0.7,
-  "seed": 42,
-  "tools": [],
-  "attempt": 1
-}
-```
-
-Manifest 產生器會保留額外欄位。
+未知欄位會被 build 擋下（拼錯會直接失敗，而不是被無聲忽略）。想記錄新種類的比較 metadata，請在同一個 PR 把欄位加進 `schema/submission.schema.json`——`skills` 與 `subagents` 就是這樣加入的。
 
 `effort` 是自由格式字串。`high`、`medium`、`low` 有專用徽章顏色；其他值仍會使用預設徽章樣式。
 
 ## 成本與 Metrics
 
-每張卡片顯示四個可比較的值：時間、輸入 tokens、輸出 tokens 與成本。缺少的值會顯示為 —。你不需要自行計算成本：`build-manifest.mjs` 會使用 `data/pricing.json` 與 `submission.json` 中的 token 數，自動產生 `costUsd`。
+每張卡片的 footer 顯示四個可比較的用量值——時間、輸入 tokens、輸出 tokens 與成本——以及第二排的執行設定（`skills` 與 `subagents`）。缺少的值會顯示為 —。你不需要自行計算成本：`build-manifest.mjs` 會使用 `data/pricing.json` 與 `submission.json` 中的 token 數，自動產生 `costUsd`。
 
 - `data/pricing.json` 以 `modelId` 作為 key。價格以美元計，單位為每 100 萬 tokens。變更價格時請同步更新 `source` 與 `verifiedAt`。
 - 如果 `modelId` 不在 pricing 檔案中，成本會顯示為 —。可以的話，請在同一個 PR 補上該模型價格。

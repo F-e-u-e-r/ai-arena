@@ -4,6 +4,8 @@
   "modelId": "gpt-5.6-terra",
   "effort": "high",
   "client": "codex",
+  "skills": "Nil",
+  "subagents": "Nil",
   "author": "F-e-u-e-r",
   "generatedAt": "2026-07-11T00:00:00Z",
   "order": 10

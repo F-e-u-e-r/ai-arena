@@ -256,7 +256,7 @@ body {
 }
 .author:hover { color: var(--text); text-decoration: underline; }
 
-/* metrics footer：時間 / in / out / cost 四格 */
+/* metrics footer：第一排 時間 / in / out / cost 四格，第二排 skills / sub-agents 各跨兩欄 */
 .card-meta {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -266,6 +266,7 @@ body {
   margin-top: auto;
 }
 .metric { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.metric-wide { grid-column: span 2; }
 .metric-k {
   font-size: 10px;
   text-transform: uppercase;

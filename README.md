@@ -65,6 +65,8 @@ tasks/spinning-cube/openai-gpt-high/
   "modelId": "<exact model ID returned by the API>",
   "effort": "high",
   "client": "codex",
+  "skills": "Nil",
+  "subagents": "Nil",
   "author": "<your GitHub handle>",
   "generatedAt": "2026-06-07T12:00:00Z",
   "metrics": {
@@ -77,30 +79,15 @@ tasks/spinning-cube/openai-gpt-high/
 }
 ```
 
-`client` is the tool used to generate the output, such as `claude-code`, `codex`, `opencode`, `kiro`, `cursor`, or `api`. `generatedAt` is rendered in UTC before the GitHub author link, for example `2026-07-02 18:00 @F-e-u-e-r`. See [CONTRIBUTING.md](CONTRIBUTING.md) for metrics and cost details.
+`client` is the tool used to generate the output, such as `claude-code`, `codex`, `opencode`, `kiro`, `cursor`, or `api`. `skills` and `subagents` record how the run was conducted: the skills / instruction packs mounted during the run, and the sub-agent models used to cross-check the output — use `Nil` to state explicitly that none were used, or omit the field when unknown (shown as a dash). `generatedAt` is rendered in UTC before the GitHub author link, for example `2026-07-02 18:00 @F-e-u-e-r`. See [CONTRIBUTING.md](CONTRIBUTING.md) for metrics and cost details.
 
-You can include additional metadata for comparison or future filtering:
-
-```json
-{
-  "provider": "google",
-  "model": "Gemini",
-  "modelId": "<exact-model-id>",
-  "effort": "high",
-  "temperature": 0.7,
-  "seed": 42,
-  "tools": [],
-  "attempt": 1
-}
-```
-
-The manifest builder preserves extra fields.
+Unknown fields are rejected by the build (so typos fail fast instead of being silently ignored). To record a new kind of comparison metadata, add the field to `schema/submission.schema.json` in the same PR — that is how `skills` and `subagents` were introduced.
 
 `effort` is a free-form string. `high`, `medium`, and `low` have dedicated badge colors; other values still render with the default badge style.
 
 ## Cost and Metrics
 
-Each card shows four comparable values: time, input tokens, output tokens, and cost. Missing values are displayed as a dash. You do not need to calculate cost yourself: `build-manifest.mjs` uses `data/pricing.json` plus the token counts in `submission.json` to generate `costUsd`.
+Each card's footer shows four comparable usage values — time, input tokens, output tokens, and cost — plus a second row with the run configuration (`skills` and `subagents`). Missing values are displayed as a dash. You do not need to calculate cost yourself: `build-manifest.mjs` uses `data/pricing.json` plus the token counts in `submission.json` to generate `costUsd`.
 
 - `data/pricing.json` is keyed by `modelId`. Prices are in USD per 1 million tokens. Update `source` and `verifiedAt` when changing prices.
 - If a `modelId` is not in the pricing file, cost is shown as a dash. Add that model's pricing in the same PR if possible.

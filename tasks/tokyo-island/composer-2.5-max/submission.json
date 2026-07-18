@@ -4,6 +4,8 @@
   "model": "Composer 2.5",
   "effort": "max",
   "client": "cursor",
+  "skills": "Nil",
+  "subagents": "Nil",
   "author": "F-e-u-e-r",
   "generatedAt": "2026-07-11T12:00:00Z",
   "metrics": {

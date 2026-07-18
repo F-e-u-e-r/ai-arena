@@ -4,6 +4,8 @@
   "modelId": "claude-sonnet-5",
   "effort": "max",
   "client": "claude-code",
+  "skills": "Nil",
+  "subagents": "Nil",
   "author": "f-e-u-e-r",
   "generatedAt": "2026-07-05T05:50:00Z",
   "metrics": {
