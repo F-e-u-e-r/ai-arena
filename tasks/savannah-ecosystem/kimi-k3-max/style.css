@@ -1,0 +1,106 @@
+/* 非洲大草原生態系統 — 版面與控制列樣式
+   重點:320px × 200px iframe 內 controls 仍可見、可點擊、不重疊不溢出 */
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #0d1117;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
+}
+#scene { display: block; width: 100vw; height: 100vh; }
+
+/* ---------- 狀態列(左上,極小) ---------- */
+.hud {
+  position: fixed;
+  top: 6px;
+  left: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: rgba(12, 16, 22, 0.45);
+  color: #fff;
+  font-size: clamp(9px, 2.6vmin, 12px);
+  line-height: 1.3;
+  pointer-events: none;      /* 不擋畫面互動 */
+  text-shadow: 0 1px 2px rgba(0,0,0,.5);
+  max-width: 60vw;
+}
+.hud-debug { opacity: .85; font-variant-numeric: tabular-nums; white-space: pre; }
+.hidden { display: none; }
+
+/* ---------- 控制列(下方置中,超寬自動換行) ---------- */
+.bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 6px;
+  margin: 0 auto;
+  width: fit-content;          /* 內容寬,不受 left 偏移限制 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  padding: 5px 6px;
+  max-width: calc(100vw - 8px);
+  border-radius: 12px;
+  background: rgba(12, 16, 22, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.bar-row {
+  display: contents;           /* 併入單一 flex 流,換行更緊湊 */
+}
+.sep {
+  width: 1px;
+  align-self: stretch;
+  background: rgba(255,255,255,.18);
+  margin: 0 2px;
+}
+.btn {
+  appearance: none;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 8px;
+  background: rgba(255,255,255,.08);
+  color: #fff;
+  min-width: 34px;
+  height: 28px;
+  padding: 0 7px;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  transition: background .15s, border-color .15s, transform .05s;
+}
+.btn:active { transform: scale(.94); }
+.btn.active {
+  background: rgba(255, 200, 80, .28);
+  border-color: rgba(255, 200, 80, .8);
+}
+.btn:disabled { opacity: .32; cursor: not-allowed; }
+.btn span { font-size: 11px; }
+.btn em {
+  font-style: normal;
+  font-size: 10px;
+  opacity: .75;
+  font-variant-numeric: tabular-nums;
+}
+.btn.season { min-width: 0; }
+.btn.ghost { padding: 0 6px; }
+
+/* ---------- 小尺寸(嵌入預覽 320×200):圖示化、縮間距 ---------- */
+@media (max-width: 560px), (max-height: 260px) {
+  .btn { min-width: 30px; height: 26px; padding: 0 5px; font-size: 13px; }
+  .btn span { display: none; }     /* 只留圖示 */
+  .btn em { display: none; }
+  .btn.season::after { content: ""; }
+  .bar { gap: 3px; padding: 4px 5px; bottom: 4px; }
+  .bar-row { gap: 3px; }
+}

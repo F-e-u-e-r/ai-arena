@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>漂浮東京島與楓葉 — Kimi K3</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<div id="app"></div>
+
+<!-- HUD：pointer-events 預設 none，只有按鈕可點擊，避免遮住 320x200 預覽的拖曳區 -->
+<div id="hud">
+  <div class="pill" id="hud-title">🍁 漂浮東京島</div>
+  <div class="pill" id="hud-phase">☀️ 白天</div>
+  <div class="pill mono" id="hud-stats">– FPS · 240 葉</div>
+</div>
+<div id="hud-btns">
+  <button id="btn-speed" type="button" title="加速日夜循環 ×4（快捷鍵 F）" aria-pressed="false">⏩</button>
+  <button id="btn-info" type="button" title="顯示 / 隱藏除錯資訊（快捷鍵 D）" aria-pressed="true">ℹ️</button>
+</div>
+<div id="hint" class="pill">拖曳旋轉視角 · F 加速循環 · D 資訊</div>
+<div id="fatal" hidden></div>
+
+<!-- CDN 載入失敗（離線 / sandbox 阻擋）時顯示可讀錯誤，而不是黑畫面 -->
+<script>
+(function () {
+  var shown = false;
+  window.addEventListener('error', function (e) {
+    if (shown) return;
+    // 資源載入錯誤（script/link）沒有 message，統一給提示
+    shown = true;
+    var el = document.getElementById('fatal');
+    if (!el) return;
+    el.hidden = false;
+    el.innerHTML = '<div class="fatal-card"><h2>場景載入失敗</h2><p>' +
+      (e && e.message ? e.message : 'Three.js CDN 可能無法連線') +
+      '</p><p>點擊任意處重新整理</p></div>';
+    el.addEventListener('click', function () { location.reload(); });
+  }, true);
+})();
+</script>
+
+<!-- Three.js r134 UMD（task 允許 v134+）。classic script 可於 file:// 與 sandboxed iframe 運作 -->
+<script src="https://unpkg.com/three@0.134.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.134.0/examples/js/controls/OrbitControls.js"></script>
+<script src="./main.js"></script>
+</body>
+</html>
