@@ -87,7 +87,7 @@ Unknown fields are rejected by the build (so typos fail fast instead of being si
 
 ## Cost and Metrics
 
-Each card shows four comparable values: time, input tokens, output tokens, and cost. Missing values are displayed as a dash. You do not need to calculate cost yourself: `build-manifest.mjs` uses `data/pricing.json` plus the token counts in `submission.json` to generate `costUsd`.
+Each card's footer shows four comparable usage values — time, input tokens, output tokens, and cost — plus a second row with the run configuration (`skills` and `subagents`). Missing values are displayed as a dash. You do not need to calculate cost yourself: `build-manifest.mjs` uses `data/pricing.json` plus the token counts in `submission.json` to generate `costUsd`.
 
 - `data/pricing.json` is keyed by `modelId`. Prices are in USD per 1 million tokens. Update `source` and `verifiedAt` when changing prices.
 - If a `modelId` is not in the pricing file, cost is shown as a dash. Add that model's pricing in the same PR if possible.

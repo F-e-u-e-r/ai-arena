@@ -87,7 +87,7 @@ tasks/spinning-cube/openai-gpt-high/
 
 ## 成本與 Metrics
 
-每張卡片顯示四個可比較的值：時間、輸入 tokens、輸出 tokens 與成本。缺少的值會顯示為 —。你不需要自行計算成本：`build-manifest.mjs` 會使用 `data/pricing.json` 與 `submission.json` 中的 token 數，自動產生 `costUsd`。
+每張卡片的 footer 顯示四個可比較的用量值——時間、輸入 tokens、輸出 tokens 與成本——以及第二排的執行設定（`skills` 與 `subagents`）。缺少的值會顯示為 —。你不需要自行計算成本：`build-manifest.mjs` 會使用 `data/pricing.json` 與 `submission.json` 中的 token 數，自動產生 `costUsd`。
 
 - `data/pricing.json` 以 `modelId` 作為 key。價格以美元計，單位為每 100 萬 tokens。變更價格時請同步更新 `source` 與 `verifiedAt`。
 - 如果 `modelId` 不在 pricing 檔案中，成本會顯示為 —。可以的話，請在同一個 PR 補上該模型價格。
