@@ -1,5 +1,7 @@
 # AI Arena
 
+![status](https://img.shields.io/badge/status-LIVE-2ee6a6)
+
 語言：[English](README.md) | 繁體中文
 
 AI Arena 是一個靜態展示網站，用來比較不同 AI 模型與不同思考強度設定在同一個任務上的輸出結果。
