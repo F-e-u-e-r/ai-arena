@@ -1,5 +1,7 @@
 # AI Arena
 
+![status](https://img.shields.io/badge/status-LIVE-2ee6a6)
+
 Language: English | [繁體中文](README.zh-TW.md)
 
 AI Arena is a static gallery for comparing outputs from different AI models and thinking-effort settings on the same task.
