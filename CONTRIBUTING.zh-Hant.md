@@ -2,7 +2,7 @@
 
 語言：[English](CONTRIBUTING.md) | 繁體中文
 
-歡迎貢獻。一般流程是：fork repository、新增你的生成輸出、開 pull request，然後等待 review。Merge 之後，你的輸出會和你的 GitHub handle 一起出現在 gallery。
+歡迎貢獻。一般流程是：fork repository、新增你的生成輸出、開 pull request，然後等待 review。Merge 之後，你的輸出會和你的 GitHub handle 一起出現在 gallery。開 pull request 即表示你接受本指南結尾的[貢獻政策](#貢獻政策)。
 
 ## TL;DR
 
@@ -92,7 +92,7 @@ Metrics 是選填。沒有 metrics 的 submissions 仍然歡迎。
 
 - 優先使用單一 self-contained `index.html`。允許 CDN assets，例如從 `https://unpkg.com/...` 載入 Three.js。
 - HTML outputs 會在 sandboxed iframe 中執行，權限為 `allow-scripts allow-pointer-lock`。它們不能存取 parent page、cookies 或 same-origin resources。
-- 非 HTML outputs 應使用 `type: image`、`type: video` 或 `type: model-viewer`。請見 [README.zh-TW.md](README.zh-TW.md)。
+- 非 HTML outputs 應使用 `type: image`、`type: video` 或 `type: model-viewer`。請見 [README.zh-Hant.md](README.zh-Hant.md)。
 
 ## 新增任務
 
@@ -126,3 +126,15 @@ python3 -m http.server 8000
 接著開啟 `http://localhost:8000`，確認你的輸出能正確載入。`--strict` 會執行與 CI 相同的檢查，所以未知欄位與缺少 pricing 在本機也會失敗。
 
 `tasks.json` 是產生檔。請 commit 它，但不要手動編輯。PR CI 會重新執行 build，如果 committed manifest 已過期就會失敗。
+
+## 貢獻政策
+
+AI Arena 會公開發布你提交的內容，因此權利歸屬必須清楚。開 pull request 即表示貢獻者同意以下條款。
+
+- **程式碼。** 對網站、build scripts、schema 與文件的修改，依本 repository 的 [MIT License](LICENSE) 貢獻（inbound = outbound）。
+- **非程式碼內容。** Prompts、模型輸出（包含生成的 `index.html`）、截圖與其他媒體，以及 metrics 屬於內容，程式碼授權本身並不涵蓋它們。提交非程式碼內容時，貢獻者確認自己擁有提交該內容所需的權利，並授予本專案一項非專屬、全球性、免權利金的授權，得將該貢獻作為 AI Arena 及其 repository 的一部分進行託管、重製、排版、展示與再散布。第三方條款與模型供應商條款仍然適用。
+- **機密與個人資料。** 貢獻者確認提交內容不含任何其無權揭露的機密資訊或個人資料。`tasks/` 底下的所有內容都是公開網站內容（見[安全性](#安全性)）。
+- **署名。** `submission.json` 中的 `author` handle 會顯示在 gallery 卡片上，並連結到該 GitHub 個人頁。
+- **移除。** 移除請求可就目前維護中的網站與當前分支進行考量，但無法保證從 Git 歷史、forks、快取或先前已散布的副本中移除。
+
+貢獻者保留自己對貢獻所擁有的一切權利；本政策不移轉所有權。

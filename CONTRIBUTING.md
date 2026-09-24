@@ -1,8 +1,8 @@
 # Contributing Guide
 
-Language: English | [繁體中文](CONTRIBUTING.zh-TW.md)
+Language: English | [繁體中文](CONTRIBUTING.zh-Hant.md)
 
-Contributions are welcome. The usual flow is: fork the repository, add your generated output, open a pull request, and wait for review. After merge, your output appears in the gallery with your GitHub handle.
+Contributions are welcome. The usual flow is: fork the repository, add your generated output, open a pull request, and wait for review. After merge, your output appears in the gallery with your GitHub handle. Opening a pull request means you accept the [contribution policy](#contribution-policy) at the end of this guide.
 
 ## TL;DR
 
@@ -126,3 +126,15 @@ python3 -m http.server 8000
 Then open `http://localhost:8000` and verify your output loads. `--strict` runs the same checks as CI, so unknown fields and missing pricing fail locally too.
 
 `tasks.json` is generated. Commit it, but do not edit it by hand. PR CI reruns the build and fails if the committed manifest is stale.
+
+## Contribution Policy
+
+AI Arena publishes what you submit, so the rights need to be clear. By opening a pull request, the contributor agrees to the following.
+
+- **Code.** Changes to the site, build scripts, schema and documentation are contributed under the repository's [MIT License](LICENSE) (inbound = outbound).
+- **Non-code content.** Prompts, model outputs (including generated `index.html` files), screenshots and other media, and metrics are content; the code licence does not cover them by itself. By submitting non-code content, the contributor confirms that they have the necessary rights to submit it and grants the project a non-exclusive, worldwide, royalty-free licence to host, reproduce, format, display and redistribute the contribution as part of AI Arena and its repository. Third-party and model-provider terms continue to apply.
+- **Confidentiality and personal data.** The contributor confirms the submission contains no confidential information or personal data they are not authorised to disclose. Everything under `tasks/` is public website content (see [Security](#security)).
+- **Attribution.** The `author` handle in `submission.json` is shown on the gallery card and linked to that GitHub profile.
+- **Removal.** Removal requests may be considered for the maintained site and current branch, but removal cannot be guaranteed from Git history, forks, caches or previously distributed copies.
+
+Contributors keep whatever rights they hold in their contribution; nothing here transfers ownership.
