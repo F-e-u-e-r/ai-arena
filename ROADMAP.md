@@ -58,7 +58,7 @@ Security & data-integrity hardening (from the Fable code review):
    `additionalProperties:false` (with a friendly "unknown field / likely typo"
    message) — this also requires extending `validate-json-schema.mjs`, which
    currently ignores that keyword — and document `"$schema": "…"` usage in
-   `CONTRIBUTING.md` (+ `CONTRIBUTING.zh-TW.md`).
+   `CONTRIBUTING.md` (+ `CONTRIBUTING.zh-Hant.md`).
    - *Accept:* a typo'd field (`modleId`) is reported by name; CONTRIBUTING shows
      the one-line `$schema` snippet.
 

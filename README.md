@@ -1,14 +1,22 @@
 # AI Arena
 
-![status](https://img.shields.io/badge/status-LIVE-2ee6a6)
+**Side-by-side AI outputs for the same prompt — across model, effort and client, with time/token/cost metrics.**
 
-Language: English | [繁體中文](README.zh-TW.md)
+![status](https://img.shields.io/badge/status-LIVE-2ee6a6) [![version](https://img.shields.io/badge/version-v0.1.0-orange)](https://github.com/F-e-u-e-r/ai-arena/releases/tag/v0.1.0) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) · [Live gallery →](https://f-e-u-e-r.github.io/ai-arena/) · English · [繁體中文](README.zh-Hant.md)
 
 AI Arena is a static gallery for comparing outputs from different AI models and thinking-effort settings on the same task.
 
 The site is pure HTML, CSS, and JavaScript, so it can be deployed directly to GitHub Pages without a backend. The homepage is provider-neutral; OpenAI, Anthropic, Google, xAI, GLM, DeepSeek, Kimi, and other providers are represented through submission metadata.
 
-Want to contribute an AI-generated result? See [CONTRIBUTING.md](CONTRIBUTING.md). Traditional Chinese contribution notes are available in [CONTRIBUTING.zh-TW.md](CONTRIBUTING.zh-TW.md).
+Want to contribute an AI-generated result? See [CONTRIBUTING.md](CONTRIBUTING.md), including its [contribution policy](CONTRIBUTING.md#contribution-policy) for prompts, outputs and media. Traditional Chinese contribution notes are available in [CONTRIBUTING.zh-Hant.md](CONTRIBUTING.zh-Hant.md).
+
+## Highlights
+
+- **Provider-neutral, PR-driven gallery** — outputs from many providers sit side by side under each task, with filters by client, model and effort and sorting by name or time; new entries arrive by pull request and appear under the contributor's GitHub handle.
+- **Zero backend** — plain HTML, CSS and JavaScript on GitHub Pages; the build scripts use only Node's standard library.
+- **Comparable metrics on every card** — time, input/output tokens and cost, with cost computed from `data/pricing.json`; a missing value is shown as a dash.
+- **Fail-fast contribution contract** — `submission.json` and `task.json` are validated against JSON Schema at build time; an unknown field, a stale `tasks.json` or a missing price fails CI.
+- **Untrusted outputs stay sandboxed** — each submission renders in a sandboxed iframe with no access to the gallery's origin, and the files reviewed in the PR are exactly the files the gallery loads.
 
 ## Daily Workflow
 
@@ -163,3 +171,9 @@ The workflow validates metadata, confirms that `tasks.json` is current, scans fo
 - GitHub blocks regular repository files larger than 100 MiB. GitHub Pages does not support Git LFS, so large builds should use Cloudflare Pages or object storage.
 - Unity Brotli or Gzip builds require correct `Content-Encoding` headers. GitHub Pages does not support custom headers, so enable Unity's Decompression Fallback, disable compression, or use hosting that supports custom headers.
 - The current iframe sandbox is suitable for single-file HTML, Three.js, and Canvas outputs. Unity or multi-file ES module submissions may need a separate hosting/origin decision later.
+
+## License
+
+The code in this repository — site, build scripts, schema and documentation — is released under the [MIT License](LICENSE).
+
+Submitted prompts, model outputs and media under `tasks/` are contributed content and are not covered by the MIT licence on their own: each contributor grants the project the right to host, display and redistribute them as part of AI Arena and its repository, as set out in the [contribution policy](CONTRIBUTING.md#contribution-policy). Third-party and model-provider terms continue to apply.
