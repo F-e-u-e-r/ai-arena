@@ -1,3 +1,9 @@
+// Any / Explicit Subset 的篩選與排序純邏輯抽到 filter-core（無 DOM 副作用，與 Node test runner 共用）。
+import {
+  facetValues, initState, isSelected,
+  toggle, only, reset, visible, compareText, sortedSubs
+} from './filter-core.mjs?v=9';
+
 'use strict';
 
 const MANIFEST_URL = 'tasks.json';
@@ -115,11 +121,6 @@ function renderMain() {
   main.append(grid);
 }
 
-// submission 的基礎標籤：model · effort · client（都缺就退回 id）。
-function submissionBaseLabel(sub) {
-  return [sub.model, sub.effort, sub.client].filter(Boolean).join(' · ') || sub.id;
-}
-
 // filter 的三個 facet：工具（client）、模型、effort。facet 內 OR、facet 間 AND。
 const FILTER_FACETS = [
   { key: 'client', label: '工具' },
@@ -131,27 +132,8 @@ const CLIENT_LABELS = { 'claude-code': 'Claude', codex: 'Codex', cursor: 'Cursor
 // effort chip 依強度排序（不是字母序），沒見過的值排在已知檔位之後。
 const EFFORT_RANK = { none: 0, minimal: 1, low: 2, medium: 3, high: 4, xhigh: 5, max: 6, ultra: 7 };
 
-function facetValue(sub, key) {
-  return sub[key] || '—';
-}
-
 function facetDisplay(key, value) {
   return key === 'client' ? (CLIENT_LABELS[value] || value) : value;
-}
-
-// 數字感知的字母序（讓 GPT 5.5 < GPT 5.6，而不是逐字元比較）。
-function compareText(a, b) {
-  return String(a).localeCompare(String(b), 'en', { numeric: true, sensitivity: 'base' });
-}
-
-// 只有兩種排序鍵：name（預設，model · effort · client 全標籤字母序）與 time（generatedAt）。
-function sortValue(sub, key) {
-  if (key === 'name') return submissionBaseLabel(sub);
-  if (key === 'time') {
-    const t = Date.parse(sub.generatedAt);
-    return Number.isNaN(t) ? undefined : t;
-  }
-  return undefined;
 }
 
 // 排序直接重排 DOM 節點順序（不是只改 CSS order），讓視覺順序 = tab / 螢幕報讀順序，
@@ -164,19 +146,13 @@ function applySort(subs, cardById, key, dir) {
   const firstCard = cardById.get(subs[0].id);
   const grid = firstCard && firstCard.parentNode;
   if (!grid) return;
-  const entries = subs.map((sub, index) => ({ id: sub.id, index, value: sortValue(sub, key) }));
-  entries.sort((a, b) => {
-    const aMissing = a.value == null;
-    const bMissing = b.value == null;
-    if (aMissing || bMissing) return (aMissing - bMissing) || (a.index - b.index);
-    const cmp = typeof a.value === 'string' ? compareText(a.value, b.value) : a.value - b.value;
-    return (dir * cmp) || (a.index - b.index);
-  });
-  // 依序把節點移到尾端即得排序後的 DOM 次序；moveBefore(node, null) 等同 append 但保留狀態。
+  // 排序順序由 filter-core 的純函式決定（numeric-aware、缺值排最後、平手保留原序）。
+  // 依序把節點移到尾端即得排序後的 DOM 次序；moveBefore(node, null) 等同 append 但保留狀態
+  // （已載入的 demo 不重載，PR #24 不變量）。
   const move = typeof grid.moveBefore === 'function'
     ? (card) => grid.moveBefore(card, null)
     : (card) => grid.append(card);
-  entries.forEach(entry => move(cardById.get(entry.id)));
+  sortedSubs(subs, key, dir).forEach(sub => move(cardById.get(sub.id)));
 }
 
 function buildCompareControls(subs, cardById) {
@@ -217,7 +193,11 @@ function buildCompareControls(subs, cardById) {
   sortRow.append(sortLabel, dirBtn);
   controls.append(sortRow);
 
-  // --- faceted filter：每個 facet 一排 chip。 ---
+  // --- faceted filter（Any / Explicit Subset 模型，見 docs/filtering-spec.md §2）。---
+  const facetKeys = FILTER_FACETS.map(facet => facet.key);
+  let filterState = initState(facetKeys);   // 初始：所有 facet = Any（不限制）
+  const toggleBtns = [];                     // {key, value, btn}，供狀態變更後重繪 aria-pressed
+
   const count = el('span', 'filter-count');
   count.setAttribute('aria-live', 'polite');
   const updateCount = () => {
@@ -225,76 +205,79 @@ function buildCompareControls(subs, cardById) {
     count.textContent = `顯示 ${shown}/${subs.length}`;
   };
   // 隱藏卡片前，若焦點還在卡內（例如被 focus 的 iframe），先把焦點移到觸發的按鈕，避免焦點掉到 body。
-  const setVisible = (id, visible, focusFallback) => {
+  const setVisible = (id, isVisible, focusFallback) => {
     const card = cardById.get(id);
-    if (!visible && focusFallback && card.contains(document.activeElement)) focusFallback.focus();
-    card.hidden = !visible;
+    if (!isVisible && focusFallback && card.contains(document.activeElement)) focusFallback.focus();
+    card.hidden = !isVisible;
   };
-
-  const selected = new Map();      // facet key -> Set（目前選取的原始值）
-  const chipsByFacet = new Map();  // facet key -> Map(原始值 -> chip 按鈕)
-
-  const subVisible = (sub) =>
-    FILTER_FACETS.every(facet => selected.get(facet.key).has(facetValue(sub, facet.key)));
-
+  // filter 只切換 hidden（不重排／不重建／不重載 demo，PR #24 不變量）；可見性委派給 filter-core。
   const applyFilter = (focusFallback) => {
-    subs.forEach(sub => setVisible(sub.id, subVisible(sub), focusFallback));
+    subs.forEach(sub => setVisible(sub.id, visible(sub, filterState, facetKeys), focusFallback));
     updateCount();
+  };
+  // 依目前狀態重繪所有 chip 的 selected 樣式（Any 下全部非 pressed，I2）。
+  const renderChipStates = () => {
+    toggleBtns.forEach(({ key, value, btn }) =>
+      btn.setAttribute('aria-pressed', String(isSelected(filterState, key, value))));
   };
 
   FILTER_FACETS.forEach(facet => {
-    const values = [...new Set(subs.map(sub => facetValue(sub, facet.key)))];
+    const values = facetValues(subs, facet.key);
     values.sort(facet.key === 'effort'
       ? (a, b) => ((EFFORT_RANK[a] ?? 99) - (EFFORT_RANK[b] ?? 99)) || compareText(a, b)
       : (a, b) => compareText(facetDisplay(facet.key, a), facetDisplay(facet.key, b)));
-
-    selected.set(facet.key, new Set(values));
-    const chipMap = new Map();
-    chipsByFacet.set(facet.key, chipMap);
 
     const row = el('div', 'facet');
     row.append(el('span', 'facet-label', facet.label));
     const chips = el('div', 'filter-chips');
     chips.setAttribute('role', 'group');
     chips.setAttribute('aria-label', '篩選' + facet.label);
+
     values.forEach(value => {
-      const chip = el('button', 'chip', facetDisplay(facet.key, value));
-      chip.type = 'button';
-      chip.setAttribute('aria-pressed', 'true');
-      chip.addEventListener('click', () => {
-        const set = selected.get(facet.key);
-        const next = !set.has(value);
-        if (next) set.add(value); else set.delete(value);
-        chip.setAttribute('aria-pressed', String(next));
-        applyFilter(chip);
+      const display = facetDisplay(facet.key, value);
+      // chip = 非互動式 wrapper，內含兩個 sibling <button>：主體 toggle ＋ 尾段 Only（§5.3，禁 nested interactive）。
+      const chip = el('span', 'chip');
+
+      const toggleBtn = el('button', 'chip-toggle', display);
+      toggleBtn.type = 'button';
+      toggleBtn.setAttribute('aria-pressed', 'false');   // 初始 Any → 全部非 pressed（I2）
+      toggleBtn.addEventListener('click', () => {
+        filterState = toggle(filterState, facet.key, value);   // §2.2a 四個 transition
+        renderChipStates();
+        applyFilter(toggleBtn);
       });
-      chipMap.set(value, chip);
+
+      // 尾段 Only：設該 facet 為單值、不動其他 facet、已隔離時 NO-OP（§2.2b、FD-2、I6）。
+      const onlyBtn = el('button', 'chip-only', '◎');
+      onlyBtn.type = 'button';
+      onlyBtn.setAttribute('aria-label', '只看 ' + display);
+      onlyBtn.title = '只看 ' + display;
+      onlyBtn.addEventListener('click', () => {
+        filterState = only(filterState, facet.key, value);
+        renderChipStates();
+        applyFilter(onlyBtn);
+      });
+
+      chip.append(toggleBtn, onlyBtn);
       chips.append(chip);
+      toggleBtns.push({ key: facet.key, value, btn: toggleBtn });
     });
     row.append(chips);
     controls.append(row);
   });
 
+  // 控制列：單一 Reset（取代舊「全選／全不選」）＋ 可見數 ＋ 提示（§5.4）。
   const actions = el('div', 'filter-actions');
-  const setAll = (on, trigger) => {
-    FILTER_FACETS.forEach(facet => {
-      const set = selected.get(facet.key);
-      chipsByFacet.get(facet.key).forEach((chip, value) => {
-        if (on) set.add(value); else set.delete(value);
-        chip.setAttribute('aria-pressed', String(on));
-      });
-    });
-    applyFilter(trigger);
-  };
-  const all = el('button', 'chip-action', '全選');
-  all.type = 'button';
-  all.addEventListener('click', () => setAll(true, all));
-  const none = el('button', 'chip-action', '全不選');
-  none.type = 'button';
-  none.addEventListener('click', () => setAll(false, none));
-  // 跨 facet 的 AND 語意不直觀（例如工具+推理強度各關一個就可能只剩 1 張卡），給一行提示。
+  const resetBtn = el('button', 'chip-action', 'Reset Filters');
+  resetBtn.type = 'button';
+  resetBtn.addEventListener('click', () => {
+    filterState = reset(filterState);        // §2.2c：全部回 Any
+    renderChipStates();
+    applyFilter(resetBtn);
+  });
+  // 跨 facet 是 AND（例如工具＋推理強度各選一個就可能只剩 1 張卡），給一行提示。
   const hint = el('span', 'filter-hint', '同一列可複選；不同列的條件須同時符合');
-  actions.append(all, none, count, hint);
+  actions.append(resetBtn, count, hint);
   controls.append(actions);
 
   updateCount();

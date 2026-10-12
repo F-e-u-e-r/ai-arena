@@ -149,21 +149,38 @@ body {
 .facet { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .facet-label { font-size: 12px; color: var(--muted); min-width: 4em; }
 .filter-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+/* chip = 非互動式 wrapper，內含兩個 sibling <button>：主體 toggle ＋ 尾段 Only（§5.3）。 */
 .chip {
-  font-size: 12px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: var(--panel-2);
-  color: var(--text);
+  display: inline-flex;
+  align-items: stretch;
   border: 1px solid var(--border);
-  cursor: pointer;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--panel-2);
 }
 .chip:hover { border-color: var(--accent); }
-/* 選取狀態用 ✓/✕ 前綴表達（不只靠顏色、也不用像 disabled 的刪除線），固定寬度避免切換跳動；
-   未選取＝虛線框 + muted 文字（muted on bg 6.32:1、accent on panel-2 5.07:1，皆 ≥WCAG AA 4.5:1） */
-.chip::before { content: '✓'; display: inline-block; width: 1.1em; color: var(--accent); }
-.chip[aria-pressed="false"]::before { content: '✕'; color: var(--muted); }
-.chip[aria-pressed="false"] { background: transparent; border-style: dashed; color: var(--muted); }
+.chip-toggle, .chip-only {
+  font-size: 12px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  min-height: 24px;            /* WCAG 2.5.8 目標尺寸（≥24；touch 建議 44） */
+}
+/* 主體＝normal multi-select toggle。selected 用「✓ 前綴 + accent 填色」雙編碼（不只靠顏色）、
+   未選取＝中性無符號（去除 ✕、無刪除線、無虛線框）；固定保留 ✓ 寬度避免切換時跳動。
+   對比：selected 深色字 on accent ≈5.8:1、未選取 text on panel-2 ≈12.8:1，皆 ≥WCAG AA 4.5:1。 */
+.chip-toggle { padding: 4px 10px; color: var(--text); }
+.chip-toggle::before { content: '✓'; display: inline-block; width: 1.1em; visibility: hidden; }
+.chip-toggle[aria-pressed="true"] { background: var(--accent); color: var(--bg); }
+.chip-toggle[aria-pressed="true"]::before { visibility: visible; }
+/* 尾段＝獨立 Only action（低調、與主體以細線分隔），命中區 ≥24px。 */
+.chip-only {
+  padding: 4px 7px;
+  color: var(--muted);
+  border-left: 1px solid var(--border);
+  min-width: 24px;
+}
+.chip-only:hover { color: var(--text); background: rgba(255, 255, 255, .05); }
 .filter-actions { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .chip-action {
   font-size: 12px;

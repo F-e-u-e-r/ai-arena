@@ -42,6 +42,13 @@ jobs:
       - name: Scan submissions for secrets
         run: node scripts/scan-secrets.mjs
 
+      # Pure Any/Explicit-Subset filter + sort logic (assets/filter-core.mjs).
+      # Node 22 built-in runner, zero deps, no package.json. A directory arg
+      # (`node --test test/`) is not searched by the runner here, so the test
+      # files are passed explicitly via the glob.
+      - name: Run filter-core logic tests
+        run: node --test test/*.test.mjs
+
   # Deploy only on pushes to main or manual runs. PRs, including forks, do not deploy.
   deploy:
     if: github.event_name != 'pull_request'
