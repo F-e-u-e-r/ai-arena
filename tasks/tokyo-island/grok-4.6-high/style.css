@@ -1,0 +1,235 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #6ec4e0;
+  font-family: "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Segoe UI", sans-serif;
+  color: #2b1d14;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+#scene {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+
+#scene.is-dragging {
+  cursor: grabbing;
+}
+
+.hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.cycle-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: rgba(20, 16, 28, 0.28);
+}
+
+.cycle-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #ffe566, #ff8a4a, #6b5cff, #ffb3c7, #ffe566);
+  box-shadow: 0 0 8px rgba(255, 180, 80, 0.55);
+}
+
+.brand {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  line-height: 1.05;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35), 0 2px 10px rgba(40, 20, 10, 0.25);
+}
+
+.brand-kana {
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  opacity: 0.75;
+}
+
+.brand-title {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.phase-chip {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  background: rgba(255, 248, 235, 0.82);
+  border: 1px solid rgba(80, 40, 20, 0.18);
+  backdrop-filter: blur(6px);
+  max-width: 42%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.controls {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 4px;
+  pointer-events: auto;
+}
+
+.ctrl {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid rgba(80, 40, 20, 0.22);
+  border-radius: 8px;
+  background: rgba(255, 248, 235, 0.88);
+  color: #2b1d14;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+  box-shadow: 0 2px 6px rgba(20, 10, 0, 0.12);
+}
+
+.ctrl:hover,
+.ctrl:focus-visible {
+  background: #fff8e8;
+  outline: 2px solid #e85d04;
+  outline-offset: 1px;
+}
+
+.ctrl[aria-pressed="true"] {
+  background: #2b1d14;
+  color: #fff4d6;
+}
+
+.panel {
+  position: absolute;
+  top: 42px;
+  right: 8px;
+  width: min(200px, calc(100% - 16px));
+  max-height: calc(100% - 54px);
+  overflow: auto;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 248, 235, 0.92);
+  border: 1px solid rgba(80, 40, 20, 0.18);
+  box-shadow: 0 8px 24px rgba(20, 10, 0, 0.18);
+  pointer-events: auto;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.panel[hidden] {
+  display: none;
+}
+
+.panel-lead {
+  margin: 0 0 6px;
+}
+
+.keys {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.keys li {
+  margin: 2px 0;
+}
+
+kbd {
+  display: inline-block;
+  min-width: 1.2em;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: #2b1d14;
+  color: #fff4d6;
+  font-size: 10px;
+  text-align: center;
+}
+
+.stats {
+  margin-top: 8px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+}
+
+@media (max-width: 420px), (max-height: 260px) {
+  .brand {
+    display: none;
+  }
+
+  .controls {
+    top: 6px;
+    right: 6px;
+    gap: 3px;
+  }
+
+  .ctrl {
+    width: 26px;
+    height: 26px;
+    font-size: 12px;
+    border-radius: 7px;
+  }
+
+  .phase-chip {
+    left: 6px;
+    bottom: 6px;
+    font-size: 10px;
+    padding: 2px 7px;
+    max-width: 38%;
+  }
+
+  .panel {
+    top: 36px;
+    right: 6px;
+    width: min(168px, calc(100% - 40px));
+    max-height: calc(100% - 46px);
+    font-size: 10px;
+    padding: 6px 8px;
+  }
+
+  .cycle-bar {
+    height: 2px;
+  }
+}
+
+@media (max-height: 200px) {
+  .phase-chip {
+    bottom: 4px;
+    left: 4px;
+  }
+
+  .controls {
+    top: 4px;
+    right: 4px;
+  }
+}

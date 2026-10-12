@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Savannah Ecosystem</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="scene" aria-label="African savannah ecosystem animation"></canvas>
+    <div id="hud" aria-live="polite">
+      <span id="hud-season">Dry Season</span>
+      <span id="hud-weather">Sunny</span>
+      <span id="hud-debug">60 fps · 0 p</span>
+    </div>
+    <div id="controls" role="toolbar" aria-label="Weather and season">
+      <div class="group" role="group" aria-label="Weather">
+        <button type="button" class="is-on" data-weather="sunny" aria-pressed="true" title="Sunny (1)" aria-label="Sunny">☀</button>
+        <button type="button" data-weather="rain" aria-pressed="false" title="Rain (2)" aria-label="Rain">🌧</button>
+        <button type="button" data-weather="heavyRain" aria-pressed="false" title="Heavy Rain (3)" aria-label="Heavy Rain">☔</button>
+        <button type="button" data-weather="snow" aria-pressed="false" title="Snow (4)" aria-label="Snow">❄</button>
+        <button type="button" data-weather="thunderstorm" aria-pressed="false" title="Thunderstorm (5)" aria-label="Thunderstorm">⚡</button>
+        <button type="button" data-weather="tornado" aria-pressed="false" title="Tornado (6)" aria-label="Tornado">🌪</button>
+      </div>
+      <button type="button" id="btn-season" class="is-dry" title="Toggle season (S)" aria-label="Switch to wet season">
+        <span class="icon">🌾</span><span class="full">Dry</span>
+      </button>
+      <span class="hint">1–6 weather · S season</span>
+    </div>
+  </div>
+  <script src="js/utils.js"></script>
+  <script src="js/pool.js"></script>
+  <script src="js/particles.js"></script>
+  <script src="js/season.js"></script>
+  <script src="js/weather.js"></script>
+  <script src="js/world.js"></script>
+  <script src="js/animals.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>

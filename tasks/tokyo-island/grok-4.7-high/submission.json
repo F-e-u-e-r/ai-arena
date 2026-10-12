@@ -1,0 +1,15 @@
+{
+  "$schema": "../../../schema/submission.schema.json",
+  "provider": "xai",
+  "model": "Grok 4.7",
+  "modelId": "grok-4.7",
+  "effort": "high",
+  "client": "grok",
+  "skills": "Nil",
+  "subagents": "Nil",
+  "author": "F-e-u-e-r",
+  "generatedAt": "2026-10-12T14:47:12Z",
+  "metrics": {
+    "durationMs": 3200030
+  }
+}

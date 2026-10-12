@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Floating London Island</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="scene" aria-label="3D cartoon London island"></canvas>
+
+    <div id="hud" class="hud">
+      <div class="status" aria-live="polite">
+        <span id="seasonLabel" class="pill">Spring · Humidity</span>
+        <span id="phaseLabel" class="pill">Day</span>
+      </div>
+
+      <div class="controls" role="toolbar" aria-label="Scene controls">
+        <button type="button" class="ctrl" data-season="0" title="Spring (1)" aria-label="Spring">🌸</button>
+        <button type="button" class="ctrl" data-season="1" title="Summer (2)" aria-label="Summer">☀️</button>
+        <button type="button" class="ctrl" data-season="2" title="Autumn (3)" aria-label="Autumn">🍂</button>
+        <button type="button" class="ctrl" data-season="3" title="Winter (4)" aria-label="Winter">❄️</button>
+        <button type="button" class="ctrl" id="btnDay" title="Jump day phase (D)" aria-label="Day phase">🌅</button>
+        <button type="button" class="ctrl" id="btnPause" title="Pause cycle (Space)" aria-label="Pause" aria-pressed="false">⏸</button>
+        <button type="button" class="ctrl" id="btnMute" title="Toggle audio" aria-label="Audio" aria-pressed="false">🔇</button>
+      </div>
+
+      <div id="debug" class="debug">-- FPS · 0 px</div>
+    </div>
+
+    <div id="fallback" class="fallback" hidden>
+      WebGL is required to view this scene.
+    </div>
+  </div>
+
+  <!-- Three.js r160 global build + OrbitControls (non-module, file:// safe) -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.min.js"></script>
+  <script src="js/orbit.js"></script>
+  <script src="js/materials.js"></script>
+  <script src="js/island.js"></script>
+  <script src="js/bigben.js"></script>
+  <script src="js/landmarks.js"></script>
+  <script src="js/weather.js"></script>
+  <script src="js/daynight.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>

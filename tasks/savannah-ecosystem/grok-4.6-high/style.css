@@ -1,0 +1,169 @@
+/* Full-bleed canvas + compact overlay HUD for 320×200 iframe cards. */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #1a1208;
+  color: #f4e6c8;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+#app {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+#scene {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+#hud {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  right: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+  font-size: 11px;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
+  z-index: 2;
+}
+
+#hud-season,
+#hud-weather,
+#hud-debug {
+  background: rgba(18, 12, 6, 0.45);
+  border: 1px solid rgba(244, 214, 150, 0.18);
+  border-radius: 999px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+#hud-debug {
+  margin-left: auto;
+  opacity: 0.8;
+  font-variant-numeric: tabular-nums;
+  max-width: 42%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#controls {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  bottom: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 3px;
+  background: rgba(16, 10, 4, 0.58);
+  border: 1px solid rgba(244, 214, 150, 0.22);
+  border-radius: 10px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 3;
+  max-width: 100%;
+}
+
+.group {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+}
+
+button {
+  appearance: none;
+  border: 1px solid rgba(255, 230, 180, 0.16);
+  background: rgba(40, 26, 10, 0.7);
+  color: #f7ead0;
+  border-radius: 7px;
+  min-width: 28px;
+  height: 26px;
+  padding: 0 6px;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+button:hover,
+button:focus-visible {
+  outline: none;
+  border-color: rgba(255, 210, 110, 0.7);
+  background: rgba(70, 44, 14, 0.85);
+}
+
+button.is-on {
+  background: rgba(196, 132, 42, 0.9);
+  border-color: #f0c060;
+  box-shadow: 0 0 0 1px rgba(240, 192, 96, 0.4);
+}
+
+#btn-season {
+  min-width: 52px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+#btn-season.is-wet {
+  background: rgba(36, 90, 70, 0.85);
+  border-color: #7ecfa0;
+}
+
+#btn-season.is-dry.is-on,
+#btn-season.is-dry {
+  /* season toggle is not a weather radio */
+}
+
+.hint {
+  display: none;
+  font-size: 10px;
+  opacity: 0.55;
+  padding: 0 4px;
+  white-space: nowrap;
+}
+
+@media (min-width: 720px) and (min-height: 420px) {
+  #hud { font-size: 12px; top: 8px; left: 8px; right: 8px; }
+  #controls { left: 50%; right: auto; transform: translateX(-50%); bottom: 10px; padding: 6px 8px; gap: 8px; }
+  button { min-width: 36px; height: 32px; font-size: 16px; }
+  #btn-season { min-width: 72px; font-size: 13px; }
+  .hint { display: inline; }
+}
+
+/* Gallery iframe: 320×200 / 16:10 — keep scene dominant, controls one row. */
+@media (max-width: 480px), (max-height: 280px) {
+  #hud { top: 2px; left: 2px; right: 2px; gap: 3px; font-size: 9px; }
+  #hud-season, #hud-weather, #hud-debug { padding: 1px 5px; }
+  #hud-debug { letter-spacing: 0; }
+  #controls { left: 2px; right: 2px; bottom: 2px; padding: 2px; gap: 2px; border-radius: 8px; }
+  button { min-width: 26px; height: 22px; padding: 0 3px; font-size: 12px; border-radius: 5px; }
+  #btn-season { min-width: 34px; font-size: 11px; }
+  #btn-season .full { display: none; }
+}
+
+@media (max-height: 180px) {
+  #hud { display: none; }
+  #controls { bottom: 1px; }
+}

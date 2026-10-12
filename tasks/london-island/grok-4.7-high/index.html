@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="description" content="卡通風格漂浮倫敦島：四季天氣與 15 秒日夜循環" />
+  <title>漂浮倫敦島 · 四季</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="view" aria-label="漂浮倫敦島 3D 場景，左右拖曳可旋轉視角"></canvas>
+    <div id="hud">
+      <div class="top">
+        <div id="status" class="pill">春季 · 白天</div>
+        <div id="stats" class="pill">-- fps</div>
+      </div>
+      <p id="hint">拖曳旋轉視角 · 1–4 季節 · 5–8 日夜 · M 音效</p>
+      <div id="dock" role="toolbar" aria-label="季節與日夜">
+        <div class="group" id="season-group">
+          <button type="button" data-season="0" aria-label="春季" title="春季 (1)">春</button>
+          <button type="button" data-season="1" aria-label="夏季" title="夏季 (2)">夏</button>
+          <button type="button" data-season="2" aria-label="秋季" title="秋季 (3)">秋</button>
+          <button type="button" data-season="3" aria-label="冬季" title="冬季 (4)">冬</button>
+        </div>
+        <div class="group" id="phase-group">
+          <button type="button" data-phase="0.03" aria-label="白天" title="白天 (5)">晝</button>
+          <button type="button" data-phase="0.24" aria-label="黃昏" title="黃昏 (6)">昏</button>
+          <button type="button" data-phase="0.50" aria-label="夜晚" title="夜晚 (7)">夜</button>
+          <button type="button" data-phase="0.78" aria-label="黎明" title="黎明 (8)">曉</button>
+        </div>
+        <button type="button" id="btn-auto" class="is-on" aria-pressed="true" aria-label="自動輪替季節" title="自動輪替季節 (C)">循</button>
+        <button type="button" id="btn-sound" aria-pressed="false" aria-label="環境音效" title="環境音效 (M)">聲</button>
+      </div>
+    </div>
+    <div id="fallback" hidden></div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/build/three.min.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>

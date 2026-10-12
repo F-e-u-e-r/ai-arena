@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Floating Tokyo Island</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <canvas id="scene" aria-label="3D cartoon floating Tokyo island"></canvas>
+
+  <div class="hud" id="hud">
+    <div class="cycle-bar" aria-hidden="true">
+      <div class="cycle-bar-fill" id="cycleFill"></div>
+    </div>
+
+    <div class="brand" id="brand">
+      <span class="brand-kana">浮島</span>
+      <span class="brand-title">Tokyo Isle</span>
+    </div>
+
+    <div class="phase-chip" id="phaseChip">Day</div>
+
+    <div class="controls" id="controls" role="toolbar" aria-label="Scene controls">
+      <button type="button" class="ctrl" id="btnPause" title="Pause / resume cycle (Space)" aria-label="Pause cycle">⏸</button>
+      <button type="button" class="ctrl" id="btnSpeed" title="Cycle speed 1x / 2x / 4x" aria-label="Cycle speed">1×</button>
+      <button type="button" class="ctrl" id="btnAudio" title="Toggle ambient audio (M)" aria-label="Toggle audio">♪</button>
+      <button type="button" class="ctrl" id="btnInfo" title="Help and debug" aria-pressed="false" aria-label="Toggle panel">ℹ</button>
+    </div>
+
+    <aside class="panel" id="panel" hidden>
+      <p class="panel-lead">Drag left / right to orbit. Cycle is 15s.</p>
+      <ul class="keys">
+        <li><kbd>Space</kbd> pause</li>
+        <li><kbd>1</kbd> <kbd>2</kbd> <kbd>4</kbd> speed</li>
+        <li><kbd>[</kbd> <kbd>]</kbd> nudge time</li>
+        <li><kbd>M</kbd> audio</li>
+      </ul>
+      <div class="stats" id="stats">FPS -- · leaves --</div>
+    </aside>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.min.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/Island.js"></script>
+  <script src="js/TokyoTower.js"></script>
+  <script src="js/Landmark.js"></script>
+  <script src="js/MapleLeafSystem.js"></script>
+  <script src="js/Decor.js"></script>
+  <script src="js/DayNightCycle.js"></script>
+  <script src="js/CameraRig.js"></script>
+  <script src="js/Ambience.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
