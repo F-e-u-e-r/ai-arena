@@ -268,15 +268,19 @@ function buildCompareControls(subs, cardById) {
 
   // 控制列：單一 Reset（取代舊「全選／全不選」）＋ 可見數 ＋ 提示（§5.4）。
   const actions = el('div', 'filter-actions');
-  const resetBtn = el('button', 'chip-action', 'Reset Filters');
+  const resetBtn = el('button', 'chip-action', '重設篩選');
   resetBtn.type = 'button';
   resetBtn.addEventListener('click', () => {
     filterState = reset(filterState);        // §2.2c：全部回 Any
     renderChipStates();
     applyFilter(resetBtn);
   });
-  // 跨 facet 是 AND（例如工具＋推理強度各選一個就可能只剩 1 張卡），給一行提示。
-  const hint = el('span', 'filter-hint', '同一列可複選；不同列的條件須同時符合');
+  // 一行 compact legend（§5.4 提示文字擴充）：明確標示「點名稱＝複選、◎＝只看此項且不影響其他列」，
+  // 讓 Only 的 ◎ 不再只靠 icon／tooltip 被發現；末段沿用原跨 facet AND 提示精神。
+  const hint = el('span', 'filter-hint');
+  hint.append('點名稱可複選 · ');
+  hint.append(el('span', 'legend-only', '◎'));
+  hint.append(' 只看此項（不影響其他列）· 不同列的條件須同時符合');
   actions.append(resetBtn, count, hint);
   controls.append(actions);
 

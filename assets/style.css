@@ -181,6 +181,23 @@ body {
   min-width: 24px;
 }
 .chip-only:hover { color: var(--text); background: rgba(255, 255, 255, .05); }
+
+/* 鍵盤 focus：.chip 的 overflow:hidden（修剪 pill 圓角）會一併剪掉子按鈕預設 outline，
+   改用 inset（負 offset）outline 畫在按鈕內緣、不被剪裁；白色對未選取（panel-2 深底 ≈16:1）
+   與已選取（accent 藍底 ≈3.2:1）兩狀態皆達 WCAG 1.4.11 的 ≥3:1。 */
+.chip-toggle:focus-visible,
+.chip-only:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -2px;
+}
+
+/* Touch／窄視窗：把低調的 Only 尾段放大成 34px tap target（owner 32–36 區間、§5.3「足夠大」契約）。
+   .chip 的 align-items:stretch 會讓主體 toggle 一起長高，使兩個相鄰目標都好點；coarse pointer
+   或 ≤720px（含 390／320）皆套用，桌機滑鼠維持原本 compact 尺寸。 */
+@media (pointer: coarse), (max-width: 720px) {
+  .chip-toggle, .chip-only { min-height: 34px; }
+  .chip-only { min-width: 34px; }
+}
 .filter-actions { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .chip-action {
   font-size: 12px;
@@ -194,6 +211,14 @@ body {
 .chip-action:hover { color: var(--text); border-color: var(--accent); }
 .filter-count { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .filter-hint { font-size: 12px; color: var(--muted); }
+/* legend 的 ◎ 做成迷你 pill，呼應 chip 尾段 Only 按鈕外觀，強化「◎ = 只看此項」的視覺對應。 */
+.legend-only {
+  display: inline-block;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0 5px;
+  color: var(--muted);
+}
 
 /* ---- grid of submissions ---- */
 .grid {
