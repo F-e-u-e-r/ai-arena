@@ -1,0 +1,165 @@
+/* Full-viewport stage. position:fixed fills an iframe even when the parent height chain is ambiguous. */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: #16324a;
+  color: #f7f4ef;
+  font-family: "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", "Segoe UI", sans-serif;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#app {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  touch-action: none;
+}
+
+#view {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: grab;
+}
+
+#view.is-drag { cursor: grabbing; }
+
+#hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.top {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  right: 4px;
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+  align-items: flex-start;
+}
+
+.pill {
+  max-width: 48%;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(12, 18, 32, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  font-size: 11px;
+  line-height: 16px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+}
+
+#hint {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 42px;
+  margin: 0;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.3;
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+}
+
+#dock {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  bottom: max(3px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: center;
+  align-items: center;
+  gap: 3px;
+  pointer-events: auto;
+}
+
+.group {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 10px;
+  background: rgba(10, 16, 28, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+button {
+  pointer-events: auto;
+  width: 26px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #f7f4ef;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+button:hover { background: rgba(255, 255, 255, 0.12); }
+
+button.is-on {
+  background: #ffe3a3;
+  color: #2a2116;
+}
+
+button:focus { outline: none; }
+
+button:focus-visible {
+  outline: 2px solid #ffe3a3;
+  outline-offset: 0;
+}
+
+#fallback {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: 42%;
+  z-index: 3;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+#fallback[hidden] { display: none; }
+
+@media (max-width: 699px), (max-height: 280px) {
+  #hint { display: none; }
+}
+
+@media (max-height: 220px) {
+  .top { top: 2px; }
+  .pill { font-size: 10px; line-height: 14px; padding: 1px 6px; }
+  #dock { bottom: 2px; }
+  button { width: 24px; height: 22px; font-size: 11px; }
+}
+
+@media (min-width: 560px) and (min-height: 340px) {
+  .pill { font-size: 13px; line-height: 18px; padding: 3px 10px; }
+  button { width: 36px; height: 32px; font-size: 15px; border-radius: 9px; }
+  .group { border-radius: 12px; padding: 3px; gap: 3px; }
+  #dock { gap: 6px; bottom: 8px; }
+  #hint { bottom: 52px; font-size: 13px; }
+}

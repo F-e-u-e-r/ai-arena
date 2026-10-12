@@ -343,6 +343,38 @@
         "generatedAt": "2026-07-10T16:20:42Z",
         "id": "grok-4.5-high",
         "path": "tasks/savannah-ecosystem/grok-4.5-high/"
+      },
+      {
+        "provider": "xai",
+        "model": "Grok 4.6",
+        "modelId": "grok-4.6",
+        "effort": "high",
+        "client": "grok",
+        "skills": "Nil",
+        "subagents": "Nil",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-10-12T12:27:04Z",
+        "metrics": {
+          "durationMs": 1200137
+        },
+        "id": "grok-4.6-high",
+        "path": "tasks/savannah-ecosystem/grok-4.6-high/"
+      },
+      {
+        "provider": "xai",
+        "model": "Grok 4.7",
+        "modelId": "grok-4.7",
+        "effort": "high",
+        "client": "grok",
+        "skills": "Nil",
+        "subagents": "Nil",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-10-12T13:53:52Z",
+        "metrics": {
+          "durationMs": 2533625
+        },
+        "id": "grok-4.7-high",
+        "path": "tasks/savannah-ecosystem/grok-4.7-high/"
       }
     ]
   },
@@ -584,6 +616,38 @@
         "generatedAt": "2026-07-10T16:20:42Z",
         "id": "grok-4.5-high",
         "path": "tasks/tokyo-island/grok-4.5-high/"
+      },
+      {
+        "provider": "xai",
+        "model": "Grok 4.6",
+        "modelId": "grok-4.6",
+        "effort": "high",
+        "client": "grok",
+        "skills": "Nil",
+        "subagents": "Nil",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-10-12T12:48:56Z",
+        "metrics": {
+          "durationMs": 1207997
+        },
+        "id": "grok-4.6-high",
+        "path": "tasks/tokyo-island/grok-4.6-high/"
+      },
+      {
+        "provider": "xai",
+        "model": "Grok 4.7",
+        "modelId": "grok-4.7",
+        "effort": "high",
+        "client": "grok",
+        "skills": "Nil",
+        "subagents": "Nil",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-10-12T14:47:12Z",
+        "metrics": {
+          "durationMs": 3200030
+        },
+        "id": "grok-4.7-high",
+        "path": "tasks/tokyo-island/grok-4.7-high/"
       }
     ]
   },
@@ -762,6 +826,38 @@
         "generatedAt": "2026-07-10T16:20:42Z",
         "id": "grok-4.5-high",
         "path": "tasks/london-island/grok-4.5-high/"
+      },
+      {
+        "provider": "xai",
+        "model": "Grok 4.6",
+        "modelId": "grok-4.6",
+        "effort": "high",
+        "client": "grok",
+        "skills": "Nil",
+        "subagents": "Nil",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-10-12T13:11:38Z",
+        "metrics": {
+          "durationMs": 1362487
+        },
+        "id": "grok-4.6-high",
+        "path": "tasks/london-island/grok-4.6-high/"
+      },
+      {
+        "provider": "xai",
+        "model": "Grok 4.7",
+        "modelId": "grok-4.7",
+        "effort": "high",
+        "client": "grok",
+        "skills": "Nil",
+        "subagents": "Nil",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-10-12T15:57:05Z",
+        "metrics": {
+          "durationMs": 4192862
+        },
+        "id": "grok-4.7-high",
+        "path": "tasks/london-island/grok-4.7-high/"
       }
     ]
   }

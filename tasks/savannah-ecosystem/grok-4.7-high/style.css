@@ -1,0 +1,178 @@
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: #14110e;
+  color: #f4ead8;
+}
+
+body {
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  overflow: hidden;
+}
+
+#app {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+#scene {
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: #8eb6d4;
+}
+
+#hud {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  right: 4px;
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  pointer-events: none;
+  font-size: 10px;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
+}
+
+#hud span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 62%;
+}
+
+#hudR { text-align: right; }
+
+#bar {
+  flex: 0 0 auto;
+  background: #1b1612;
+  border-top: 1px solid #3d3124;
+}
+
+#seasonBar {
+  height: 3px;
+  background: #2a2118;
+}
+
+#seasonFill {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: #e0a84a;
+}
+
+#controls {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  height: 32px;
+}
+
+.weathers {
+  display: flex;
+  flex: 6 1 0;
+  gap: 3px;
+  min-width: 0;
+}
+
+button {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border: 1px solid #4a3c2c;
+  background: #2a221b;
+  color: #f3e6d0;
+  border-radius: 5px;
+  padding: 0 2px;
+  font: inherit;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+button svg {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+}
+
+.lbl-short, .lbl-full { display: none; }
+
+#seasonBtn { flex: 1.15 1 0; }
+#seasonBtn .lbl-short { display: inline; }
+
+button[aria-pressed="true"] {
+  background: #e0a04a;
+  color: #1c140c;
+  border-color: #ffd48a;
+}
+
+#seasonBtn[data-season="wet"] {
+  color: #d9f5d4;
+  border-color: #3f6d45;
+}
+
+button:focus-visible {
+  outline: 2px solid #ffe1a8;
+  outline-offset: -2px;
+}
+
+button:active { filter: brightness(1.12); }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+@media (max-height: 230px) {
+  #controls { height: 28px; padding: 2px; gap: 2px; }
+  .weathers { gap: 2px; }
+  button svg { width: 14px; height: 14px; }
+  #hud { font-size: 9px; top: 1px; }
+  #seasonBtn { font-size: 10px; }
+}
+
+@media (min-width: 560px) and (min-height: 300px) {
+  .lbl-short { display: inline; }
+  #controls { height: 38px; }
+  button { font-size: 12px; }
+}
+
+@media (min-width: 900px) and (min-height: 480px) {
+  .lbl-short, #seasonBtn .lbl-short { display: none; }
+  .lbl-full { display: inline; }
+  #controls { height: 48px; padding: 6px; }
+  button { font-size: 13px; border-radius: 7px; }
+  button svg { width: 16px; height: 16px; }
+  #hud { font-size: 13px; top: 8px; left: 10px; right: 10px; }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  button:hover { background: #3a2e24; }
+  button[aria-pressed="true"]:hover { background: #f0b15a; }
+}

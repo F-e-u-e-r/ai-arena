@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>African Savannah Ecosystem</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <h1 class="sr-only">African savannah ecosystem</h1>
+    <div id="stage">
+      <canvas id="scene" width="960" height="540" aria-hidden="true"></canvas>
+      <div id="hud">
+        <span id="hudL">Dry 60s · Sunny</span>
+        <span id="hudR">-- fps · 0p</span>
+      </div>
+    </div>
+    <div id="bar">
+      <div id="seasonBar" aria-hidden="true"><i id="seasonFill"></i></div>
+      <div id="controls" role="toolbar" aria-label="Weather and season">
+        <div class="weathers" role="radiogroup" aria-label="Weather">
+          <button type="button" data-weather="sunny" aria-pressed="true" aria-label="Sunny" title="Sunny (1)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="currentColor"/><path d="M12 2.5v2.2M12 19.3V21.5M2.5 12h2.2M19.3 12h2.2M5 5l1.6 1.6M17.4 17.4L19 19M19 5l-1.6 1.6M6.6 17.4L5 19" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            <span class="lbl-short">Sun</span><span class="lbl-full">Sunny</span>
+          </button>
+          <button type="button" data-weather="rain" aria-pressed="false" aria-label="Rain" title="Rain (2)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 14.5h9.2a3.2 3.2 0 0 0 .3-6.4 4.6 4.6 0 0 0-8.8-1 3.2 3.2 0 0 0-.7 7.4z" fill="currentColor"/><path d="M9 16.8v2.2M12 16.8v3M15 16.8v2.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            <span class="lbl-short">Rain</span><span class="lbl-full">Rain</span>
+          </button>
+          <button type="button" data-weather="heavy" aria-pressed="false" aria-label="Heavy Rain" title="Heavy Rain (3)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 13.2h10.2a3.4 3.4 0 0 0 .2-6.8 5 5 0 0 0-9.6-1.1 3.4 3.4 0 0 0-.8 7.9z" fill="currentColor"/><path d="M8 16v3.2M11 15.6v4M14 16v3.2M17 15.8v2.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            <span class="lbl-short">Heavy</span><span class="lbl-full">Heavy Rain</span>
+          </button>
+          <button type="button" data-weather="snow" aria-pressed="false" aria-label="Snow" title="Snow (4)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M4.8 7.2l14.4 9.6M19.2 7.2L4.8 16.8M3.5 12h17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            <span class="lbl-short">Snow</span><span class="lbl-full">Snow</span>
+          </button>
+          <button type="button" data-weather="thunder" aria-pressed="false" aria-label="Thunderstorm" title="Thunderstorm (5)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L5.5 13H12l-1.2 9L19 10h-6.5L13 2z" fill="currentColor"/></svg>
+            <span class="lbl-short">Storm</span><span class="lbl-full">Thunderstorm</span>
+          </button>
+          <button type="button" data-weather="tornado" aria-pressed="false" aria-label="Tornado" title="Tornado (6)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18M6 9h12M8.5 13h7M10.5 17h3.2M11.4 20.5h1.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            <span class="lbl-short">Twist</span><span class="lbl-full">Tornado</span>
+          </button>
+        </div>
+        <button type="button" id="seasonBtn" data-season="dry" aria-label="Dry Season. Activate to toggle season. Shortcut S" title="Toggle season (S)">
+          <span class="lbl-short">Dry</span><span class="lbl-full">Dry Season</span>
+        </button>
+      </div>
+    </div>
+    <div id="live" class="sr-only" aria-live="polite"></div>
+  </div>
+  <script src="js/util.js"></script>
+  <script src="js/pool.js"></script>
+  <script src="js/particles.js"></script>
+  <script src="js/season.js"></script>
+  <script src="js/weather.js"></script>
+  <script src="js/animals.js"></script>
+  <script src="js/render.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Floating Tokyo Island</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <canvas id="scene" aria-label="Cartoon floating Tokyo island. Drag left or right to look around."></canvas>
+  <div id="vignette" aria-hidden="true"></div>
+  <p id="hint">Drag to look around · F faster day/night · M sound</p>
+  <p id="stats">— fps</p>
+  <div id="bar">
+    <div id="phase" data-phase="day">Day</div>
+    <div class="grow" aria-hidden="true"></div>
+    <button type="button" id="btn-sound" aria-pressed="false" aria-label="Toggle day and night ambience" title="Toggle sound (M)">Sound</button>
+    <button type="button" id="btn-speed" aria-pressed="false" aria-label="Toggle a faster day and night cycle" title="Toggle 4× cycle (F)">1×</button>
+  </div>
+  <p id="boot-error" hidden></p>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+  <script src="materials.js"></script>
+  <script src="environment.js"></script>
+  <script src="island.js"></script>
+  <script src="tokyo-tower.js"></script>
+  <script src="landmarks.js"></script>
+  <script src="maple-leaves.js"></script>
+  <script src="day-night.js"></script>
+  <script src="ambience.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
