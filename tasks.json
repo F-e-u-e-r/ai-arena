@@ -355,9 +355,13 @@
         "author": "F-e-u-e-r",
         "generatedAt": "2026-10-12T12:27:04Z",
         "metrics": {
-          "durationMs": 1200137
+          "durationMs": 1200137,
+          "inputTokens": 128308,
+          "outputTokens": 60417,
+          "cachedInputTokens": 4997120
         },
         "id": "grok-4.6-high",
+        "costUsd": 3.117678,
         "path": "tasks/savannah-ecosystem/grok-4.6-high/"
       },
       {
@@ -371,9 +375,13 @@
         "author": "F-e-u-e-r",
         "generatedAt": "2026-10-12T13:53:52Z",
         "metrics": {
-          "durationMs": 2533625
+          "durationMs": 2533625,
+          "inputTokens": 308698,
+          "outputTokens": 168332,
+          "cachedInputTokens": 9729664
         },
         "id": "grok-4.7-high",
+        "costUsd": 6.49222,
         "path": "tasks/savannah-ecosystem/grok-4.7-high/"
       }
     ]
@@ -628,9 +636,13 @@
         "author": "F-e-u-e-r",
         "generatedAt": "2026-10-12T12:48:56Z",
         "metrics": {
-          "durationMs": 1207997
+          "durationMs": 1207997,
+          "inputTokens": 235359,
+          "outputTokens": 58630,
+          "cachedInputTokens": 6808320
         },
         "id": "grok-4.6-high",
+        "costUsd": 4.226658,
         "path": "tasks/tokyo-island/grok-4.6-high/"
       },
       {
@@ -644,9 +656,13 @@
         "author": "F-e-u-e-r",
         "generatedAt": "2026-10-12T14:47:12Z",
         "metrics": {
-          "durationMs": 3200030
+          "durationMs": 3200030,
+          "inputTokens": 632348,
+          "outputTokens": 173740,
+          "cachedInputTokens": 11774336
         },
         "id": "grok-4.7-high",
+        "costUsd": 8.194304,
         "path": "tasks/tokyo-island/grok-4.7-high/"
       }
     ]
@@ -838,9 +854,13 @@
         "author": "F-e-u-e-r",
         "generatedAt": "2026-10-12T13:11:38Z",
         "metrics": {
-          "durationMs": 1362487
+          "durationMs": 1362487,
+          "inputTokens": 134219,
+          "outputTokens": 62726,
+          "cachedInputTokens": 5472384
         },
         "id": "grok-4.6-high",
+        "costUsd": 3.380986,
         "path": "tasks/london-island/grok-4.6-high/"
       },
       {
@@ -854,9 +874,13 @@
         "author": "F-e-u-e-r",
         "generatedAt": "2026-10-12T15:57:05Z",
         "metrics": {
-          "durationMs": 4192862
+          "durationMs": 4192862,
+          "inputTokens": 586477,
+          "outputTokens": 201442,
+          "cachedInputTokens": 9158912
         },
         "id": "grok-4.7-high",
+        "costUsd": 6.961062,
         "path": "tasks/london-island/grok-4.7-high/"
       }
     ]

@@ -3339,6 +3339,24 @@
       "displayName": "Z.ai: GLM 5V Turbo",
       "cachedInput": 0.24,
       "context": 202752
+    },
+    "grok-4.6": {
+      "input": 2,
+      "output": 6,
+      "cachedInput": 0.5,
+      "source": "xAI published pricing (Grok 4.x standard tier); cross-checked against grok CLI costUsdTicks",
+      "verifiedAt": "2026-10-13",
+      "displayName": "xAI: Grok 4.6",
+      "note": "Standard-tier list rate ($2/$0.50/$6 per 1M in/cached/out). 4.6 reproduces grok CLI billing exactly; 4.7 within ~8% (long-context >=200k tier not modeled). Build-TUI variant actual billing runs higher."
+    },
+    "grok-4.7": {
+      "input": 2,
+      "output": 6,
+      "cachedInput": 0.5,
+      "source": "xAI published pricing (Grok 4.x standard tier); cross-checked against grok CLI costUsdTicks",
+      "verifiedAt": "2026-10-13",
+      "displayName": "xAI: Grok 4.7",
+      "note": "Standard-tier list rate ($2/$0.50/$6 per 1M in/cached/out). 4.6 reproduces grok CLI billing exactly; 4.7 within ~8% (long-context >=200k tier not modeled). Build-TUI variant actual billing runs higher."
     }
   }
 }

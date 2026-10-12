@@ -10,6 +10,9 @@
   "author": "F-e-u-e-r",
   "generatedAt": "2026-10-12T15:57:05Z",
   "metrics": {
-    "durationMs": 4192862
+    "durationMs": 4192862,
+    "inputTokens": 586477,
+    "outputTokens": 201442,
+    "cachedInputTokens": 9158912
   }
 }
