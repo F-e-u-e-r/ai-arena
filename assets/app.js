@@ -1,8 +1,10 @@
 // Any / Explicit Subset 的篩選與排序純邏輯抽到 filter-core（無 DOM 副作用，與 Node test runner 共用）。
 import {
   facetValues, initState, isSelected,
-  toggle, only, reset, visible, compareText, sortedSubs
-} from './filter-core.mjs?v=9';
+  toggle, only, reset, addToFacet, visible, compareText, sortedSubs
+} from './filter-core.mjs?v=11';
+// WS3 Model Family — canonical registry (pure, DOM-free; OD-WS3 contract).
+import { familiesInTask } from './model-registry.mjs?v=11';
 
 'use strict';
 
@@ -220,6 +222,34 @@ function buildCompareControls(subs, cardById) {
     toggleBtns.forEach(({ key, value, btn }) =>
       btn.setAttribute('aria-pressed', String(isSelected(filterState, key, value))));
   };
+
+  // --- Model Family 快速選取（WS3，OD-WS3-4）---
+  // 只對「本 task 實際有 ≥2 成員在場」的系列顯示（單一成員與個別 chip 重複、徒增密度）。
+  // 快捷＝bulk-select convenience：把該系列目前在場成員「聯集」進 model facet（保留跨系列／
+  // 個別多選、展開為固定 Explicit Subset、未來新模型不自動加入、不新增持久 family 狀態）。
+  const families = familiesInTask(subs);
+  if (families.length) {
+    const famRow = el('div', 'facet family-row');
+    famRow.append(el('span', 'facet-label', '系列'));
+    const famGroup = el('div', 'family-selects');
+    famGroup.setAttribute('role', 'group');
+    famGroup.setAttribute('aria-label', '快速選取模型系列');
+    families.forEach(fam => {
+      const btn = el('button', 'family-btn', fam.label);
+      btn.type = 'button';
+      const desc = '選取所有 ' + fam.label + ' 模型（' + fam.values.join('、') + '）';
+      btn.title = desc;
+      btn.setAttribute('aria-label', desc);
+      btn.addEventListener('click', () => {
+        filterState = addToFacet(filterState, 'model', fam.values);  // 聯集進 model Subset
+        renderChipStates();
+        applyFilter(btn);
+      });
+      famGroup.append(btn);
+    });
+    famRow.append(famGroup);
+    controls.append(famRow);
+  }
 
   FILTER_FACETS.forEach(facet => {
     const values = facetValues(subs, facet.key);

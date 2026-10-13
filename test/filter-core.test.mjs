@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   facetValues, initState, isAny, isSelected,
-  toggle, only, reset, visible, visibleCount,
+  toggle, only, reset, addToFacet, visible, visibleCount,
   compareText, sortValue, sortedSubs
 } from '../assets/filter-core.mjs';
 
@@ -214,4 +214,21 @@ test('10: reducers never mutate frozen inputs; each toggle branch pins its exact
   assert.deepEqual(frozen.client, ['codex', 'grok']);          // only 未改動輸入
   assert.deepEqual(reset(frozen), { client: 'any', model: 'any', effort: 'any' });
   assert.deepEqual(frozen.model, ['Opus 4.8']);                // reset 回新物件、輸入未變
+});
+
+// (11) addToFacet（WS3 bulk-union）：聯集進 Subset、保留既有、去重、不可變、空輸入 NO-OP、永不移除。
+test('11: addToFacet unions values into a facet Subset (preserve, dedup, immutable, never remove)', () => {
+  // Any → [values]
+  assert.deepEqual(addToFacet(initState(FACETS), 'model', ['Grok 4.5', 'Grok 4.6']).model,
+    ['Grok 4.5', 'Grok 4.6']);
+  // union preserves existing (cross-family / individual) selections and dedups
+  const st = deepFreeze({ client: 'any', model: ['GPT-5.6 Sol'], effort: 'any' });
+  const after = addToFacet(st, 'model', ['Grok 4.5', 'GPT-5.6 Sol', 'Grok 4.6']); // Sol already selected
+  assert.deepEqual(after.model, ['GPT-5.6 Sol', 'Grok 4.5', 'Grok 4.6']);         // existing first, new appended, no dup
+  assert.deepEqual(st.model, ['GPT-5.6 Sol']);                                     // frozen input not mutated
+  assert.equal(after.client, 'any');                                              // other facets untouched
+  assert.equal(after.effort, 'any');
+  assert.equal(addToFacet(st, 'model', []), st);                                   // empty values → NO-OP (same ref)
+  // never removes: unioning a subset of what's already selected keeps everything
+  assert.deepEqual(addToFacet({ client: 'any', model: ['A', 'B'], effort: 'any' }, 'model', ['A']).model, ['A', 'B']);
 });

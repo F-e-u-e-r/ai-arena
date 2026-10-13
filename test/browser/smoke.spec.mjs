@@ -259,3 +259,47 @@ test('F2: moveBefore keeps an iframe execution-context sentinel that a plain re-
   expect(res.bReloaded).toBe(true);                // the negative control actually reloaded (deterministic)
   expect(res.afterReinsert).not.toBe('B-ALIVE');   // and so lost its sentinel → oracle discriminates MOVE from RECREATE
 });
+
+// ---- G. Model Family bulk-select (WS3): per-task shortcuts, union, cross-family, reset ----
+test('G: family shortcut bulk-selects a model line, preserves cross-family selection, reset clears', async ({ page }) => {
+  await page.setViewportSize({ width: 1100, height: 900 });
+  await page.goto(TASK); // savannah — all three families present (>=2 members each)
+  const count = page.locator('.filter-count');
+  await page.locator('.family-btn').first().waitFor();
+
+  // exactly the three declared families, in order
+  const famLabels = (await page.locator('.family-btn').allTextContents()).map(s => s.trim());
+  expect(famLabels).toEqual(['Grok', 'GPT-5.6', 'Opus']);
+  // a family button is a bulk action, NOT a stateful toggle — it carries no aria-pressed
+  expect(await page.locator('.family-btn', { hasText: 'Grok' }).getAttribute('aria-pressed')).toBeNull();
+
+  // Grok family → its three members selected, count narrows
+  await page.locator('.family-btn', { hasText: 'Grok' }).click();
+  await expect(count).toHaveText('顯示 3/17');
+  const pressed1 = (await page.locator('.chip-toggle[aria-pressed="true"]').allTextContents()).map(s => s.trim());
+  expect(pressed1.sort()).toEqual(['Grok 4.5', 'Grok 4.6', 'Grok 4.7']);
+
+  // cross-family union: + GPT-5.6 preserves Grok (OD-WS3-4)
+  await page.locator('.family-btn', { hasText: 'GPT-5.6' }).click();
+  await expect(count).toHaveText('顯示 9/17');
+  const pressed2 = (await page.locator('.chip-toggle[aria-pressed="true"]').allTextContents()).map(s => s.trim());
+  for (const m of ['Grok 4.5', 'Grok 4.6', 'Grok 4.7', 'GPT-5.6 Luna', 'GPT-5.6 Sol', 'GPT-5.6 Terra']) {
+    expect(pressed2).toContain(m);
+  }
+  // clicking Grok again when all members present is an idempotent no-op (no dup, count stable)
+  await page.locator('.family-btn', { hasText: 'Grok' }).click();
+  await expect(count).toHaveText('顯示 9/17');
+
+  // reset → Any
+  await page.locator('.chip-action', { hasText: '重設篩選' }).click();
+  await expect(count).toHaveText('顯示 17/17');
+  expect(await page.locator('.chip-toggle[aria-pressed="true"]').count()).toBe(0);
+});
+
+// ---- G2. The family row is per-task: absent when no family has >=2 members present ----
+test('G2: a task with fewer than two members of any family shows no family row', async ({ page }) => {
+  await page.goto('/#spinning-cube'); // only Opus 4.8 present (a single family member)
+  await page.locator('.card').first().waitFor();
+  expect(await page.locator('.family-btn').count()).toBe(0);
+  expect(await page.locator('.family-row').count()).toBe(0);
+});

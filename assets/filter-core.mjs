@@ -80,6 +80,18 @@ export function reset(state) {
   return out;
 }
 
+// WS3 additive helper（非 P0 transition 的改寫）：把一組值「聯集」進某 facet 的 Subset
+// ——Model Family 快捷的 bulk-select（OD-WS3-4）用：選取整個系列＝把目前在場的成員加入
+// 既有選擇、保留跨系列／個別多選、永不移除、去重。Any → [values]；空輸入為 NO-OP（同參照）。
+// 產出仍是合法的 Any|Subset(非空) 狀態，不動既有 toggle/only/reset/visible 語義。
+export function addToFacet(state, key, values) {
+  if (!values || values.length === 0) return state;
+  const cur = state[key] === 'any' ? [] : state[key];
+  const merged = [...cur];
+  for (const v of values) if (!merged.includes(v)) merged.push(v);
+  return merged.length ? { ...state, [key]: merged } : state;
+}
+
 // 可見性（spec §3.1）：Any 短路為通過；否則需命中 Subset（facet 內 OR）；
 // 跨 facet 為 AND（every）。
 export function visible(sub, state, facetKeys) {

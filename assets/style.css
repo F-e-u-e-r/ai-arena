@@ -197,6 +197,7 @@ body {
 @media (pointer: coarse), (max-width: 720px) {
   .chip-toggle, .chip-only { min-height: 34px; }
   .chip-only { min-width: 34px; }
+  .family-btn { min-height: 34px; }
 }
 .filter-actions { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .chip-action {
@@ -219,6 +220,22 @@ body {
   padding: 0 5px;
   color: var(--muted);
 }
+
+/* WS3 Model Family quick-select（系列快捷）：bulk-add 一整條模型線目前在場的成員。
+   刻意與可選 chip 區隔——dashed 外框＝「群組／bulk 動作」，自身無 aria-pressed 狀態；
+   hover 轉實線 accent。放在 facet 之上，僅本 task 有 ≥2 成員的系列才出現（密度）。 */
+.family-selects { display: flex; flex-wrap: wrap; gap: 6px; }
+.family-btn {
+  font-size: 12px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px dashed var(--border);
+  cursor: pointer;
+}
+.family-btn:hover { border-style: solid; border-color: var(--accent); }
+.family-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 /* ---- grid of submissions ---- */
 /* minmax 的 min 用 min(320px, 100%)：桌機 100% 一定 >320px，故維持原本 320px 下限、外觀不變；
