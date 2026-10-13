@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   facetValues, initState, isAny, isSelected,
-  toggle, only, reset, addToFacet, candidateCounts, visible, visibleCount,
+  toggle, only, reset, addToFacet, clearFacet, candidateCounts, visible, visibleCount,
   compareText, sortValue, sortedSubs
 } from '../assets/filter-core.mjs';
 
@@ -259,4 +259,15 @@ test('12: candidateCounts — per-value availability under other facets, indepen
   assert.equal(c5.get('codex'), 2);
   assert.equal(c5.get('claude-code'), 2);
   assert.equal(visibleCount(SUBS, orSel, FACETS), 4);          // OR total 4 ≠ any single availability count
+});
+
+// (13) clearFacet（WS3）：整列回 Any、不動他 facet、已 Any 時 NO-OP、不可變。
+test('13: clearFacet resets one facet to Any, leaves others, NO-OP on Any, immutable', () => {
+  const st = deepFreeze({ client: ['codex', 'grok'], model: ['Opus 4.8'], effort: 'any' });
+  const after = clearFacet(st, 'client');
+  assert.equal(after.client, 'any');              // 該列回 Any
+  assert.deepEqual(after.model, ['Opus 4.8']);    // 他 facet 不動
+  assert.equal(after.effort, 'any');
+  assert.deepEqual(st.client, ['codex', 'grok']); // 凍結輸入未變
+  assert.equal(clearFacet(st, 'effort'), st);     // 已是 Any → NO-OP（同參照）
 });

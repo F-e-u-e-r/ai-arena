@@ -92,6 +92,12 @@ export function addToFacet(state, key, values) {
   return merged.length ? { ...state, [key]: merged } : state;
 }
 
+// WS3 additive：清空某個 facet（回 Any）。Active Filter Summary 的「折疊標籤一次清除整列」用；
+// 個別移除仍走 toggle（移除單值、最後一項折疊回 Any）。NO-OP（已是 Any）回同參照。純函式。
+export function clearFacet(state, key) {
+  return state[key] === 'any' ? state : { ...state, [key]: 'any' };
+}
+
 // WS3 Faceted candidate counts（OD WS3-B）：對 facetKey 的每個值 V，回傳「在其他 facet 當前
 // 約束下、facetValue===V 的 submission 數」——刻意「獨立於 facetKey 自身的選擇」（facet 內 OR
 // 的候選可用性，不是 OR 合併後的可見總數；可見總數仍由 visible()/visibleCount() 權威決定）。

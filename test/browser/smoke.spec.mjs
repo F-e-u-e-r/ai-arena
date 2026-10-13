@@ -340,3 +340,52 @@ test('H: faceted counts reflect other-facet constraints; a zero count never dese
   expect(snap.cursorPressed).toBe('true');
   expect(snap.visible).toBe('顯示 0/17');
 });
+
+// ---- I. Active filter summary (WS3): derived removable tags, last→Any, collapse, reset ----
+test('I: active filter summary — removable constraints, × removes one (last→Any), collapse, reset clears', async ({ page }) => {
+  await page.setViewportSize({ width: 1100, height: 900 });
+  await page.goto(TASK);
+  const summary = page.locator('.filter-summary');
+  await page.locator('.chip-toggle').first().waitFor();
+  await expect(summary).toBeHidden();                         // all Any → no summary
+
+  const r = await page.evaluate(() => {
+    const tog = (t) => [...document.querySelectorAll('.chip-toggle')]
+      .find(b => b.childNodes[0].textContent.trim() === t).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    const fam = (t) => [...document.querySelectorAll('.family-btn')]
+      .find(b => b.textContent.trim() === t).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    const tags = () => [...document.querySelectorAll('.summary-tag .summary-text')].map(t => t.textContent);
+    const removeTag = (needle) => [...document.querySelectorAll('.summary-tag')]
+      .find(t => t.querySelector('.summary-text').textContent.includes(needle))
+      .querySelector('.summary-x').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    const pressed = (label) => [...document.querySelectorAll('.chip-toggle')]
+      .find(b => b.childNodes[0].textContent.trim() === label).getAttribute('aria-pressed');
+
+    tog('Codex'); fam('Grok');                                // client {Codex} + model {Grok 4.5,4.6,4.7}
+    const afterSelect = tags();
+    removeTag('模型：Grok 4.6');                               // remove one model via its summary ×
+    const grok46pressed = pressed('Grok 4.6');
+    const afterRemoveOne = tags();
+    removeTag('工具：Codex');                                  // remove the only client → client back to Any
+    const codexPressed = pressed('Codex');
+    const afterRemoveLastClient = tags();
+    return { afterSelect, grok46pressed, afterRemoveOne, codexPressed, afterRemoveLastClient };
+  });
+  expect(r.afterSelect).toEqual(['工具：Codex', '模型：Grok 4.5', '模型：Grok 4.6', '模型：Grok 4.7']);
+  expect(r.grok46pressed).toBe('false');                      // removing a summary tag unselects the main chip
+  expect(r.afterRemoveOne).toEqual(['工具：Codex', '模型：Grok 4.5', '模型：Grok 4.7']);
+  expect(r.codexPressed).toBe('false');
+  expect(r.afterRemoveLastClient).toEqual(['模型：Grok 4.5', '模型：Grok 4.7']); // client gone (Any), models remain
+
+  // collapse: >=5 model values collapse to a single "模型：N 項" tag
+  const collapsed = await page.evaluate(() => {
+    const fam = (t) => [...document.querySelectorAll('.family-btn')]
+      .find(b => b.textContent.trim() === t).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    fam('Grok'); fam('GPT-5.6');
+    return [...document.querySelectorAll('.summary-tag .summary-text')].map(t => t.textContent);
+  });
+  expect(collapsed.some(t => /^模型：\d+ 項$/.test(t))).toBe(true);
+
+  await page.locator('.chip-action', { hasText: '重設篩選' }).click();
+  await expect(summary).toBeHidden();                         // reset clears the summary
+});

@@ -210,6 +210,7 @@ body {
   .chip-toggle, .chip-only { min-height: 34px; }
   .chip-only { min-width: 34px; }
   .family-btn { min-height: 34px; }
+  .summary-x { min-width: 34px; }
 }
 .filter-actions { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .chip-action {
@@ -248,6 +249,33 @@ body {
 }
 .family-btn:hover { border-style: solid; border-color: var(--accent); }
 .family-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* WS3 Active Filter Summary（已套用）：衍生自狀態的 active 約束摘要，各為可移除標籤（× 移除個別
+   值、最後一項回 Any；某列 ≥5 折疊成「列：N 項」）。全 Any 時整列 hidden（不佔位）。 */
+.filter-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 12px; }
+.summary-label { font-size: 12px; color: var(--muted); }
+/* tag = 文字 + 尾段 ×（sibling；tag 本身非互動）。overflow:hidden 修 pill 圓角，故 × 用 inset outline。 */
+.summary-tag {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--panel-2);
+}
+.summary-text { font-size: 12px; padding: 3px 4px 3px 10px; color: var(--text); white-space: nowrap; }
+.summary-x {
+  font-size: 12px;
+  padding: 3px 9px;
+  background: transparent;
+  color: var(--muted);
+  border: 0;
+  border-left: 1px solid var(--border);
+  cursor: pointer;
+  min-width: 24px;
+}
+.summary-x:hover { color: var(--text); background: rgba(255, 255, 255, .05); }
+.summary-x:focus-visible { outline: 2px solid #fff; outline-offset: -2px; }
 
 /* ---- grid of submissions ---- */
 /* minmax 的 min 用 min(320px, 100%)：桌機 100% 一定 >320px，故維持原本 320px 下限、外觀不變；
