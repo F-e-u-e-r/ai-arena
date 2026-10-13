@@ -4,29 +4,40 @@
 // preservation. Pure filter/sort logic stays in test/filter-core.test.mjs (node:test).
 //
 // Fixtures are the committed, deterministic manifest (tasks.json → #savannah-ecosystem,
-// 17 submissions) served same-origin by test/browser/static-server.mjs.
+// 17 submissions, 5 clients, 13 models) served same-origin by static-server.mjs.
 import { test, expect } from '@playwright/test';
 
 const TASK = '/#savannah-ecosystem';
 
 // ---- A. 320px responsive overflow (WS1 contract) ---------------------------
-test('A: no horizontal page overflow at a 320px viewport', async ({ page }) => {
+test('A: no horizontal page overflow at a 320px viewport (not masked by overflow clipping)', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 720 });
   await page.goto(TASK);
   await page.locator('.card').first().waitFor();
-  const m = await page.evaluate(() => ({
-    scrollW: document.documentElement.scrollWidth,
-    clientW: document.documentElement.clientWidth,
-    innerW: window.innerWidth,
-    cardsPastEdge: [...document.querySelectorAll('.card')]
-      .filter(c => c.getBoundingClientRect().right > window.innerWidth + 0.5).length,
-  }));
+  const m = await page.evaluate(() => {
+    const de = document.documentElement;
+    return {
+      scrollW: de.scrollWidth,
+      clientW: de.clientWidth,
+      innerW: window.innerWidth,
+      rootOverflowX: getComputedStyle(de).overflowX,
+      bodyOverflowX: getComputedStyle(document.body).overflowX,
+      // widest element edge past the viewport (cards and their inner content)
+      cardsPastEdge: [...document.querySelectorAll('.card')]
+        .filter(c => c.getBoundingClientRect().right > window.innerWidth + 0.5).length,
+    };
+  });
+  expect(m.innerW).toBe(320);                        // the viewport is actually at the tested width
+  // the scrollWidth check must not be masked by a global overflow-x:hidden (owner: do not
+  // globally hide overflow to conceal the defect), so assert the page is not clipping x.
+  expect(m.rootOverflowX).not.toBe('hidden');
+  expect(m.bodyOverflowX).not.toBe('hidden');
   expect(m.scrollW).toBeLessThanOrEqual(m.clientW);  // no horizontal scroll area
   expect(m.cardsPastEdge).toBe(0);                   // every card geometry inside the viewport
 });
 
-// ---- B. Placeholder keyboard-focus ring is inset, not clipped (WS1 contract) ----
-test('B: placeholder :focus-visible uses an inset ring inside the card containment', async ({ page }) => {
+// ---- B. Placeholder keyboard-focus ring is inset, visible, not clipped (WS1) ----
+test('B: placeholder :focus-visible is a visible inset ring inside the card containment', async ({ page }) => {
   await page.setViewportSize({ width: 1000, height: 820 });
   await page.goto(TASK);
   const ph = page.locator('.card .placeholder').first();
@@ -35,7 +46,6 @@ test('B: placeholder :focus-visible uses an inset ring inside the card containme
     el.focus({ focusVisible: true });
     const cs = getComputedStyle(el);
     const r = el.getBoundingClientRect();
-    // nearest overflow:hidden ancestor (the card-body / card that would clip an outward ring)
     let n = el.parentElement, clip = null;
     while (n && n !== document.body) {
       const s = getComputedStyle(n);
@@ -48,13 +58,17 @@ test('B: placeholder :focus-visible uses an inset ring inside the card containme
       outlineStyle: cs.outlineStyle,
       outlineWidth: parseFloat(cs.outlineWidth) || 0,
       outlineOffset: parseFloat(cs.outlineOffset) || 0,
-      // placeholder fills card-body at inset:0, so its box coincides with the clip box
+      outlineColor: cs.outlineColor,
       flushWithClip: cr ? (Math.abs(r.left - cr.left) < 1 && Math.abs(r.right - cr.right) < 1) : false,
     };
   });
   expect(res.focusVisible).toBe(true);
   expect(res.outlineStyle).not.toBe('none');
   expect(res.outlineWidth).toBeGreaterThan(0);
+  // the ring must be a visible colour, not transparent / zero-alpha (an invisible ring
+  // would still satisfy width/offset but fail the actual focus-visibility contract)
+  expect(res.outlineColor).not.toBe('transparent');
+  expect(res.outlineColor).not.toMatch(/rgba?\([^)]*,\s*0(\.0+)?\)\s*$/);
   expect(res.flushWithClip).toBe(true);               // confirms the clip hazard is real
   // The WS1 fix: a NEGATIVE outline-offset draws the ring inside the border box, so the
   // overflow:hidden ancestor cannot clip it. Reverting the fix leaves offset 0 → RED.
@@ -62,8 +76,8 @@ test('B: placeholder :focus-visible uses an inset ring inside the card containme
   expect(Math.abs(res.outlineOffset)).toBeGreaterThanOrEqual(res.outlineWidth - 0.01);
 });
 
-// ---- C. Filter ARIA: aria-pressed, Only cross-facet preservation, reset → Any ----
-test('C: filter chips reflect aria-pressed; Only preserves other facets; reset restores Any', async ({ page }) => {
+// ---- C. Filter ARIA: aria-pressed, Only REPLACES (discriminating) + cross-facet, reset→Any ----
+test('C: filter chips reflect aria-pressed; Only replaces (not toggles) and preserves other facets; reset→Any', async ({ page }) => {
   await page.setViewportSize({ width: 1100, height: 900 });
   await page.goto(TASK);
   const grok = page.locator('.chip-toggle', { hasText: 'Grok 4.5' }).first();
@@ -79,20 +93,29 @@ test('C: filter chips reflect aria-pressed; Only preserves other facets; reset r
   await expect(grok).toHaveAttribute('aria-pressed', 'true');
   await expect(count).toHaveText('顯示 1/17');
 
-  // Only on a *client* value must NOT clear the model (Grok 4.5) selection (cross-facet I6)
-  const preserved = await page.evaluate(() => {
-    const facets = [...document.querySelectorAll('.facet')];
-    const clientRow = facets.find(f => f.querySelector('.facet-label')?.textContent?.includes('工具'));
-    const firstOnly = clientRow.querySelector('.chip-only');
-    const clientVal = clientRow.querySelector('.chip-toggle').textContent.trim();
-    firstOnly.dispatchEvent(new MouseEvent('click', { bubbles: true })); // synthetic: no focus steal
+  // Discriminating Only: first select client A, then Only client B. `only` must REPLACE
+  // {A}→{B}; a toggle-wired handler would yield {A,B}. (From the Any initial state only()
+  // and toggle() coincide, so the facet must already hold a *different* value first.)
+  const onlyCheck = await page.evaluate(() => {
+    const clientRow = [...document.querySelectorAll('.facet')]
+      .find(f => f.querySelector('.facet-label')?.textContent?.includes('工具'));
+    const chips = [...clientRow.querySelectorAll('.chip')];
+    const aToggle = chips[0].querySelector('.chip-toggle');
+    const bToggle = chips[1].querySelector('.chip-toggle');
+    const bOnly = chips[1].querySelector('.chip-only');
+    const aName = aToggle.textContent.trim();
+    const bName = bToggle.textContent.trim();
+    aToggle.dispatchEvent(new MouseEvent('click', { bubbles: true }));   // client facet = {A}
+    const aSelected = aToggle.getAttribute('aria-pressed') === 'true';
+    bOnly.dispatchEvent(new MouseEvent('click', { bubbles: true }));     // Only B → must be {B}
+    const pressed = [...clientRow.querySelectorAll('.chip-toggle')]
+      .filter(t => t.getAttribute('aria-pressed') === 'true').map(t => t.textContent.trim());
     const grokBtn = [...document.querySelectorAll('.chip-toggle')].find(b => b.textContent.trim() === 'Grok 4.5');
-    const clientPressedCount = [...clientRow.querySelectorAll('.chip-toggle')]
-      .filter(b => b.getAttribute('aria-pressed') === 'true').length;
-    return { grokStillPressed: grokBtn.getAttribute('aria-pressed') === 'true', clientPressedCount, clientVal };
+    return { aName, bName, aSelected, pressed, grokStillPressed: grokBtn.getAttribute('aria-pressed') === 'true' };
   });
-  expect(preserved.grokStillPressed).toBe(true);   // Only on client left the model facet intact
-  expect(preserved.clientPressedCount).toBe(1);    // Only isolated exactly one client value
+  expect(onlyCheck.aSelected).toBe(true);                     // precondition: a *different* client was selected
+  expect(onlyCheck.pressed).toEqual([onlyCheck.bName]);       // Only REPLACED {A} with {B} (not {A,B}, not a toggle)
+  expect(onlyCheck.grokStillPressed).toBe(true);              // Only on client left the model facet intact (I6)
 
   // reset → every chip back to Any, full count
   await page.locator('.chip-action', { hasText: '重設篩選' }).click();
@@ -100,20 +123,26 @@ test('C: filter chips reflect aria-pressed; Only preserves other facets; reset r
   await expect(count).toHaveText('顯示 17/17');
 });
 
-// ---- D. Sort direction ARIA + visible reorder ------------------------------
-test('D: sort direction toggle updates its ARIA label and actually reorders', async ({ page }) => {
+// ---- D. Sort direction ARIA + real reorder (membership preserved, no aria-pressed) ----
+test('D: sort direction toggle updates its ARIA label and reorders, with no aria-pressed on the button', async ({ page }) => {
   await page.goto(TASK);
   const dirBtn = page.locator('.dir-btn');
   await dirBtn.waitFor();
   await expect(dirBtn).toHaveAttribute('aria-label', /遞增/);
-  const firstBefore = await page.locator('.card:not([hidden]) .model').first().textContent();
+  // documented PR #24 invariant: the direction button is a label toggle, NOT an aria-pressed control
+  expect(await dirBtn.getAttribute('aria-pressed')).toBeNull();
+
+  const before = await page.locator('.card:not([hidden]) .model').allTextContents();
   await dirBtn.click();
   await expect(dirBtn).toHaveAttribute('aria-label', /遞減/);
-  const firstAfter = await page.locator('.card:not([hidden]) .model').first().textContent();
-  expect(firstAfter).not.toBe(firstBefore);        // ascending vs descending changed the visible order
+  expect(await dirBtn.getAttribute('aria-pressed')).toBeNull();
+  const after = await page.locator('.card:not([hidden]) .model').allTextContents();
+
+  expect(after).not.toEqual(before);                        // order actually changed
+  expect([...after].sort()).toEqual([...before].sort());    // same membership, just reordered (not dropped/added)
 });
 
-// ---- E. Focus guard: hiding the focused card moves focus to the control, not body ----
+// ---- E. Focus guard: hiding the focused card moves focus to the control, not <body> ----
 test('E: filtering out the focused card moves focus to the trigger, never to <body>', async ({ page }) => {
   await page.goto(TASK);
   await page.locator('.card .placeholder').first().waitFor();
@@ -144,47 +173,45 @@ test('F1: sorting preserves the loaded submission iframe (no reload) through mov
   const supported = await page.evaluate(() => typeof document.body.moveBefore === 'function');
   test.skip(!supported, 'moveBefore unsupported in this browser — app falls back to append (reload)');
 
-  await page.locator('.card .placeholder').first().click();        // load first card's iframe
-  await page.locator('.card iframe').first().waitFor();
-  // tag the iframe node (JS property survives a MOVE but not a RECREATE) + count reloads
+  // Click the placeholder AND attach the load counter in the SAME synchronous turn (the click
+  // handler builds the iframe synchronously), so the initial load cannot fire before the listener.
   await page.evaluate(() => {
+    document.querySelector('.card .placeholder').click();          // sync handler creates the iframe
     const f = document.querySelector('.card iframe');
     f.__marker = 'KEEP-' + Math.random().toString(36).slice(2);
     window.__iframeMarker = f.__marker;
-    f.__reloads = 0;
-    f.addEventListener('load', () => { f.__reloads++; });
+    f.__loads = 0;
+    f.addEventListener('load', () => { f.__loads++; });
   });
-  // let the initial load fire, then zero the baseline
+  // MANDATORY: the initial load must fire (throws on timeout) so the baseline is real.
   await page.waitForFunction(() => {
     const f = [...document.querySelectorAll('.card iframe')].find(x => x.__marker === window.__iframeMarker);
-    return f && f.__reloads >= 1;
-  }, { timeout: 5000 }).catch(() => { /* some frames fire load before the listener; baseline-reset still valid */ });
-  await page.evaluate(() => {
-    const f = [...document.querySelectorAll('.card iframe')].find(x => x.__marker === window.__iframeMarker);
-    if (f) f.__reloads = 0;
-  });
+    return f && f.__loads >= 1;
+  }, { timeout: 10000 });
 
   await page.locator('.dir-btn').click();                           // real sort → applySort → moveBefore
-  await page.waitForTimeout(400);                                   // allow any (unexpected) reload to surface
+  // Generous settle window: a recreate/append reinsert reloads the iframe and fires another
+  // 'load'; wait well beyond the reorder so even a delayed reload under CI load is observed.
+  await page.waitForTimeout(1500);
 
   const res = await page.evaluate(() => {
     const f = [...document.querySelectorAll('.card iframe')].find(x => x.__marker === window.__iframeMarker);
     return {
       markerSurvived: !!f,                 // same DOM node (JS marker persists) → not recreated
       connected: f ? f.isConnected : false,
-      reloads: f ? f.__reloads : -1,       // 0 → moveBefore preserved it; ≥1 → it reloaded (append fallback / recreate)
+      loads: f ? f.__loads : -1,           // exactly 1 (the initial) → no reload; ≥2 → it reloaded
     };
   });
   expect(res.markerSurvived).toBe(true);
   expect(res.connected).toBe(true);
-  expect(res.reloads).toBe(0);                     // the PR #24 moveBefore no-reload invariant
+  expect(res.loads).toBe(1);                       // only the initial load — moveBefore did NOT reload it (PR #24)
 });
 
 // ---- F2. moveBefore preserves a same-origin iframe's execution-context sentinel ----
 // The real submission iframe is sandboxed (opaque origin) so its contentWindow is not
 // introspectable; per the owner contract we build a minimal same-origin srcdoc fixture to
-// run the strongest MOVE-vs-RECREATE signal — a sentinel inside the frame — with a negative
-// control (plain re-insert) that reloads and loses it.
+// run the strongest MOVE-vs-RECREATE signal — a sentinel inside the frame — with a
+// deterministic negative control (plain re-insert awaits its reload, then has lost it).
 test('F2: moveBefore keeps an iframe execution-context sentinel that a plain re-insert loses', async ({ page }) => {
   await page.goto('/');
   const supported = await page.evaluate(() => typeof document.body.moveBefore === 'function');
@@ -215,14 +242,20 @@ test('F2: moveBefore keeps an iframe execution-context sentinel that a plain re-
     grid.moveBefore(a.card, null);                 // the state-preserving atomic move app.js uses
     const afterMove = a.f.contentWindow.__sentinel;
 
-    grid.appendChild(b.card);                       // control: plain re-insert reloads the iframe
-    await new Promise((r) => setTimeout(r, 300));
+    // control: a plain re-insert reloads b's iframe; AWAIT that reload, then read the sentinel.
+    let bReloaded = false;
+    await new Promise((resolve) => {
+      b.f.addEventListener('load', () => { bReloaded = true; resolve(); }, { once: true });
+      grid.appendChild(b.card);
+      setTimeout(resolve, 3000); // safety cap
+    });
     let afterReinsert;
     try { afterReinsert = b.f.contentWindow.__sentinel; } catch { afterReinsert = 'THREW'; }
 
     grid.remove();
-    return { afterMove, afterReinsert };
+    return { afterMove, afterReinsert, bReloaded };
   });
   expect(res.afterMove).toBe('A-ALIVE');           // moveBefore preserved the execution context
-  expect(res.afterReinsert).not.toBe('B-ALIVE');   // plain re-insert reloaded it → sentinel gone (oracle discriminates)
+  expect(res.bReloaded).toBe(true);                // the negative control actually reloaded (deterministic)
+  expect(res.afterReinsert).not.toBe('B-ALIVE');   // and so lost its sentinel → oracle discriminates MOVE from RECREATE
 });

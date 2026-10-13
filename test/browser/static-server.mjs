@@ -7,11 +7,12 @@
 // ES-module graph (index.html → app.js → filter-core.mjs) under strict MIME checks.
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, statSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { join, normalize, extname } from 'node:path';
+import { join, normalize, extname, sep } from 'node:path';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url)); // repo root (test/browser → ../../)
+const ROOT_REAL = realpathSync(ROOT).replace(/[\\/]$/, '') + sep; // real root, trailing sep for prefix test
 const PORT = Number(process.env.PORT || 8188);
 
 const MIME = {
@@ -47,6 +48,11 @@ const server = createServer(async (req, res) => {
       res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
       res.end('Not found: ' + pathname);
       return;
+    }
+    // realpath containment: a symlink inside the tree must not escape ROOT (the lexical
+    // prefix check above does not follow links).
+    if (!(realpathSync(filePath) + sep).startsWith(ROOT_REAL)) {
+      res.writeHead(403); res.end('Forbidden'); return;
     }
     const body = await readFile(filePath);
     res.writeHead(200, {

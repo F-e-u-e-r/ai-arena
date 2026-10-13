@@ -197,6 +197,17 @@ test('10: reducers never mutate frozen inputs; each toggle branch pins its exact
   assert.equal(isAny(collapsed, 'client'), true);
   assert.deepEqual(lastOne.client, ['codex']);     // 輸入未變
 
+  // toggle 必須保留「未觸」facet（spread 不得掉欄位）——無論 add 或 collapse 分支。
+  const multiFacet = deepFreeze({ client: ['codex'], model: ['Opus 4.8'], effort: ['high'] });
+  const togAdd = toggle(multiFacet, 'client', 'grok');
+  assert.deepEqual(togAdd.client, ['codex', 'grok']);
+  assert.deepEqual(togAdd.model, ['Opus 4.8']);    // 未觸 model 原樣保留（非 { [key]: next } 掉欄位）
+  assert.deepEqual(togAdd.effort, ['high']);       // 未觸 effort 原樣保留
+  const togCollapse = toggle(multiFacet, 'client', 'codex'); // {codex} → Any
+  assert.equal(togCollapse.client, 'any');
+  assert.deepEqual(togCollapse.model, ['Opus 4.8']); // collapse 分支同樣不得掉其他 facet
+  assert.deepEqual(togCollapse.effort, ['high']);
+
   // only / reset 同樣不得就地改動凍結輸入
   const frozen = deepFreeze({ client: ['codex', 'grok'], model: ['Opus 4.8'], effort: 'any' });
   assert.deepEqual(only(frozen, 'client', 'codex').client, ['codex']);

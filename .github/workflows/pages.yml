@@ -76,10 +76,12 @@ jobs:
         run: npx playwright test
 
   # Deploy only on pushes to main or manual runs. PRs, including forks, do not deploy.
-  # Gated on browser-smoke too so a push that fails the browser contracts is not published.
+  # Gated on `validate` only: browser-smoke runs on every PR and push as a required signal,
+  # but a transient Chromium/npm/system-dependency failure must not block publishing a valid
+  # static site (the merged code already passed browser-smoke on its PR).
   deploy:
     if: github.event_name != 'pull_request'
-    needs: [validate, browser-smoke]
+    needs: validate
     runs-on: ubuntu-latest
     environment:
       name: github-pages
