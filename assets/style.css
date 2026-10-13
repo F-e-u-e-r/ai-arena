@@ -221,10 +221,13 @@ body {
 }
 
 /* ---- grid of submissions ---- */
+/* minmax 的 min 用 min(320px, 100%)：桌機 100% 一定 >320px，故維持原本 320px 下限、外觀不變；
+   但在窄於 320px 的容器（如 320px 視窗扣掉 .main 左右 padding 後只剩 ~264px）時，下限收斂成
+   容器寬（100%），避免 grid track 撐出固定 320px 造成整頁橫向溢位（不靠 overflow:hidden 遮）。 */
 .grid {
   display: grid;
   gap: 16px;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
 }
 .card {
   background: var(--panel);
@@ -375,6 +378,15 @@ body {
 }
 .ph-text { font-size: 14px; }
 .ph-sub { font-size: 12px; color: var(--muted); }
+
+/* 鍵盤 focus：placeholder 以 inset:0 填滿 .card-body，邊框與 .card-body／.card 的 overflow:hidden
+   內緣完全齊平，預設往外畫的 outline 會被四邊剪掉（只剩一條細邊）。沿用 chip 的解法：改用負
+   offset 把 2px 白框畫在元素內緣、不被裁剪；白框對 placeholder 深色漸層底 ≈14:1，達 WCAG 1.4.11 ≥3:1。
+   只處理確認會被剪的 placeholder；.frame-btn（距邊 6px）與 .author（內縮 13px）focus ring 未被剪，不動。 */
+.placeholder:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -2px;
+}
 
 .frame-bar {
   position: absolute;
