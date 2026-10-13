@@ -1,0 +1,13 @@
+{
+  "name": "ai-arena",
+  "version": "0.0.0",
+  "private": true,
+  "description": "AI Arena gallery. The site itself is static with ZERO runtime dependencies; this manifest exists only for test tooling (Playwright browser smoke). Pure filter/sort logic is tested by Node's built-in runner with no dependency.",
+  "scripts": {
+    "test:unit": "node --test test/*.test.mjs",
+    "test:browser": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.0"
+  }
+}

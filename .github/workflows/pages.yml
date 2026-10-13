@@ -49,10 +49,37 @@ jobs:
       - name: Run filter-core logic tests
         run: node --test test/*.test.mjs
 
+  # Browser-only regression contracts that DOM-free unit tests cannot honestly prove:
+  # 320px responsive overflow, placeholder :focus-visible clipping, rendered filter /
+  # sort ARIA, focus guard, and moveBefore iframe-state preservation. Chromium only;
+  # the site stays dependency-free at runtime (Playwright is test infra). The static
+  # site is served by the zero-dep test/browser/static-server.mjs (Playwright webServer).
+  browser-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install locked test dependencies
+        run: npm ci
+
+      - name: Install Chromium only
+        run: npx playwright install --with-deps chromium
+
+      - name: Run browser smoke suite
+        run: npx playwright test
+
   # Deploy only on pushes to main or manual runs. PRs, including forks, do not deploy.
+  # Gated on browser-smoke too so a push that fails the browser contracts is not published.
   deploy:
     if: github.event_name != 'pull_request'
-    needs: validate
+    needs: [validate, browser-smoke]
     runs-on: ubuntu-latest
     environment:
       name: github-pages

@@ -146,3 +146,61 @@ test('8: sorting is numeric-aware, missing-last, stable, orthogonal to filtering
     visible(SUBS.find(s => s.id === id), st, FACETS));
   assert.deepEqual(survivorsInSortOrder, sortedIds.filter(id => id === 's1' || id === 's3'));
 });
+
+// (9) Only 取代「既有的不同單值」：only(['grok'],'codex') → ['codex']（§2.2b 設單值語義）。
+// 補 test 3 缺口：test 3 測了「多值→單值」與「已隔離 NO-OP」，但未測「已是某單值、Only
+// 另一個值」會整段取代成新單值（而非 ['grok','codex'] 合併，也非 toggle 行為）。
+test('9: Only replaces a different existing singleton (set-to-one, not merge/toggle)', () => {
+  const s = { client: ['grok'], model: ['Opus 4.8'], effort: 'any' };
+  const after = only(s, 'client', 'codex');
+  assert.deepEqual(after.client, ['codex']);       // 'grok' 被整段取代為 'codex'（非 ['grok','codex']）
+  assert.deepEqual(after.model, ['Opus 4.8']);     // 他 facet 不動（I6）
+  assert.equal(after.effort, 'any');               // 他 facet 不動（I6）
+  assert.deepEqual(s.client, ['grok']);            // 不改動輸入
+  assert.notEqual(after, s);                       // 值不同 → 新狀態（非 NO-OP 的同參照）
+  assert.equal(only(after, 'client', 'codex'), after); // only(['codex'],'codex') 才 NO-OP（同參照，E8）
+});
+
+// (10) Reducer 不可變性（凍結輸入證明不就地改動）＋ toggle 四分支各自的「精確表示」＋
+// collapse-to-Any 的表示法釘選。與 test 1 互補：test 1 測「累積序列」；此處從「凍結輸入」
+// 逐一驗每個 transition 的輸出表示與非破壞性——若 reducer 改用 push/splice 之類就地改動，
+// 凍結的輸入（含內層陣列）會丟 TypeError，使對應 assert 轉紅。
+const deepFreeze = (o) => {
+  if (o && typeof o === 'object') { Object.values(o).forEach(deepFreeze); Object.freeze(o); }
+  return o;
+};
+test('10: reducers never mutate frozen inputs; each toggle branch pins its exact representation', () => {
+  // Any → singleton
+  const anyState = deepFreeze({ client: 'any', model: 'any', effort: 'any' });
+  const toSingle = toggle(anyState, 'client', 'codex');
+  assert.deepEqual(toSingle.client, ['codex']);    // Any → {A}
+  assert.notEqual(toSingle, anyState);             // 回新物件
+  assert.equal(anyState.client, 'any');            // 輸入未變
+
+  // singleton → add member（{A} → {A,B}）
+  const single = deepFreeze({ client: ['codex'], model: 'any', effort: 'any' });
+  const added = toggle(single, 'client', 'grok');
+  assert.deepEqual(added.client, ['codex', 'grok']);
+  assert.deepEqual(single.client, ['codex']);      // 凍結輸入陣列未被 push
+
+  // multi → remove member（{A,B} → {B}，仍非空）
+  const multi = deepFreeze({ client: ['codex', 'grok'], model: 'any', effort: 'any' });
+  const removed = toggle(multi, 'client', 'codex');
+  assert.deepEqual(removed.client, ['grok']);
+  assert.deepEqual(multi.client, ['codex', 'grok']); // 凍結輸入陣列未被 splice
+
+  // singleton → Any（移除最後一個選取成員 → collapse，I1），釘選精確表示
+  const lastOne = deepFreeze({ client: ['codex'], model: 'any', effort: 'any' });
+  const collapsed = toggle(lastOne, 'client', 'codex');
+  assert.equal(collapsed.client, 'any');           // 精確表示：字串 'any'
+  assert.equal(Array.isArray(collapsed.client), false); // 釘選：collapse 不產生空陣列 []
+  assert.equal(isAny(collapsed, 'client'), true);
+  assert.deepEqual(lastOne.client, ['codex']);     // 輸入未變
+
+  // only / reset 同樣不得就地改動凍結輸入
+  const frozen = deepFreeze({ client: ['codex', 'grok'], model: ['Opus 4.8'], effort: 'any' });
+  assert.deepEqual(only(frozen, 'client', 'codex').client, ['codex']);
+  assert.deepEqual(frozen.client, ['codex', 'grok']);          // only 未改動輸入
+  assert.deepEqual(reset(frozen), { client: 'any', model: 'any', effort: 'any' });
+  assert.deepEqual(frozen.model, ['Opus 4.8']);                // reset 回新物件、輸入未變
+});
