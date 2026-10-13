@@ -182,6 +182,18 @@ body {
 }
 .chip-only:hover { color: var(--text); background: rgba(255, 255, 255, .05); }
 
+/* WS3 faceted candidate count：chip 標籤後的小字數字，表示「在其他 facet 當前約束下」有幾份
+   符合此值。純資訊——0 仍顯示（更淡），絕不以此取消選取；可見總數（顯示 X/Y）才是權威結果。 */
+.chip-count {
+  margin-left: 5px;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  opacity: .6;
+}
+.chip-count:empty { display: none; }                               /* 尚未填入前不佔位 */
+.chip-count-zero { opacity: .35; }
+.chip-toggle[aria-pressed="true"] .chip-count { opacity: .85; }    /* accent 填色上仍可讀 */
+
 /* 鍵盤 focus：.chip 的 overflow:hidden（修剪 pill 圓角）會一併剪掉子按鈕預設 outline，
    改用 inset（負 offset）outline 畫在按鈕內緣、不被剪裁；白色對未選取（panel-2 深底 ≈16:1）
    與已選取（accent 藍底 ≈3.2:1）兩狀態皆達 WCAG 1.4.11 的 ≥3:1。 */
@@ -197,6 +209,8 @@ body {
 @media (pointer: coarse), (max-width: 720px) {
   .chip-toggle, .chip-only { min-height: 34px; }
   .chip-only { min-width: 34px; }
+  .family-btn { min-height: 34px; }
+  .summary-x { min-width: 34px; }
 }
 .filter-actions { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .chip-action {
@@ -219,6 +233,49 @@ body {
   padding: 0 5px;
   color: var(--muted);
 }
+
+/* WS3 Model Family quick-select（系列快捷）：bulk-add 一整條模型線目前在場的成員。
+   刻意與可選 chip 區隔——dashed 外框＝「群組／bulk 動作」，自身無 aria-pressed 狀態；
+   hover 轉實線 accent。放在 facet 之上，僅本 task 有 ≥2 成員的系列才出現（密度）。 */
+.family-selects { display: flex; flex-wrap: wrap; gap: 6px; }
+.family-btn {
+  font-size: 12px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px dashed var(--border);
+  cursor: pointer;
+}
+.family-btn:hover { border-style: solid; border-color: var(--accent); }
+.family-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* WS3 Active Filter Summary（已套用）：衍生自狀態的 active 約束摘要，各為可移除標籤（× 移除個別
+   值、最後一項回 Any；某列 ≥5 折疊成「列：N 項」）。全 Any 時整列 hidden（不佔位）。 */
+.filter-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 12px; }
+.summary-label { font-size: 12px; color: var(--muted); }
+/* tag = 文字 + 尾段 ×（sibling；tag 本身非互動）。overflow:hidden 修 pill 圓角，故 × 用 inset outline。 */
+.summary-tag {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--panel-2);
+}
+.summary-text { font-size: 12px; padding: 3px 4px 3px 10px; color: var(--text); white-space: nowrap; }
+.summary-x {
+  font-size: 12px;
+  padding: 3px 9px;
+  background: transparent;
+  color: var(--muted);
+  border: 0;
+  border-left: 1px solid var(--border);
+  cursor: pointer;
+  min-width: 24px;
+}
+.summary-x:hover { color: var(--text); background: rgba(255, 255, 255, .05); }
+.summary-x:focus-visible { outline: 2px solid #fff; outline-offset: -2px; }
 
 /* ---- grid of submissions ---- */
 /* minmax 的 min 用 min(320px, 100%)：桌機 100% 一定 >320px，故維持原本 320px 下限、外觀不變；

@@ -103,14 +103,15 @@ test('C: filter chips reflect aria-pressed; Only replaces (not toggles) and pres
     const aToggle = chips[0].querySelector('.chip-toggle');
     const bToggle = chips[1].querySelector('.chip-toggle');
     const bOnly = chips[1].querySelector('.chip-only');
-    const aName = aToggle.textContent.trim();
-    const bName = bToggle.textContent.trim();
+    const lbl = (b) => b.childNodes[0].textContent.trim();   // chip label text node (excludes the WS3 count span)
+    const aName = lbl(aToggle);
+    const bName = lbl(bToggle);
     aToggle.dispatchEvent(new MouseEvent('click', { bubbles: true }));   // client facet = {A}
     const aSelected = aToggle.getAttribute('aria-pressed') === 'true';
     bOnly.dispatchEvent(new MouseEvent('click', { bubbles: true }));     // Only B → must be {B}
     const pressed = [...clientRow.querySelectorAll('.chip-toggle')]
-      .filter(t => t.getAttribute('aria-pressed') === 'true').map(t => t.textContent.trim());
-    const grokBtn = [...document.querySelectorAll('.chip-toggle')].find(b => b.textContent.trim() === 'Grok 4.5');
+      .filter(t => t.getAttribute('aria-pressed') === 'true').map(lbl);
+    const grokBtn = [...document.querySelectorAll('.chip-toggle')].find(b => lbl(b) === 'Grok 4.5');
     return { aName, bName, aSelected, pressed, grokStillPressed: grokBtn.getAttribute('aria-pressed') === 'true' };
   });
   expect(onlyCheck.aSelected).toBe(true);                     // precondition: a *different* client was selected
@@ -150,7 +151,7 @@ test('E: filtering out the focused card moves focus to the trigger, never to <bo
     const card0 = document.querySelector('.card');                 // Composer 2.5 (a non-Grok card)
     card0.querySelector('.placeholder').focus();                   // focus lands INSIDE the card
     const focusedInCardBefore = card0.contains(document.activeElement);
-    const grok = [...document.querySelectorAll('.chip-toggle')].find(b => b.textContent.trim() === 'Grok 4.5');
+    const grok = [...document.querySelectorAll('.chip-toggle')].find(b => b.childNodes[0].textContent.trim() === 'Grok 4.5');
     // synthetic click runs the filter handler WITHOUT the browser moving focus to the button,
     // so focus is still inside card0 when applyFilter hides it — the exact precondition the guard covers.
     grok.dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -258,4 +259,153 @@ test('F2: moveBefore keeps an iframe execution-context sentinel that a plain re-
   expect(res.afterMove).toBe('A-ALIVE');           // moveBefore preserved the execution context
   expect(res.bReloaded).toBe(true);                // the negative control actually reloaded (deterministic)
   expect(res.afterReinsert).not.toBe('B-ALIVE');   // and so lost its sentinel → oracle discriminates MOVE from RECREATE
+});
+
+// ---- G. Model Family bulk-select (WS3): per-task shortcuts, union, cross-family, reset ----
+test('G: family shortcut bulk-selects a model line, preserves cross-family selection, reset clears', async ({ page }) => {
+  await page.setViewportSize({ width: 1100, height: 900 });
+  await page.goto(TASK); // savannah — all three families present (>=2 members each)
+  const count = page.locator('.filter-count');
+  await page.locator('.family-btn').first().waitFor();
+
+  // exactly the three declared families, in order
+  const famLabels = (await page.locator('.family-btn').allTextContents()).map(s => s.trim());
+  expect(famLabels).toEqual(['Grok', 'GPT-5.6', 'Opus']);
+  // a family button is a bulk action, NOT a stateful toggle — it carries no aria-pressed
+  expect(await page.locator('.family-btn', { hasText: 'Grok' }).getAttribute('aria-pressed')).toBeNull();
+
+  // Grok family → its three members selected, count narrows
+  await page.locator('.family-btn', { hasText: 'Grok' }).click();
+  await expect(count).toHaveText('顯示 3/17');
+  const pressed1 = await page.locator('.chip-toggle[aria-pressed="true"]')
+    .evaluateAll(bs => bs.map(b => b.childNodes[0].textContent.trim()));  // label node, excludes the count span
+  expect(pressed1.sort()).toEqual(['Grok 4.5', 'Grok 4.6', 'Grok 4.7']);
+
+  // cross-family union: + GPT-5.6 preserves Grok (OD-WS3-4)
+  await page.locator('.family-btn', { hasText: 'GPT-5.6' }).click();
+  await expect(count).toHaveText('顯示 9/17');
+  const pressed2 = await page.locator('.chip-toggle[aria-pressed="true"]')
+    .evaluateAll(bs => bs.map(b => b.childNodes[0].textContent.trim()));
+  for (const m of ['Grok 4.5', 'Grok 4.6', 'Grok 4.7', 'GPT-5.6 Luna', 'GPT-5.6 Sol', 'GPT-5.6 Terra']) {
+    expect(pressed2).toContain(m);
+  }
+  // clicking Grok again when all members present is an idempotent no-op (no dup, count stable)
+  await page.locator('.family-btn', { hasText: 'Grok' }).click();
+  await expect(count).toHaveText('顯示 9/17');
+
+  // reset → Any
+  await page.locator('.chip-action', { hasText: '重設篩選' }).click();
+  await expect(count).toHaveText('顯示 17/17');
+  expect(await page.locator('.chip-toggle[aria-pressed="true"]').count()).toBe(0);
+});
+
+// ---- G2. The family row is per-task: absent when no family has >=2 members present ----
+test('G2: a task with fewer than two members of any family shows no family row', async ({ page }) => {
+  await page.goto('/#spinning-cube'); // only Opus 4.8 present (a single family member)
+  await page.locator('.card').first().waitFor();
+  expect(await page.locator('.family-btn').count()).toBe(0);
+  expect(await page.locator('.family-row').count()).toBe(0);
+});
+
+// ---- H. Faceted candidate counts (WS3): per-value availability under OTHER facets ----
+test('H: faceted counts reflect other-facet constraints; a zero count never deselects', async ({ page }) => {
+  await page.setViewportSize({ width: 1100, height: 900 });
+  await page.goto(TASK);
+  await page.locator('.chip-count').first().waitFor();
+  const snap = await page.evaluate(() => {
+    const row = (lbl) => [...document.querySelectorAll('.facet')].find(f => f.querySelector('.facet-label')?.textContent === lbl);
+    const counts = (lbl) => Object.fromEntries([...row(lbl).querySelectorAll('.chip-toggle')]
+      .map(b => [b.childNodes[0].textContent.trim(), Number(b.querySelector('.chip-count').textContent)]));
+    const tog = (lbl, txt) => [...row(lbl).querySelectorAll('.chip-toggle')]
+      .find(b => b.childNodes[0].textContent.trim() === txt).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    const initialClient = counts('工具');
+    const initialEffort = counts('推理強度');
+    tog('工具', 'Cursor');          // select a client with a single submission (Composer 2.5 = max)
+    const effortAfterCursor = counts('推理強度');  // counts must recompute after THIS change, not only the next
+    tog('推理強度', 'high');        // constrain by effort=high — Cursor has no high submission
+    const cursorBtn = [...row('工具').querySelectorAll('.chip-toggle')].find(b => b.childNodes[0].textContent.trim() === 'Cursor');
+    return {
+      initialClient, initialEffort, effortAfterCursor,
+      clientUnderHigh: counts('工具'),
+      cursorPressed: cursorBtn.getAttribute('aria-pressed'),
+      visible: document.querySelector('.filter-count').textContent,
+    };
+  });
+  // initial = raw availability (all Any)
+  expect(snap.initialClient['Codex']).toBe(8);
+  expect(snap.initialClient['Grok']).toBe(3);
+  // recomputation happens after EACH change: effort counts constrained by client=Cursor (max only)
+  expect(snap.effortAfterCursor).not.toEqual(snap.initialEffort);
+  expect(snap.effortAfterCursor['high']).toBe(0);  // was 6 at all-Any; Cursor has no high
+  expect(snap.effortAfterCursor['max']).toBe(1);   // Cursor's single submission is max
+  // under effort=high only codex/grok have high submissions; others drop to 0 (independent of client selection)
+  expect(snap.clientUnderHigh['Codex']).toBe(3);
+  expect(snap.clientUnderHigh['Grok']).toBe(3);
+  expect(snap.clientUnderHigh['Cursor']).toBe(0);
+  // the selected zero-count Cursor is NOT deselected → a legitimate zero result, counter authoritative
+  expect(snap.cursorPressed).toBe('true');
+  expect(snap.visible).toBe('顯示 0/17');
+});
+
+// ---- I. Active filter summary (WS3): derived removable tags, last→Any, collapse, reset ----
+test('I: active filter summary — removable constraints, × removes one (last→Any), collapse, reset clears', async ({ page }) => {
+  await page.setViewportSize({ width: 1100, height: 900 });
+  await page.goto(TASK);
+  const summary = page.locator('.filter-summary');
+  await page.locator('.chip-toggle').first().waitFor();
+  await expect(summary).toBeHidden();                         // all Any → no summary
+
+  const r = await page.evaluate(() => {
+    const tog = (t) => [...document.querySelectorAll('.chip-toggle')]
+      .find(b => b.childNodes[0].textContent.trim() === t).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    const fam = (t) => [...document.querySelectorAll('.family-btn')]
+      .find(b => b.textContent.trim() === t).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    const tags = () => [...document.querySelectorAll('.summary-tag .summary-text')].map(t => t.textContent);
+    const removeTag = (needle) => [...document.querySelectorAll('.summary-tag')]
+      .find(t => t.querySelector('.summary-text').textContent.includes(needle))
+      .querySelector('.summary-x').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    const pressed = (label) => [...document.querySelectorAll('.chip-toggle')]
+      .find(b => b.childNodes[0].textContent.trim() === label).getAttribute('aria-pressed');
+
+    tog('Codex'); fam('Grok');                                // client {Codex} + model {Grok 4.5,4.6,4.7}
+    const afterSelect = tags();
+    removeTag('模型：Grok 4.6');                               // remove one model via its summary ×
+    const grok46pressed = pressed('Grok 4.6');
+    const afterRemoveOne = tags();
+    removeTag('工具：Codex');                                  // remove the only client → client back to Any
+    const codexPressed = pressed('Codex');
+    const afterRemoveLastClient = tags();
+    const countAfterRemove = document.querySelector('.filter-count').textContent; // removal re-applies the filter
+    const activeAfterRemove = document.activeElement.className;                   // focus must not fall to <body>
+    return { afterSelect, grok46pressed, afterRemoveOne, codexPressed, afterRemoveLastClient, countAfterRemove, activeAfterRemove };
+  });
+  expect(r.afterSelect).toEqual(['工具：Codex', '模型：Grok 4.5', '模型：Grok 4.6', '模型：Grok 4.7']);
+  expect(r.grok46pressed).toBe('false');                      // removing a summary tag unselects the main chip
+  expect(r.afterRemoveOne).toEqual(['工具：Codex', '模型：Grok 4.5', '模型：Grok 4.7']);
+  expect(r.codexPressed).toBe('false');
+  expect(r.afterRemoveLastClient).toEqual(['模型：Grok 4.5', '模型：Grok 4.7']); // client gone (Any), models remain
+  expect(r.countAfterRemove).toBe('顯示 2/17');                // removing Codex changed the visible result (not just the tags)
+  expect(r.activeAfterRemove).toBe('summary-x');              // focus moved to the next × (not lost to <body>)
+
+  // collapse: >=5 model values collapse to a single "模型：N 項" tag, whose × clears the facet
+  const coll = await page.evaluate(() => {
+    const fam = (t) => [...document.querySelectorAll('.family-btn')]
+      .find(b => b.textContent.trim() === t).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    fam('Grok'); fam('GPT-5.6');                              // >=5 model values → collapsed tag
+    const collapsedTags = [...document.querySelectorAll('.summary-tag .summary-text')].map(t => t.textContent);
+    [...document.querySelectorAll('.summary-tag')]            // click the collapsed × → clears the whole model facet
+      .find(t => /^模型：\d+ 項$/.test(t.querySelector('.summary-text').textContent))
+      .querySelector('.summary-x').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    return {
+      collapsedTags,
+      afterCollapsedClear: [...document.querySelectorAll('.summary-tag .summary-text')].map(t => t.textContent),
+      modelsPressed: document.querySelectorAll('.chip-toggle[aria-pressed="true"]').length,
+    };
+  });
+  expect(coll.collapsedTags.some(t => /^模型：\d+ 項$/.test(t))).toBe(true);
+  expect(coll.afterCollapsedClear).toEqual([]);               // the collapsed × cleared the model facet (→ Any)
+  expect(coll.modelsPressed).toBe(0);
+
+  await page.locator('.chip-action', { hasText: '重設篩選' }).click();
+  await expect(summary).toBeHidden();                         // reset clears the summary
 });

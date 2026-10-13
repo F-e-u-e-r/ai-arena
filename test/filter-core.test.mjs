@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   facetValues, initState, isAny, isSelected,
-  toggle, only, reset, visible, visibleCount,
+  toggle, only, reset, addToFacet, clearFacet, candidateCounts, visible, visibleCount,
   compareText, sortValue, sortedSubs
 } from '../assets/filter-core.mjs';
 
@@ -214,4 +214,60 @@ test('10: reducers never mutate frozen inputs; each toggle branch pins its exact
   assert.deepEqual(frozen.client, ['codex', 'grok']);          // only 未改動輸入
   assert.deepEqual(reset(frozen), { client: 'any', model: 'any', effort: 'any' });
   assert.deepEqual(frozen.model, ['Opus 4.8']);                // reset 回新物件、輸入未變
+});
+
+// (11) addToFacet（WS3 bulk-union）：聯集進 Subset、保留既有、去重、不可變、空輸入 NO-OP、永不移除。
+test('11: addToFacet unions values into a facet Subset (preserve, dedup, immutable, never remove)', () => {
+  // Any → [values]
+  assert.deepEqual(addToFacet(initState(FACETS), 'model', ['Grok 4.5', 'Grok 4.6']).model,
+    ['Grok 4.5', 'Grok 4.6']);
+  // union preserves existing (cross-family / individual) selections and dedups
+  const st = deepFreeze({ client: 'any', model: ['GPT-5.6 Sol'], effort: 'any' });
+  const after = addToFacet(st, 'model', ['Grok 4.5', 'GPT-5.6 Sol', 'Grok 4.6']); // Sol already selected
+  assert.deepEqual(after.model, ['GPT-5.6 Sol', 'Grok 4.5', 'Grok 4.6']);         // existing first, new appended, no dup
+  assert.deepEqual(st.model, ['GPT-5.6 Sol']);                                     // frozen input not mutated
+  assert.equal(after.client, 'any');                                              // other facets untouched
+  assert.equal(after.effort, 'any');
+  assert.equal(addToFacet(st, 'model', []), st);                                   // empty values → NO-OP (same ref)
+  // never removes: unioning a subset of what's already selected keeps everything
+  assert.deepEqual(addToFacet({ client: 'any', model: ['A', 'B'], effort: 'any' }, 'model', ['A']).model, ['A', 'B']);
+});
+
+// (12) candidateCounts（WS3 faceted counts）：其他 facet 約束下的 per-value 可用性；
+//      獨立於自身 facet 選擇；OR 重疊；跨 facet 限制；合法 0 不改動 selection。
+test('12: candidateCounts — per-value availability under other facets, independent of own selection', () => {
+  const base = initState(FACETS);
+  const c = candidateCounts(SUBS, base, FACETS, 'client');     // all Any → raw availability
+  assert.equal(c.get('codex'), 2);                             // s1,s2
+  assert.equal(c.get('claude-code'), 2);                       // s3,s5
+  assert.equal(c.get('grok'), 1);                              // s4
+  // independent of own-facet selection: selecting clients does NOT change client counts
+  const c2 = candidateCounts(SUBS, { client: ['codex'], model: 'any', effort: 'any' }, FACETS, 'client');
+  assert.deepEqual([...c2.entries()].sort(), [...c.entries()].sort());
+  // cross-facet restriction: effort=high constrains the client candidate pool (s1 codex, s3 cc)
+  const c3 = candidateCounts(SUBS, { client: 'any', model: 'any', effort: ['high'] }, FACETS, 'client');
+  assert.equal(c3.get('codex'), 1);
+  assert.equal(c3.get('claude-code'), 1);
+  assert.equal(c3.get('grok') || 0, 0);                        // grok has no high submission → legitimate zero
+  // a zero-count value never auto-removes a selection (counts are pure, never mutate state)
+  const sel = { client: ['grok'], model: 'any', effort: ['high'] };
+  assert.equal(candidateCounts(SUBS, sel, FACETS, 'client').get('grok') || 0, 0);
+  assert.deepEqual(sel.client, ['grok']);
+  // availability is NOT the OR-combined visible total
+  const orSel = { client: ['codex', 'claude-code'], model: 'any', effort: 'any' };
+  const c5 = candidateCounts(SUBS, orSel, FACETS, 'client');
+  assert.equal(c5.get('codex'), 2);
+  assert.equal(c5.get('claude-code'), 2);
+  assert.equal(visibleCount(SUBS, orSel, FACETS), 4);          // OR total 4 ≠ any single availability count
+});
+
+// (13) clearFacet（WS3）：整列回 Any、不動他 facet、已 Any 時 NO-OP、不可變。
+test('13: clearFacet resets one facet to Any, leaves others, NO-OP on Any, immutable', () => {
+  const st = deepFreeze({ client: ['codex', 'grok'], model: ['Opus 4.8'], effort: 'any' });
+  const after = clearFacet(st, 'client');
+  assert.equal(after.client, 'any');              // 該列回 Any
+  assert.deepEqual(after.model, ['Opus 4.8']);    // 他 facet 不動
+  assert.equal(after.effort, 'any');
+  assert.deepEqual(st.client, ['codex', 'grok']); // 凍結輸入未變
+  assert.equal(clearFacet(st, 'effort'), st);     // 已是 Any → NO-OP（同參照）
 });

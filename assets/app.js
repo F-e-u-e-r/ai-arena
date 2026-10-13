@@ -1,8 +1,10 @@
 // Any / Explicit Subset 的篩選與排序純邏輯抽到 filter-core（無 DOM 副作用，與 Node test runner 共用）。
 import {
   facetValues, initState, isSelected,
-  toggle, only, reset, visible, compareText, sortedSubs
-} from './filter-core.mjs?v=9';
+  toggle, only, reset, addToFacet, clearFacet, candidateCounts, visible, compareText, sortedSubs
+} from './filter-core.mjs?v=11';
+// WS3 Model Family — canonical registry (pure, DOM-free; OD-WS3 contract).
+import { familiesInTask } from './model-registry.mjs?v=11';
 
 'use strict';
 
@@ -197,6 +199,7 @@ function buildCompareControls(subs, cardById) {
   const facetKeys = FILTER_FACETS.map(facet => facet.key);
   let filterState = initState(facetKeys);   // 初始：所有 facet = Any（不限制）
   const toggleBtns = [];                     // {key, value, btn}，供狀態變更後重繪 aria-pressed
+  const countSpans = [];                     // {key, value, span}，WS3 faceted counts（跨 facet 約束下重算）
 
   const count = el('span', 'filter-count');
   count.setAttribute('aria-live', 'polite');
@@ -211,15 +214,100 @@ function buildCompareControls(subs, cardById) {
     card.hidden = !isVisible;
   };
   // filter 只切換 hidden（不重排／不重建／不重載 demo，PR #24 不變量）；可見性委派給 filter-core。
+  // WS3 Active Filter Summary（OD WS3-C）：衍生自 filterState 的「已套用」摘要（不另立狀態來源）。
+  const summary = el('div', 'filter-summary');
+  summary.setAttribute('aria-live', 'polite');
+  summary.hidden = true;
   const applyFilter = (focusFallback) => {
     subs.forEach(sub => setVisible(sub.id, visible(sub, filterState, facetKeys), focusFallback));
     updateCount();
+    renderCounts();
+    renderSummary();
   };
   // 依目前狀態重繪所有 chip 的 selected 樣式（Any 下全部非 pressed，I2）。
   const renderChipStates = () => {
     toggleBtns.forEach(({ key, value, btn }) =>
       btn.setAttribute('aria-pressed', String(isSelected(filterState, key, value))));
   };
+  // WS3 faceted counts：每個 chip 旁顯示「在其他 facet 當前約束下」的候選可用數（獨立於自身
+  // facet 的選擇）。任一 filter 變更都重算（別的 facet 會改變候選池）；0 只是資訊，永不以此
+  // 取消任何選取。可見總數（顯示 X/Y）仍是權威結果。
+  const renderCounts = () => {
+    const byFacet = {};
+    for (const facet of FILTER_FACETS) byFacet[facet.key] = candidateCounts(subs, filterState, facetKeys, facet.key);
+    for (const { key, value, span } of countSpans) {
+      const n = byFacet[key].get(value) || 0;
+      span.textContent = String(n);
+      span.classList.toggle('chip-count-zero', n === 0);
+      if (span.parentElement) span.parentElement.title = n + ' 個候選（目前其他篩選條件下）';
+    }
+  };
+  // WS3 Active Filter Summary：把目前「非 Any」的約束畫成可移除標籤——× 移除個別值（最後一項
+  // 回 Any），某列選取 ≥5 時折疊成「列：N 項」單一清除（避免大量清單，OD WS3-C）。全 Any 時整列
+  // 隱藏。純衍生自 filterState（不另立狀態）；移除後把焦點移到下一個 × 或重設鈕（鍵盤不丟焦點）。
+  const COLLAPSE_AT = 5;
+  const renderSummary = () => {
+    summary.innerHTML = '';
+    const active = FILTER_FACETS.filter(facet => filterState[facet.key] !== 'any');
+    if (!active.length) { summary.hidden = true; return; }
+    summary.hidden = false;
+    summary.append(el('span', 'summary-label', '已套用：'));
+    const refocus = () => { (summary.querySelector('.summary-x') || resetBtn).focus(); };
+    const makeTag = (text, onRemove, removeLabel) => {
+      const tag = el('span', 'summary-tag');
+      tag.append(el('span', 'summary-text', text));
+      const x = el('button', 'summary-x', '×');
+      x.type = 'button';
+      x.setAttribute('aria-label', removeLabel);
+      x.title = removeLabel;
+      x.addEventListener('click', () => { onRemove(); renderChipStates(); applyFilter(x); refocus(); });
+      tag.append(x);
+      summary.append(tag);
+    };
+    active.forEach(facet => {
+      const vals = filterState[facet.key];
+      if (vals.length >= COLLAPSE_AT) {
+        makeTag(facet.label + '：' + vals.length + ' 項',
+          () => { filterState = clearFacet(filterState, facet.key); },
+          '清除' + facet.label + '的全部 ' + vals.length + ' 項篩選');
+      } else {
+        vals.forEach(value => {
+          const disp = facetDisplay(facet.key, value);
+          makeTag(facet.label + '：' + disp,
+            () => { filterState = toggle(filterState, facet.key, value); },
+            '移除 ' + facet.label + '：' + disp);
+        });
+      }
+    });
+  };
+
+  // --- Model Family 快速選取（WS3，OD-WS3-4）---
+  // 只對「本 task 實際有 ≥2 成員在場」的系列顯示（單一成員與個別 chip 重複、徒增密度）。
+  // 快捷＝bulk-select convenience：把該系列目前在場成員「聯集」進 model facet（保留跨系列／
+  // 個別多選、展開為固定 Explicit Subset、未來新模型不自動加入、不新增持久 family 狀態）。
+  const families = familiesInTask(subs);
+  if (families.length) {
+    const famRow = el('div', 'facet family-row');
+    famRow.append(el('span', 'facet-label', '系列'));
+    const famGroup = el('div', 'family-selects');
+    famGroup.setAttribute('role', 'group');
+    famGroup.setAttribute('aria-label', '快速選取模型系列');
+    families.forEach(fam => {
+      const btn = el('button', 'family-btn', fam.label);
+      btn.type = 'button';
+      const desc = '選取所有 ' + fam.label + ' 模型（' + fam.values.join('、') + '）';
+      btn.title = desc;
+      btn.setAttribute('aria-label', desc);
+      btn.addEventListener('click', () => {
+        filterState = addToFacet(filterState, 'model', fam.values);  // 聯集進 model Subset
+        renderChipStates();
+        applyFilter(btn);
+      });
+      famGroup.append(btn);
+    });
+    famRow.append(famGroup);
+    controls.append(famRow);
+  }
 
   FILTER_FACETS.forEach(facet => {
     const values = facetValues(subs, facet.key);
@@ -241,6 +329,11 @@ function buildCompareControls(subs, cardById) {
       const toggleBtn = el('button', 'chip-toggle', display);
       toggleBtn.type = 'button';
       toggleBtn.setAttribute('aria-pressed', 'false');   // 初始 Any → 全部非 pressed（I2）
+      // WS3 faceted count：候選可用數（視覺輔助，aria-hidden；數值由 renderCounts 填入，
+      // 另以 title 提供可讀說明，避免螢幕報讀器把數字當名稱的一部分重複念出）。
+      const countSpan = el('span', 'chip-count');
+      countSpan.setAttribute('aria-hidden', 'true');
+      toggleBtn.append(countSpan);
       toggleBtn.addEventListener('click', () => {
         filterState = toggle(filterState, facet.key, value);   // §2.2a 四個 transition
         renderChipStates();
@@ -261,6 +354,7 @@ function buildCompareControls(subs, cardById) {
       chip.append(toggleBtn, onlyBtn);
       chips.append(chip);
       toggleBtns.push({ key: facet.key, value, btn: toggleBtn });
+      countSpans.push({ key: facet.key, value, span: countSpan });
     });
     row.append(chips);
     controls.append(row);
@@ -282,9 +376,12 @@ function buildCompareControls(subs, cardById) {
   hint.append(el('span', 'legend-only', '◎'));
   hint.append(' 只看此項（不影響其他列）· 不同列的條件須同時符合');
   actions.append(resetBtn, count, hint);
+  controls.append(summary);   // WS3「已套用」摘要（放在 facet 與 actions 之間；全 Any 時隱藏）
   controls.append(actions);
 
   updateCount();
+  renderCounts();   // WS3：初始就填入 faceted 候選數（全 Any → 各值的原始可用數）
+  renderSummary();  // WS3：初始全 Any → 摘要隱藏
   resort(); // 初始就套用預設排序（名稱 A→Z），卡片此時都已在 grid 裡。
   return controls;
 }
