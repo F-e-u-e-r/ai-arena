@@ -45,6 +45,10 @@ test('3: unknown or missing-modelId submissions resolve to null (fail-soft, no f
   assert.equal(resolveCanonical({ provider: 'openai', modelId: 'gpt-5.5' }), null);       // singleton, not a family member
   assert.equal(resolveCanonical(null), null);
   assert.equal(resolveCanonical({ provider: 'xai' }), null);                              // missing modelId
+  // no display-name fallback: a matching display name with a non-matching (provider, modelId) is unknown
+  assert.equal(resolveCanonical({ provider: 'other', modelId: 'other/grok-4.6', model: 'Grok 4.6' }), null);
+  // a pricing-alias form is NOT identity — only the declared bare modelId resolves
+  assert.equal(resolveCanonical({ provider: 'anthropic', modelId: 'anthropic/claude-opus-4.6' }), null);
   const composer = ALL_SUBS.find(s => s.model === 'Composer 2.5');
   assert.ok(composer, 'Composer 2.5 exists in the manifest');
   assert.equal(familyOf(composer), null);                                                // unknown model gets no family
@@ -59,6 +63,10 @@ test('4: alias collision fails closed and is reported by validation', () => {
   const { resolve, collisions } = makeResolver(colliding);
   assert.equal(resolve({ provider: 'p', modelId: 'x' }), null); // not 'a', not 'b' — fail closed
   assert.ok(collisions.size >= 1);
+  // injective key: a separator byte (NUL) inside a value must NOT collide two distinct tuples
+  const sep = makeResolver([{ key: 'x', label: 'X', family: 'f', aliases: [{ provider: 'a\u0000b', modelId: 'c' }] }]);
+  assert.equal(sep.resolve({ provider: 'a', modelId: 'b\u0000c' }), null); // distinct tuple → unknown (not 'x')
+  assert.equal(sep.resolve({ provider: 'a\u0000b', modelId: 'c' }), 'x');  // the declared tuple still resolves
   const problems = validateSpec(colliding, [{ id: 'f', label: 'F', members: ['a', 'b'] }], [{ provider: 'p', modelId: 'x', model: 'A' }]);
   assert.ok(problems.some(p => /collision/.test(p)), 'collision reported');
 });
@@ -86,11 +94,18 @@ test('5: invalid declared registry entries fail validation', () => {
     [{ key: 'grok-4.5', label: 'Grok 4.5', family: 'grok', aliases: [{ provider: 'xai', modelId: 'grok-4.5' }] }],
     [{ id: 'grok', label: 'Grok', members: ['grok-4.5', 'grok-4.6'] }], ALL_SUBS);
   assert.ok(p.some(x => /unknown member/.test(x)), 'FAMILIES drift reported');
+  // duplicate family id is reported (find() first-wins vs Map last-wins ambiguity)
+  p = validateSpec(CANONICAL_MODELS, [{ id: 'grok', label: 'Grok', members: [] }, ...FAMILIES], ALL_SUBS);
+  assert.ok(p.some(x => /duplicate family id/.test(x)), 'duplicate family id reported');
+  // a submission carrying a family member's display name but a different/unknown identity → ambiguous (fail closed)
+  p = validateSpec(CANONICAL_MODELS, FAMILIES, [...ALL_SUBS, { provider: 'other', modelId: 'other/grok-4.5', model: 'Grok 4.5' }]);
+  assert.ok(p.some(x => /ambiguous display/.test(x)), 'display↔identity ambiguity reported');
 });
 
 // (6) the REAL registry validates against the manifest; family values are current-task-only
 test('6: real registry validates on real data; family expansion is per-task actual members', () => {
   assert.deepEqual(validateRegistry(ALL_SUBS), []); // the shipped registry is clean on the real manifest
+  assert.ok(validateRegistry([]).length > 0); // non-vacuous: on an empty manifest every member resolves to nothing
   const sav = taskSubs('savannah-ecosystem');
   assert.deepEqual(familyFacetValues(sav, 'grok'), ['Grok 4.5', 'Grok 4.6', 'Grok 4.7']);
   assert.deepEqual(familyFacetValues(sav, 'opus'), ['Opus 4.6', 'Opus 4.8']);

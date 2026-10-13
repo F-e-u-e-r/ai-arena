@@ -319,11 +319,13 @@ test('H: faceted counts reflect other-facet constraints; a zero count never dese
     const tog = (lbl, txt) => [...row(lbl).querySelectorAll('.chip-toggle')]
       .find(b => b.childNodes[0].textContent.trim() === txt).dispatchEvent(new MouseEvent('click', { bubbles: true }));
     const initialClient = counts('工具');
-    tog('工具', 'Cursor');          // select a client with a single submission
+    const initialEffort = counts('推理強度');
+    tog('工具', 'Cursor');          // select a client with a single submission (Composer 2.5 = max)
+    const effortAfterCursor = counts('推理強度');  // counts must recompute after THIS change, not only the next
     tog('推理強度', 'high');        // constrain by effort=high — Cursor has no high submission
     const cursorBtn = [...row('工具').querySelectorAll('.chip-toggle')].find(b => b.childNodes[0].textContent.trim() === 'Cursor');
     return {
-      initialClient,
+      initialClient, initialEffort, effortAfterCursor,
       clientUnderHigh: counts('工具'),
       cursorPressed: cursorBtn.getAttribute('aria-pressed'),
       visible: document.querySelector('.filter-count').textContent,
@@ -332,6 +334,10 @@ test('H: faceted counts reflect other-facet constraints; a zero count never dese
   // initial = raw availability (all Any)
   expect(snap.initialClient['Codex']).toBe(8);
   expect(snap.initialClient['Grok']).toBe(3);
+  // recomputation happens after EACH change: effort counts constrained by client=Cursor (max only)
+  expect(snap.effortAfterCursor).not.toEqual(snap.initialEffort);
+  expect(snap.effortAfterCursor['high']).toBe(0);  // was 6 at all-Any; Cursor has no high
+  expect(snap.effortAfterCursor['max']).toBe(1);   // Cursor's single submission is max
   // under effort=high only codex/grok have high submissions; others drop to 0 (independent of client selection)
   expect(snap.clientUnderHigh['Codex']).toBe(3);
   expect(snap.clientUnderHigh['Grok']).toBe(3);
@@ -369,22 +375,36 @@ test('I: active filter summary — removable constraints, × removes one (last�
     removeTag('工具：Codex');                                  // remove the only client → client back to Any
     const codexPressed = pressed('Codex');
     const afterRemoveLastClient = tags();
-    return { afterSelect, grok46pressed, afterRemoveOne, codexPressed, afterRemoveLastClient };
+    const countAfterRemove = document.querySelector('.filter-count').textContent; // removal re-applies the filter
+    const activeAfterRemove = document.activeElement.className;                   // focus must not fall to <body>
+    return { afterSelect, grok46pressed, afterRemoveOne, codexPressed, afterRemoveLastClient, countAfterRemove, activeAfterRemove };
   });
   expect(r.afterSelect).toEqual(['工具：Codex', '模型：Grok 4.5', '模型：Grok 4.6', '模型：Grok 4.7']);
   expect(r.grok46pressed).toBe('false');                      // removing a summary tag unselects the main chip
   expect(r.afterRemoveOne).toEqual(['工具：Codex', '模型：Grok 4.5', '模型：Grok 4.7']);
   expect(r.codexPressed).toBe('false');
   expect(r.afterRemoveLastClient).toEqual(['模型：Grok 4.5', '模型：Grok 4.7']); // client gone (Any), models remain
+  expect(r.countAfterRemove).toBe('顯示 2/17');                // removing Codex changed the visible result (not just the tags)
+  expect(r.activeAfterRemove).toBe('summary-x');              // focus moved to the next × (not lost to <body>)
 
-  // collapse: >=5 model values collapse to a single "模型：N 項" tag
-  const collapsed = await page.evaluate(() => {
+  // collapse: >=5 model values collapse to a single "模型：N 項" tag, whose × clears the facet
+  const coll = await page.evaluate(() => {
     const fam = (t) => [...document.querySelectorAll('.family-btn')]
       .find(b => b.textContent.trim() === t).dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    fam('Grok'); fam('GPT-5.6');
-    return [...document.querySelectorAll('.summary-tag .summary-text')].map(t => t.textContent);
+    fam('Grok'); fam('GPT-5.6');                              // >=5 model values → collapsed tag
+    const collapsedTags = [...document.querySelectorAll('.summary-tag .summary-text')].map(t => t.textContent);
+    [...document.querySelectorAll('.summary-tag')]            // click the collapsed × → clears the whole model facet
+      .find(t => /^模型：\d+ 項$/.test(t.querySelector('.summary-text').textContent))
+      .querySelector('.summary-x').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    return {
+      collapsedTags,
+      afterCollapsedClear: [...document.querySelectorAll('.summary-tag .summary-text')].map(t => t.textContent),
+      modelsPressed: document.querySelectorAll('.chip-toggle[aria-pressed="true"]').length,
+    };
   });
-  expect(collapsed.some(t => /^模型：\d+ 項$/.test(t))).toBe(true);
+  expect(coll.collapsedTags.some(t => /^模型：\d+ 項$/.test(t))).toBe(true);
+  expect(coll.afterCollapsedClear).toEqual([]);               // the collapsed × cleared the model facet (→ Any)
+  expect(coll.modelsPressed).toBe(0);
 
   await page.locator('.chip-action', { hasText: '重設篩選' }).click();
   await expect(summary).toBeHidden();                         // reset clears the summary

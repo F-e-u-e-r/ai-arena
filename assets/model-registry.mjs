@@ -40,8 +40,9 @@ export const FAMILIES = [
   { id: 'opus', label: 'Opus', members: ['claude-opus-4-6', 'claude-opus-4-8'] },
 ];
 
-const SEP = '\u0000';
-const aliasKey = (provider, modelId) => String(provider) + SEP + String(modelId);
+// Injective (provider, modelId) key — a JSON array encoding, so two DISTINCT tuples can
+// never share a key the way a raw delimiter could (e.g. a separator byte inside a value).
+const aliasKey = (provider, modelId) => JSON.stringify([String(provider), String(modelId)]);
 
 // Pure resolver factory — testable with ANY registry (so collision fail-closed can
 // be exercised with a synthetic colliding registry, not only the real one).
@@ -118,7 +119,15 @@ export function validateSpec(canonicalModels, families, subs) {
   const { resolve, collisions } = makeResolver(canonicalModels);
 
   // (a) alias collisions — two canonical entries claiming the same (provider, modelId)
-  for (const k of collisions) problems.push(`alias collision for (${k.replace(SEP, ', ')})`);
+  for (const k of collisions) problems.push(`alias collision for (${JSON.parse(k).join(', ')})`);
+
+  // (a2) duplicate family ids — ambiguous: familyFacetValues uses find() (first-wins) while a
+  //      famById Map would be last-wins, so a duplicate id can silently omit members.
+  const seenFamIds = new Set();
+  for (const fam of families) {
+    if (seenFamIds.has(fam.id)) problems.push(`duplicate family id '${fam.id}'`);
+    seenFamIds.add(fam.id);
+  }
 
   // (b) every canonical key in exactly one family; FAMILIES and CANONICAL_MODELS agree
   const keyToFamilies = new Map();
@@ -161,6 +170,28 @@ export function validateSpec(canonicalModels, families, subs) {
       for (const disp of seen) {
         if (disp !== m.label) problems.push(`canonical '${m.key}' label '${m.label}' contradicts real display name '${disp}'`);
       }
+    }
+  }
+
+  // (d) display-name ↔ canonical-identity must be UNAMBIGUOUS in the real data. A family
+  //     shortcut expands to the P0 model-facet VALUE (the display name), so if a submission
+  //     carries a family member's display name but a DIFFERENT (or no) canonical identity,
+  //     that shortcut would pull an unverified identity into the selection. Fail closed
+  //     (OD-WS3-2: if the data can't map unambiguously, stop) rather than mis-select.
+  const memberLabels = new Map(); // family-member display label -> canonical key
+  for (const fam of families) {
+    for (const key of fam.members) {
+      const m = canonicalModels.find(x => x.key === key);
+      if (m) memberLabels.set(m.label, m.key);
+    }
+  }
+  const reportedAmbig = new Set();
+  for (const sub of rows) {
+    const expectKey = memberLabels.get(sub.model);
+    if (expectKey === undefined || reportedAmbig.has(sub.model)) continue;
+    if (resolve(sub) !== expectKey) {
+      reportedAmbig.add(sub.model);
+      problems.push(`display name '${sub.model}' (a family member) is also carried by an identity resolving to '${resolve(sub) ?? 'unknown'}' — ambiguous display↔identity mapping`);
     }
   }
 
