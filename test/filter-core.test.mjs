@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   facetValues, initState, isAny, isSelected,
-  toggle, only, reset, addToFacet, visible, visibleCount,
+  toggle, only, reset, addToFacet, candidateCounts, visible, visibleCount,
   compareText, sortValue, sortedSubs
 } from '../assets/filter-core.mjs';
 
@@ -231,4 +231,32 @@ test('11: addToFacet unions values into a facet Subset (preserve, dedup, immutab
   assert.equal(addToFacet(st, 'model', []), st);                                   // empty values → NO-OP (same ref)
   // never removes: unioning a subset of what's already selected keeps everything
   assert.deepEqual(addToFacet({ client: 'any', model: ['A', 'B'], effort: 'any' }, 'model', ['A']).model, ['A', 'B']);
+});
+
+// (12) candidateCounts（WS3 faceted counts）：其他 facet 約束下的 per-value 可用性；
+//      獨立於自身 facet 選擇；OR 重疊；跨 facet 限制；合法 0 不改動 selection。
+test('12: candidateCounts — per-value availability under other facets, independent of own selection', () => {
+  const base = initState(FACETS);
+  const c = candidateCounts(SUBS, base, FACETS, 'client');     // all Any → raw availability
+  assert.equal(c.get('codex'), 2);                             // s1,s2
+  assert.equal(c.get('claude-code'), 2);                       // s3,s5
+  assert.equal(c.get('grok'), 1);                              // s4
+  // independent of own-facet selection: selecting clients does NOT change client counts
+  const c2 = candidateCounts(SUBS, { client: ['codex'], model: 'any', effort: 'any' }, FACETS, 'client');
+  assert.deepEqual([...c2.entries()].sort(), [...c.entries()].sort());
+  // cross-facet restriction: effort=high constrains the client candidate pool (s1 codex, s3 cc)
+  const c3 = candidateCounts(SUBS, { client: 'any', model: 'any', effort: ['high'] }, FACETS, 'client');
+  assert.equal(c3.get('codex'), 1);
+  assert.equal(c3.get('claude-code'), 1);
+  assert.equal(c3.get('grok') || 0, 0);                        // grok has no high submission → legitimate zero
+  // a zero-count value never auto-removes a selection (counts are pure, never mutate state)
+  const sel = { client: ['grok'], model: 'any', effort: ['high'] };
+  assert.equal(candidateCounts(SUBS, sel, FACETS, 'client').get('grok') || 0, 0);
+  assert.deepEqual(sel.client, ['grok']);
+  // availability is NOT the OR-combined visible total
+  const orSel = { client: ['codex', 'claude-code'], model: 'any', effort: 'any' };
+  const c5 = candidateCounts(SUBS, orSel, FACETS, 'client');
+  assert.equal(c5.get('codex'), 2);
+  assert.equal(c5.get('claude-code'), 2);
+  assert.equal(visibleCount(SUBS, orSel, FACETS), 4);          // OR total 4 ≠ any single availability count
 });

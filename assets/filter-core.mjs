@@ -92,6 +92,23 @@ export function addToFacet(state, key, values) {
   return merged.length ? { ...state, [key]: merged } : state;
 }
 
+// WS3 Faceted candidate counts（OD WS3-B）：對 facetKey 的每個值 V，回傳「在其他 facet 當前
+// 約束下、facetValue===V 的 submission 數」——刻意「獨立於 facetKey 自身的選擇」（facet 內 OR
+// 的候選可用性，不是 OR 合併後的可見總數；可見總數仍由 visible()/visibleCount() 權威決定）。
+// 回傳 Map(value → count)；未出現的值 = 0（呼叫端顯示 0，絕不以 0 靜默取消選取）。純函式。
+export function candidateCounts(subs, state, facetKeys, facetKey) {
+  const others = facetKeys.filter(k => k !== facetKey);
+  const passesOthers = (sub) =>
+    others.every(k => state[k] === 'any' || state[k].includes(facetValue(sub, k)));
+  const counts = new Map();
+  for (const sub of subs) {
+    if (!passesOthers(sub)) continue;
+    const v = facetValue(sub, facetKey);
+    counts.set(v, (counts.get(v) || 0) + 1);
+  }
+  return counts;
+}
+
 // 可見性（spec §3.1）：Any 短路為通過；否則需命中 Subset（facet 內 OR）；
 // 跨 facet 為 AND（every）。
 export function visible(sub, state, facetKeys) {

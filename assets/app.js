@@ -1,7 +1,7 @@
 // Any / Explicit Subset 的篩選與排序純邏輯抽到 filter-core（無 DOM 副作用，與 Node test runner 共用）。
 import {
   facetValues, initState, isSelected,
-  toggle, only, reset, addToFacet, visible, compareText, sortedSubs
+  toggle, only, reset, addToFacet, candidateCounts, visible, compareText, sortedSubs
 } from './filter-core.mjs?v=11';
 // WS3 Model Family — canonical registry (pure, DOM-free; OD-WS3 contract).
 import { familiesInTask } from './model-registry.mjs?v=11';
@@ -199,6 +199,7 @@ function buildCompareControls(subs, cardById) {
   const facetKeys = FILTER_FACETS.map(facet => facet.key);
   let filterState = initState(facetKeys);   // 初始：所有 facet = Any（不限制）
   const toggleBtns = [];                     // {key, value, btn}，供狀態變更後重繪 aria-pressed
+  const countSpans = [];                     // {key, value, span}，WS3 faceted counts（跨 facet 約束下重算）
 
   const count = el('span', 'filter-count');
   count.setAttribute('aria-live', 'polite');
@@ -216,11 +217,25 @@ function buildCompareControls(subs, cardById) {
   const applyFilter = (focusFallback) => {
     subs.forEach(sub => setVisible(sub.id, visible(sub, filterState, facetKeys), focusFallback));
     updateCount();
+    renderCounts();
   };
   // 依目前狀態重繪所有 chip 的 selected 樣式（Any 下全部非 pressed，I2）。
   const renderChipStates = () => {
     toggleBtns.forEach(({ key, value, btn }) =>
       btn.setAttribute('aria-pressed', String(isSelected(filterState, key, value))));
+  };
+  // WS3 faceted counts：每個 chip 旁顯示「在其他 facet 當前約束下」的候選可用數（獨立於自身
+  // facet 的選擇）。任一 filter 變更都重算（別的 facet 會改變候選池）；0 只是資訊，永不以此
+  // 取消任何選取。可見總數（顯示 X/Y）仍是權威結果。
+  const renderCounts = () => {
+    const byFacet = {};
+    for (const facet of FILTER_FACETS) byFacet[facet.key] = candidateCounts(subs, filterState, facetKeys, facet.key);
+    for (const { key, value, span } of countSpans) {
+      const n = byFacet[key].get(value) || 0;
+      span.textContent = String(n);
+      span.classList.toggle('chip-count-zero', n === 0);
+      if (span.parentElement) span.parentElement.title = n + ' 個候選（目前其他篩選條件下）';
+    }
   };
 
   // --- Model Family 快速選取（WS3，OD-WS3-4）---
@@ -271,6 +286,11 @@ function buildCompareControls(subs, cardById) {
       const toggleBtn = el('button', 'chip-toggle', display);
       toggleBtn.type = 'button';
       toggleBtn.setAttribute('aria-pressed', 'false');   // 初始 Any → 全部非 pressed（I2）
+      // WS3 faceted count：候選可用數（視覺輔助，aria-hidden；數值由 renderCounts 填入，
+      // 另以 title 提供可讀說明，避免螢幕報讀器把數字當名稱的一部分重複念出）。
+      const countSpan = el('span', 'chip-count');
+      countSpan.setAttribute('aria-hidden', 'true');
+      toggleBtn.append(countSpan);
       toggleBtn.addEventListener('click', () => {
         filterState = toggle(filterState, facet.key, value);   // §2.2a 四個 transition
         renderChipStates();
@@ -291,6 +311,7 @@ function buildCompareControls(subs, cardById) {
       chip.append(toggleBtn, onlyBtn);
       chips.append(chip);
       toggleBtns.push({ key: facet.key, value, btn: toggleBtn });
+      countSpans.push({ key: facet.key, value, span: countSpan });
     });
     row.append(chips);
     controls.append(row);
@@ -315,6 +336,7 @@ function buildCompareControls(subs, cardById) {
   controls.append(actions);
 
   updateCount();
+  renderCounts();   // WS3：初始就填入 faceted 候選數（全 Any → 各值的原始可用數）
   resort(); // 初始就套用預設排序（名稱 A→Z），卡片此時都已在 grid 裡。
   return controls;
 }

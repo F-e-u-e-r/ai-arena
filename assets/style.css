@@ -182,6 +182,18 @@ body {
 }
 .chip-only:hover { color: var(--text); background: rgba(255, 255, 255, .05); }
 
+/* WS3 faceted candidate count：chip 標籤後的小字數字，表示「在其他 facet 當前約束下」有幾份
+   符合此值。純資訊——0 仍顯示（更淡），絕不以此取消選取；可見總數（顯示 X/Y）才是權威結果。 */
+.chip-count {
+  margin-left: 5px;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  opacity: .6;
+}
+.chip-count:empty { display: none; }                               /* 尚未填入前不佔位 */
+.chip-count-zero { opacity: .35; }
+.chip-toggle[aria-pressed="true"] .chip-count { opacity: .85; }    /* accent 填色上仍可讀 */
+
 /* 鍵盤 focus：.chip 的 overflow:hidden（修剪 pill 圓角）會一併剪掉子按鈕預設 outline，
    改用 inset（負 offset）outline 畫在按鈕內緣、不被剪裁；白色對未選取（panel-2 深底 ≈16:1）
    與已選取（accent 藍底 ≈3.2:1）兩狀態皆達 WCAG 1.4.11 的 ≥3:1。 */
