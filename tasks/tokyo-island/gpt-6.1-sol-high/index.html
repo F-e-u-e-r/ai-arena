@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f3eee4">
+  <meta name="description" content="A little Tokyo, a world away. An interactive floating island celebrating the colors of a Japanese autumn.">
+  <title>Kōyō — A little Tokyo</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.min.js" defer></script>
+  <script src="main.js" defer></script>
+</head>
+<body>
+  <div id="world" aria-label="Interactive 3D floating Tokyo island. Drag left or right to look around."></div>
+  <div class="paper-grain" aria-hidden="true"></div>
+  <header class="header">
+    <a class="brand" href="./index.html" aria-label="Kōyō home"><span class="brand-symbol">紅</span><span class="brand-word">kōyō<span class="brand-dot">.</span></span><span class="brand-caption">SMALL WORLDS,<br>WONDERFULLY ALIVE.</span></a>
+    <div class="header-right"><span class="edition">THE FLOATING COLLECTION <span>—</span> Nº 001</span><button id="about-button" class="circle-button" aria-label="About this world" title="About this world">i</button><button id="sound-button" class="circle-button" aria-label="Enable ambient sound" title="Ambient sound" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path class="sound-waves" d="M15 8c2 2 2 6 0 8m3-11c4 4 4 10 0 14"/><path class="sound-off" d="m16 9 5 6m0-6-5 6"/></svg></button></div>
+  </header>
+  <main class="editorial">
+    <div class="eyebrow"><span></span> A MOMENT ABOVE IT ALL</div>
+    <h1>A little Tokyo.<br><em>A world away.</em></h1>
+    <p>An autumn daydream, adrift in the sky.<br>Slow down. Look around. Stay a little.</p>
+    <button id="explore-button" class="explore-button">Explore the island <span>↗</span></button>
+    <div class="destination"><span class="destination-line"></span><span>東京、日本<small>TOKYO, JAPAN · AUTUMN</small></span></div>
+  </main>
+  <div id="landmark-markers" aria-label="Island landmarks"></div>
+  <aside id="landmark-card" class="landmark-card" hidden><button id="close-landmark" aria-label="Close landmark details">×</button><span id="landmark-number" class="eyebrow"></span><h2 id="landmark-name"></h2><p id="landmark-description"></p></aside>
+  <div class="world-tag"><span class="live-dot"></span><span>A LIVING LITTLE WORLD</span><span class="tag-line"></span><span id="season-label">紅葉 · KŌYŌ</span></div>
+  <footer>
+    <div class="coordinates">35°39′ N &nbsp; 139°45′ E<span>UNPACK A LITTLE WONDER.</span></div>
+    <section class="time-panel" aria-label="Day and night controls">
+      <button id="play-button" class="play-button" aria-label="Pause day and night cycle" title="Pause / play (Space)"><svg viewBox="0 0 20 20"><path id="play-icon" d="M6 5v10M13 5v10"/></svg></button>
+      <div class="time-status"><span id="phase-label">AFTERNOON</span><strong id="clock">14:24</strong></div>
+      <div class="time-track"><div class="track-icons" aria-hidden="true"><span>☀</span><span>◒</span><span>☾</span><span>☀</span></div><input id="time-slider" type="range" min="0" max="1" step="0.001" value="0.1" aria-label="Time of day"><span class="cycle-caption">A WHOLE DAY, IN 15 SECONDS</span></div>
+      <button id="speed-button" class="speed-button" aria-label="Change cycle speed" title="Cycle speed (F)">1×</button>
+    </section>
+    <div class="drag-hint"><svg viewBox="0 0 32 20" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M2 10h28M6 6l-4 4 4 4m20-8 4 4-4 4"/></svg><span>DRAG TO WANDER</span></div>
+  </footer>
+  <div id="about-dialog" class="dialog-backdrop" hidden><section class="about-card" role="dialog" aria-modal="true" aria-labelledby="about-title"><button id="close-about" class="circle-button" aria-label="Close about">×</button><span class="eyebrow">THE FLOATING COLLECTION / Nº 001</span><h2 id="about-title">A season worth<br><em>getting lost in.</em></h2><p>Kōyō (紅葉) is the quiet magic of leaves turning red. This tiny Tokyo is a little tribute to that feeling — a world that keeps turning, even when you stop.</p><div class="about-instructions"><span>↔ &nbsp; Drag to orbit</span><span>␣ &nbsp; Space to pause</span><span>F &nbsp; Change speed</span><span>↗ &nbsp; Tap a landmark</span></div><p class="craft-note">BUILT WITH GEOMETRY. MADE FOR DAYDREAMING.</p></section></div>
+  <div id="loading"><span class="loading-symbol">紅</span><span>A little world is waking up…</span></div>
+  <script>window.setTimeout(function(){if(!window.THREE){document.getElementById('loading').innerHTML='<span class="loading-symbol">紅</span><span>Our little world needs an internet connection.<br>Please reconnect and reload to load Three.js.</span>';}},10000);</script>
+</body>
+</html>

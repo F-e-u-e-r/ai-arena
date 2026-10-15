@@ -1,0 +1,19 @@
+{
+  "$schema": "../../../schema/submission.schema.json",
+  "provider": "openai",
+  "model": "GPT-6.1 Sol",
+  "modelId": "gpt-6.1-sol",
+  "effort": "high",
+  "client": "codex",
+  "skills": "Nil",
+  "subagents": "Nil",
+  "author": "F-e-u-e-r",
+  "generatedAt": "2026-10-15T08:05:23.544Z",
+  "metrics": {
+    "durationMs": 1344465,
+    "inputTokens": 95882,
+    "outputTokens": 52080,
+    "cachedInputTokens": 1871360,
+    "totalTokens": 2019322
+  }
+}

@@ -3420,6 +3420,27 @@
       "displayName": "OpenAI: GPT-6 Sol",
       "cachedInput": 0.2,
       "context": 1050000
+    },
+    "gpt-6.1-sol": {
+      "input": 2,
+      "output": 10,
+      "source": "openrouter",
+      "verifiedAt": "2026-10-15",
+      "openRouterModel": "openai/gpt-6.1-sol",
+      "displayName": "OpenAI: GPT-6.1 Sol",
+      "cachedInput": 0.1,
+      "context": 1050000,
+      "aliasFor": "openai/gpt-6.1-sol"
+    },
+    "openai/gpt-6.1-sol": {
+      "input": 2,
+      "output": 10,
+      "source": "openrouter",
+      "verifiedAt": "2026-10-15",
+      "openRouterModel": "openai/gpt-6.1-sol",
+      "displayName": "OpenAI: GPT-6.1 Sol",
+      "cachedInput": 0.1,
+      "context": 1050000
     }
   }
 }

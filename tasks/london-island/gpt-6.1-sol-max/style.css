@@ -1,0 +1,1900 @@
+:root {
+  --ink: #343e36;
+  --muted: #83877b;
+  --accent: #b45d3d;
+  --panel: rgba(255,253,247,.82);
+  --border: rgba(70,77,62,.12);
+  --sky-top: #f2f0e6;
+  --sky-middle: #e5ebe4;
+  --sky-bottom: #f3e6d7;
+  --text-soft: #6c766b;
+  --night: 0;
+  color-scheme: light;
+  font-family: 'DM Sans',sans-serif;
+  font-synthesis: none
+}
+
+* {
+  box-sizing: border-box
+}
+
+html,body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden
+}
+
+body {
+  background: #f4f1e8;
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased
+}
+
+button,a {
+  -webkit-tap-highlight-color: transparent
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer
+}
+
+button {
+  border: 0;
+  background: none
+}
+
+button:focus-visible,a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 5px
+}
+
+button:disabled {
+  cursor: default
+}
+
+a {
+  color: inherit;
+  text-decoration: none
+}
+
+svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0
+}
+
+.svg-library {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none
+}
+
+[hidden] {
+  display: none!important
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden
+}
+
+.sky,.sky-grain,.vignette,#scene {
+  position: absolute;
+  inset: 0
+}
+
+.sky {
+  z-index: -3;
+  background: radial-gradient(ellipse at 62% 45%,#ffffff18 0%,transparent 63%),linear-gradient(170deg,var(--sky-top) 0%,var(--sky-middle) 52%,var(--sky-bottom) 100%)
+}
+
+.sky-grain {
+  z-index: 3;
+  opacity: .025;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.76' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Cpath fill='%23000' filter='url(%23n)' opacity='.9' d='M0 0h180v180H0z'/%3E%3C/svg%3E")
+}
+
+.vignette {
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 60% 48%,transparent 45%,rgba(212,200,172,.08) 100%)
+}
+
+#scene {
+  z-index: 0;
+  touch-action: none
+}
+
+#scene canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: grab;
+  outline: 0
+}
+
+#scene canvas:active {
+  cursor: grabbing
+}
+
+.topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 25px;
+  padding: 30px 44px
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  flex-shrink: 0
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 39px;
+  height: 43px;
+  border-radius: 12px 12px 15px 15px;
+  background: var(--accent);
+  color: #fff3db;
+  transform: rotate(-3deg);
+  box-shadow: 0 4px 10px #8e5a2910
+}
+
+.brand-mark svg {
+  width: 34px;
+  height: 34px;
+  stroke-width: 1.2
+}
+
+.brand-name {
+  font-family: 'Cormorant Garamond',Georgia,serif;
+  font-weight: 600;
+  font-size: 31px;
+  letter-spacing: -1.2px;
+  white-space: nowrap
+}
+
+.brand-dot {
+  color: var(--accent)
+}
+
+.brand-caption {
+  font-size: 8px;
+  line-height: 1.8;
+  font-weight: 550;
+  letter-spacing: 1.8px;
+  padding-left: 24px;
+  border-left: 1px solid var(--border);
+  color: var(--text-soft)
+}
+
+.topbar-end {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 24px
+}
+
+.live-status {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 8px;
+  letter-spacing: 1.7px;
+  font-weight: 550;
+  color: var(--text-soft)
+}
+
+.live-status i {
+  width: 5px;
+  height: 5px;
+  background: #759874;
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px #83a17a12
+}
+
+.icon-button {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: rgba(255,253,247,.4);
+  color: var(--ink);
+  transition: background .2s,transform .2s
+}
+
+.icon-button:hover {
+  background: rgba(255,253,247,.8);
+  transform: translateY(-2px)
+}
+
+.icon-button svg {
+  width: 17px;
+  height: 17px
+}
+
+.help-button {
+  border: 0;
+  background: none;
+  width: 26px
+}
+
+.help-button svg {
+  width: 20px;
+  height: 20px
+}
+
+.intro {
+  position: absolute;
+  left: 6%;
+  top: 22%;
+  z-index: 2;
+  pointer-events: none
+}
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 8px;
+  font-weight: 650;
+  letter-spacing: 2px;
+  color: var(--accent);
+  margin: 0 0 23px
+}
+
+.eyebrow>span {
+  width: 20px;
+  height: 1px;
+  background: currentColor
+}
+
+h1 {
+  font-family: 'Cormorant Garamond',Georgia,serif;
+  font-weight: 400;
+  font-size: clamp(64px,5.5vw,88px);
+  line-height: .95;
+  letter-spacing: -3px;
+  margin: 0
+}
+
+h1 em {
+  font-weight: 400;
+  color: var(--accent);
+  letter-spacing: -3.7px
+}
+
+.intro-description {
+  font-size: 12px;
+  line-height: 1.9;
+  color: var(--text-soft);
+  margin: 22px 0 29px;
+  letter-spacing: .05px
+}
+
+.weather-summary {
+  display: flex;
+  align-items: center;
+  gap: 15px
+}
+
+.temperature {
+  display: flex;
+  align-items: center;
+  font-family: 'Cormorant Garamond',Georgia,serif;
+  font-size: 47px;
+  line-height: 1;
+  letter-spacing: -2px
+}
+
+.temperature sup {
+  font-family: 'DM Sans',sans-serif;
+  font-size: 21px;
+  align-self: flex-start;
+  line-height: 1.8;
+  font-weight: 400
+}
+
+.temperature svg {
+  width: 27px;
+  height: 27px;
+  stroke-width: 1.15;
+  margin: 0 1px 0 11px;
+  color: var(--accent)
+}
+
+.weather-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  border-left: 1px solid var(--border);
+  padding-left: 15px
+}
+
+.weather-copy>span:first-child {
+  font-size: 11px;
+  font-weight: 550
+}
+
+.weather-copy>span:last-child {
+  font-size: 9px;
+  color: var(--text-soft)
+}
+
+.weather-details {
+  display: flex;
+  align-items: center;
+  gap: 19px;
+  font-size: 8px;
+  color: var(--text-soft);
+  margin-top: 15px
+}
+
+.weather-details>span {
+  display: flex;
+  align-items: center;
+  gap: 4px
+}
+
+.weather-details svg {
+  width: 12px;
+  height: 12px;
+  margin-right: 2px;
+  stroke-width: 1.25
+}
+
+.time-card {
+  position: absolute;
+  right: 49px;
+  top: 140px;
+  width: 166px;
+  z-index: 4
+}
+
+.time-card button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  padding: 12px 13px;
+  width: 100%;
+  border-radius: 13px;
+  background: rgba(255,253,247,.4);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(12px);
+  transition: background .2s
+}
+
+.time-card button:hover {
+  background: rgba(255,253,247,.75)
+}
+
+.time-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  color: var(--accent)
+}
+
+.time-icon svg {
+  width: 28px;
+  height: 28px;
+  stroke-width: 1.2
+}
+
+.time-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px
+}
+
+.time-copy>span:first-child {
+  font-size: 9px;
+  color: var(--text-soft)
+}
+
+.time-copy>span:last-child {
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 450;
+  letter-spacing: -.5px
+}
+
+.time-suffix {
+  font-size: 8px;
+  font-weight: 400;
+  letter-spacing: .2px
+}
+
+.time-chevron {
+  width: 11px;
+  height: 11px;
+  margin-left: auto;
+  opacity: .5
+}
+
+.time-progress {
+  height: 2px;
+  margin: 7px 9px 0;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden
+}
+
+.time-progress span {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--accent);
+  border-radius: 3px
+}
+
+.time-card p {
+  font-size: 8px;
+  letter-spacing: .3px;
+  text-align: center;
+  color: var(--text-soft);
+  margin: 7px 0
+}
+
+.landmark-label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  padding: 7px 9px;
+  border: 1px solid rgba(255,255,255,.6);
+  border-radius: 6px;
+  background: rgba(255,253,246,.79);
+  backdrop-filter: blur(8px);
+  color: #4b5549;
+  font-size: 8px;
+  letter-spacing: .1px;
+  box-shadow: 0 3px 12px #32433205;
+  transition: opacity .3s,background .2s;
+  will-change: transform
+}
+
+.landmark-label:before {
+  content: '';
+  position: absolute;
+  left: 14px;
+  top: 100%;
+  height: 20px;
+  width: 1px;
+  background: linear-gradient(#7f8b7160,transparent)
+}
+
+.landmark-label:hover {
+  background: #fffdf7
+}
+
+.landmark-label i {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #b76d4a
+}
+
+.landmark-label svg {
+  width: 10px;
+  height: 10px;
+  stroke-width: 1.3;
+  opacity: .5
+}
+
+.explore-hint {
+  position: absolute;
+  left: 59%;
+  bottom: 151px;
+  transform: translateX(-50%);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+  white-space: nowrap;
+  color: var(--text-soft);
+  font-size: 7px;
+  letter-spacing: 1.65px
+}
+
+.explore-hint svg {
+  width: 21px;
+  height: 21px;
+  stroke-width: 1
+}
+
+.hint-divider {
+  height: 10px;
+  width: 1px;
+  background: var(--border);
+  margin: 0 3px
+}
+
+.hint-secondary {
+  opacity: .65
+}
+
+.coordinates {
+  position: absolute;
+  right: 48px;
+  bottom: 158px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  z-index: 2;
+  color: var(--text-soft);
+  font-size: 7px;
+  letter-spacing: .5px
+}
+
+.coordinates svg {
+  width: 12px;
+  height: 12px;
+  stroke-width: 1.2
+}
+
+.coordinates>span {
+  position: absolute;
+  right: 0;
+  top: 24px;
+  font-size: 6px;
+  letter-spacing: 1.4px;
+  opacity: .65
+}
+
+.bottom-bar {
+  position: absolute;
+  bottom: 32px;
+  left: 44px;
+  right: 44px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px
+}
+
+.edition {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  font-size: 7px;
+  letter-spacing: 1.45px;
+  color: var(--text-soft);
+  line-height: 1.8;
+  min-width: 180px
+}
+
+.edition-line {
+  width: 29px;
+  height: 1px;
+  background: var(--accent)
+}
+
+.edition-number {
+  display: block;
+  font-size: 6px;
+  letter-spacing: 1.15px;
+  opacity: .65
+}
+
+.season-controls {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  padding: 7px 10px 7px 7px;
+  border-radius: 15px;
+  background: var(--panel);
+  box-shadow: 0 8px 35px #44372008,0 1px 2px #44372004;
+  border: 1px solid #fffdf7a6;
+  backdrop-filter: blur(20px);
+  height: 68px
+}
+
+.season-tabs {
+  display: flex;
+  gap: 3px;
+  height: 100%
+}
+
+.season-button {
+  width: 108px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  gap: 8px;
+  border-radius: 9px;
+  color: #8c9083;
+  transition: background .3s,color .3s;
+  padding: 0 13px
+}
+
+.season-button>svg {
+  width: 21px;
+  height: 21px;
+  stroke-width: 1.2
+}
+
+.season-button>span {
+  font-size: 10px;
+  font-weight: 550
+}
+
+.season-button>small {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  font-size: 5px;
+  opacity: 0
+}
+
+.season-button:hover {
+  background: #eeeee544;
+  color: #58674d
+}
+
+.season-button.selected {
+  background: #efe5d6;
+  color: #9e5b3b
+}
+
+.season-button.selected>small {
+  opacity: .5
+}
+
+.control-divider {
+  height: 28px;
+  width: 1px;
+  background: #aaa68d3b;
+  margin: 0 11px
+}
+
+.cycle-button {
+  position: relative;
+  width: 36px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  color: #647657;
+  flex-shrink: 0
+}
+
+.cycle-ring {
+  position: absolute;
+  left: 2px;
+  top: 0;
+  width: 32px;
+  height: 32px;
+  transform: rotate(-90deg);
+  stroke-width: 1.1
+}
+
+.ring-track {
+  stroke: #b4bc9f45
+}
+
+.ring-value {
+  stroke: #7e936a;
+  stroke-dasharray: 94.25;
+  stroke-dashoffset: 0
+}
+
+.cycle-icon {
+  width: 13px;
+  height: 13px;
+  margin-top: -10px;
+  stroke-width: 1.4
+}
+
+.cycle-button>span {
+  position: absolute;
+  bottom: 0;
+  font-size: 5.5px;
+  letter-spacing: 1.1px
+}
+
+.cycle-button[aria-pressed="false"] {
+  color: #a39077
+}
+
+.utility-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto
+}
+
+.utility-controls .icon-button {
+  width: 36px;
+  height: 36px;
+  background: transparent
+}
+
+.utility-controls .icon-button:hover {
+  background: #fffdf750
+}
+
+.utility-controls .icon-button[aria-pressed="true"] {
+  background: #efe5d6;
+  color: #9e5b3b
+}
+
+.loading-screen {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 20px;
+  background: #f3f0e7;
+  transition: opacity .7s,visibility .7s;
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: #7c8373
+}
+
+.loading-screen.loaded {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none
+}
+
+.loading-mark {
+  font-family: 'Cormorant Garamond',Georgia,serif;
+  font-size: 64px;
+  color: #af6241;
+  line-height: 1
+}
+
+.loading-dots {
+  animation: breathe 1.2s ease-in-out infinite
+}
+
+.toast {
+  position: absolute;
+  bottom: 118px;
+  left: 50%;
+  transform: translate(-50%,8px);
+  background: #fffaf0ed;
+  box-shadow: 0 5px 20px #373d3210;
+  border: 1px solid #77674a14;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 10px;
+  color: #4c5a42;
+  z-index: 10;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s,transform .2s;
+  white-space: nowrap
+}
+
+.toast.visible {
+  opacity: 1;
+  transform: translate(-50%,0)
+}
+
+.debug {
+  position: absolute;
+  top: 92px;
+  left: 44px;
+  font-family: monospace;
+  font-size: 9px;
+  background: #fff9;
+  color: #344738;
+  padding: 6px 9px;
+  border-radius: 5px;
+  z-index: 15;
+  pointer-events: none
+}
+
+.fallback {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  background: #f4f1e8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px
+}
+
+.fallback-icon {
+  font-size: 70px;
+  color: #acbca5
+}
+
+.fallback h2 {
+  font-family: 'Cormorant Garamond',Georgia,serif;
+  font-size: 40px;
+  font-weight: 400;
+  margin: 15px 0
+}
+
+.fallback p {
+  max-width: 350px;
+  font-size: 12px;
+  line-height: 1.8;
+  color: #7a8173
+}
+
+.fallback button {
+  margin-top: 12px;
+  background: #ac6041;
+  color: white;
+  border-radius: 6px;
+  padding: 12px 24px;
+  font-size: 11px
+}
+
+.fallback button span {
+  margin-left: 24px
+}
+
+.noscript {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  background: #f3f0e7;
+  display: grid;
+  place-items: center;
+  font-family: Georgia,serif
+}
+
+dialog {
+  border: 1px solid #fff9;
+  border-radius: 19px;
+  padding: 39px;
+  width: min(420px,calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  background: #f8f5eb;
+  color: #3e493b;
+  box-shadow: 0 20px 100px #25342b24
+}
+
+dialog::backdrop {
+  background: #3548373d;
+  backdrop-filter: blur(5px)
+}
+
+.dialog-close {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  width: 27px;
+  height: 27px;
+  background: none
+}
+
+.dialog-close svg {
+  width: 13px;
+  height: 13px
+}
+
+dialog .eyebrow {
+  font-size: 6px;
+  margin-top: 6px;
+  letter-spacing: 1.7px
+}
+
+dialog h2 {
+  font-family: 'Cormorant Garamond',Georgia,serif;
+  font-size: 50px;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -1px;
+  margin: 0 0 19px
+}
+
+dialog h2 em {
+  font-weight: 400;
+  color: #af6241
+}
+
+dialog>p:not(.eyebrow) {
+  font-size: 12px;
+  line-height: 1.9;
+  color: #76816e
+}
+
+.dialog-instructions {
+  display: grid;
+  grid-template-columns: 1fr 1.25fr;
+  gap: 12px 10px;
+  padding: 22px 0;
+  margin-top: 20px;
+  border-top: 1px solid #76816e22;
+  border-bottom: 1px solid #76816e22;
+  font-size: 9px
+}
+
+.dialog-instructions>span:nth-child(2n) {
+  color: #89917f
+}
+
+.dialog-footnote {
+  font-size: 9px;
+  line-height: 1.9;
+  color: #89917f;
+  margin: 20px 0
+}
+
+.dialog-done {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  font-size: 10px;
+  background: #e9dfcb;
+  color: #936044;
+  border-radius: 6px;
+  padding: 12px 15px;
+  margin-top: 22px
+}
+
+.dialog-done svg {
+  width: 13px;
+  height: 13px
+}
+
+body.night {
+  --ink: #f0eddf;
+  --text-soft: #d8dcd1;
+  --muted: #b9c6b6;
+  --border: #e0e6d31c;
+  --accent: #e9b58e;
+  --panel: rgba(255,251,237,.9)
+}
+
+body.night .season-controls {
+  --ink: #374733
+}
+
+body.night .time-card button,body.night .icon-button {
+  background: #e9eddd0c
+}
+
+body.night .season-button.selected {
+  background: #e8dcc4
+}
+
+body.night .coordinates {
+  opacity: .7
+}
+
+body.night .weather-copy {
+  border-color: #e0e6d333
+}
+
+body.night .topbar .brand-mark {
+  background: #bb7759;
+  color: #fff6dd
+}
+
+body.night .toast {
+  color: #4c5a42
+}
+
+body.night .utility-controls .icon-button[aria-pressed="true"] {
+  background: #f7e7ca25;
+  color: #e9c2a2
+}
+
+@keyframes breathe {
+  50% {
+    opacity: .3
+  }
+}
+
+.topbar {
+  pointer-events: none
+}
+
+.brand,.help-button {
+  pointer-events: auto
+}
+
+body {
+  transition: color .7s ease
+}
+
+.intro h1 em,.intro .eyebrow,.weather-details,.weather-copy,.explore-hint {
+  transition: color .7s ease
+}
+
+@media(min-width:1700px) {
+  .intro {
+    left: 8%;
+    top: 25%
+  }
+  .topbar {
+    padding: 35px 60px
+  }
+  .bottom-bar {
+    left: 60px;
+    right: 60px;
+    bottom: 40px
+  }
+  .time-card {
+    right: 65px;
+    top: 155px
+  }
+  .coordinates {
+    right: 65px;
+    bottom: 170px
+  }
+  .explore-hint {
+    bottom: 170px
+  }
+  .season-controls {
+    height: 74px
+  }
+  .season-button {
+    width: 120px
+  }
+}
+
+@media(max-width:1150px) {
+  .topbar {
+    padding: 24px 30px
+  }
+  .intro {
+    left: 5%;
+    top: 21%
+  }
+  h1 {
+    font-size: 64px
+  }
+  .intro-description {
+    font-size: 11px
+  }
+  .eyebrow {
+    font-size: 7px;
+    letter-spacing: 1.5px
+  }
+  .time-card {
+    right: 30px;
+    top: 116px;
+    width: 146px
+  }
+  .time-card button {
+    padding: 10px;
+    gap: 8px
+  }
+  .time-icon svg {
+    width: 25px;
+    height: 25px
+  }
+  .time-copy>span:last-child {
+    font-size: 15px
+  }
+  .coordinates {
+    display: none
+  }
+  .bottom-bar {
+    left: 30px;
+    right: 30px;
+    bottom: 27px
+  }
+  .edition {
+    min-width: 120px;
+    font-size: 6px;
+    gap: 8px
+  }
+  .edition-line {
+    width: 16px
+  }
+  .edition-number {
+    font-size: 5px
+  }
+  .season-controls {
+    height: 60px
+  }
+  .season-button {
+    width: 87px;
+    padding: 0 8px;
+    gap: 6px
+  }
+  .season-button>span {
+    font-size: 9px
+  }
+  .season-button>svg {
+    width: 19px;
+    height: 19px
+  }
+  .utility-controls {
+    gap: 5px
+  }
+  .utility-controls .icon-button {
+    width: 32px;
+    height: 32px
+  }
+  .explore-hint {
+    bottom: 125px;
+    left: 61%;
+    font-size: 6px;
+    letter-spacing: 1.3px
+  }
+  .weather-summary {
+    gap: 11px
+  }
+  .weather-copy {
+    padding-left: 11px
+  }
+  .weather-copy>span:first-child {
+    font-size: 10px
+  }
+  .weather-copy>span:last-child {
+    font-size: 8px
+  }
+  .temperature {
+    font-size: 42px
+  }
+}
+
+@media(max-width:900px) {
+  .brand-caption {
+    display: none
+  }
+  .topbar {
+    padding: 22px 25px
+  }
+  .intro {
+    top: 20%
+  }
+  h1 {
+    font-size: 58px
+  }
+  .intro-description {
+    font-size: 10px
+  }
+  .weather-summary {
+    margin-top: 22px
+  }
+  .weather-copy {
+    display: none
+  }
+  .weather-details {
+    font-size: 7px;
+    gap: 12px
+  }
+  .edition {
+    display: none
+  }
+  .season-controls {
+    position: relative;
+    left: auto;
+    transform: none
+  }
+  .bottom-bar {
+    left: 25px;
+    right: 25px;
+    bottom: 25px
+  }
+  .utility-controls {
+    margin-left: 0
+  }
+  .season-button {
+    width: 81px
+  }
+  .time-card {
+    right: 26px;
+    top: 107px
+  }
+  .live-status {
+    font-size: 7px;
+    letter-spacing: 1.2px
+  }
+  .explore-hint {
+    left: 59%;
+    bottom: 117px
+  }
+  .hint-divider,.hint-secondary {
+    display: none
+  }
+  .landmark-label {
+    font-size: 7px;
+    padding: 6px 8px
+  }
+  .intro .eyebrow {
+    font-size: 6px;
+    letter-spacing: 1.4px;
+    gap: 6px
+  }
+  .intro .eyebrow>span {
+    width: 13px
+  }
+  .toast {
+    bottom: 105px
+  }
+}
+
+@media(max-width:600px) {
+  .topbar {
+    padding: 20px 20px
+  }
+  .brand-mark {
+    width: 30px;
+    height: 34px;
+    border-radius: 9px 9px 12px 12px
+  }
+  .brand-mark svg {
+    width: 28px;
+    height: 28px
+  }
+  .brand {
+    gap: 8px
+  }
+  .brand-name {
+    font-size: 26px;
+    letter-spacing: -.8px
+  }
+  .live-status {
+    display: none
+  }
+  .topbar-end {
+    gap: 10px
+  }
+  .help-button {
+    width: 26px
+  }
+  .intro {
+    top: 108px;
+    left: 26px
+  }
+  .intro .eyebrow {
+    font-size: 6px;
+    margin-bottom: 14px;
+    letter-spacing: 1.6px
+  }
+  h1 {
+    font-size: 55px;
+    line-height: .92;
+    letter-spacing: -2px
+  }
+  h1 em {
+    letter-spacing: -2.4px
+  }
+  .intro-description {
+    font-size: 10px;
+    line-height: 1.8;
+    margin: 15px 0
+  }
+  .weather-summary {
+    display: none
+  }
+  .weather-details {
+    display: none
+  }
+  .time-card {
+    top: 111px;
+    right: 22px;
+    width: 106px
+  }
+  .time-card button {
+    padding: 8px 7px;
+    gap: 5px;
+    border-radius: 10px
+  }
+  .time-icon {
+    width: 22px;
+    height: 25px
+  }
+  .time-icon svg {
+    width: 21px;
+    height: 21px
+  }
+  .time-copy>span:first-child {
+    font-size: 7px
+  }
+  .time-copy>span:last-child {
+    font-size: 13px
+  }
+  .time-suffix {
+    font-size: 6px
+  }
+  .time-chevron {
+    display: none
+  }
+  .time-card p {
+    font-size: 6px;
+    line-height: 1.5
+  }
+  .time-progress {
+    margin: 6px 5px 0
+  }
+  .bottom-bar {
+    left: 15px;
+    right: 15px;
+    bottom: 23px;
+    gap: 9px;
+    justify-content: center
+  }
+  .season-controls {
+    height: 57px;
+    padding: 5px 7px 5px 5px;
+    border-radius: 13px
+  }
+  .season-button {
+    flex-direction: column;
+    gap: 4px;
+    width: 54px;
+    padding: 0 5px;
+    border-radius: 8px
+  }
+  .season-button>span {
+    font-size: 7px
+  }
+  .season-button>svg {
+    width: 19px;
+    height: 19px
+  }
+  .season-button>small {
+    display: none
+  }
+  .control-divider {
+    margin: 0 5px;
+    height: 26px
+  }
+  .cycle-button {
+    width: 29px;
+    height: 38px
+  }
+  .cycle-ring {
+    width: 28px;
+    height: 28px;
+    left: .5px
+  }
+  .cycle-button>span {
+    font-size: 5px
+  }
+  .cycle-icon {
+    width: 12px;
+    height: 12px;
+    margin-top: -9px
+  }
+  .utility-controls {
+    flex-direction: column;
+    gap: 6px
+  }
+  .utility-controls .icon-button {
+    width: 27px;
+    height: 27px
+  }
+  .utility-controls .icon-button svg {
+    width: 13px;
+    height: 13px
+  }
+  .fullscreen-button {
+    display: none
+  }
+  .utility-controls #reset-button {
+    display: none
+  }
+  .explore-hint {
+    left: 50%;
+    bottom: 101px;
+    font-size: 6px;
+    letter-spacing: 1.7px;
+    gap: 5px
+  }
+  .explore-hint svg {
+    width: 16px;
+    height: 16px
+  }
+  .landmark-label {
+    font-size: 6px;
+    padding: 5px 6px;
+    gap: 4px
+  }
+  .landmark-label svg {
+    width: 8px;
+    height: 8px
+  }
+  .landmark-label:before {
+    height: 11px;
+    left: 10px
+  }
+  .landmark-label i {
+    width: 3px;
+    height: 3px
+  }
+  .toast {
+    bottom: 98px;
+    font-size: 8px;
+    padding: 8px 11px
+  }
+  .debug {
+    top: 75px;
+    left: 20px;
+    font-size: 7px
+  }
+  .fallback h2 {
+    font-size: 30px
+  }
+  .fallback p {
+    font-size: 10px
+  }
+  .fallback-icon {
+    font-size: 45px
+  }
+}
+
+@media(max-height:650px) and (min-width:601px) {
+  .topbar {
+    padding-top: 20px;
+    padding-bottom: 20px
+  }
+  .intro {
+    top: 23%;
+    left: 4.5%
+  }
+  h1 {
+    font-size: 58px
+  }
+  .intro .eyebrow {
+    margin-bottom: 17px;
+    font-size: 6px
+  }
+  .intro-description {
+    font-size: 10px;
+    margin: 16px 0
+  }
+  .weather-summary {
+    margin-top: 18px
+  }
+  .weather-copy {
+    display: none
+  }
+  .weather-details {
+    display: none
+  }
+  .temperature {
+    font-size: 35px
+  }
+  .temperature svg {
+    width: 23px;
+    height: 23px
+  }
+  .time-card {
+    top: 99px;
+    width: 140px
+  }
+  .time-card p {
+    font-size: 7px
+  }
+  .time-card button {
+    padding: 8px
+  }
+  .bottom-bar {
+    bottom: 21px
+  }
+  .explore-hint {
+    bottom: 102px
+  }
+  .coordinates {
+    display: none
+  }
+  .brand-caption {
+    display: none
+  }
+  .brand-mark {
+    height: 33px;
+    width: 31px;
+    border-radius: 9px
+  }
+  .brand-mark svg {
+    width: 28px;
+    height: 28px
+  }
+  .brand-name {
+    font-size: 26px
+  }
+  .season-controls {
+    height: 55px;
+    padding: 5px 9px 5px 5px
+  }
+  .season-button {
+    width: 87px
+  }
+  .toast {
+    bottom: 92px
+  }
+}
+
+@media(max-height:440px) {
+  .topbar {
+    padding: 12px 18px
+  }
+  .brand-mark {
+    width: 25px;
+    height: 28px;
+    border-radius: 8px
+  }
+  .brand-mark svg {
+    width: 24px;
+    height: 24px
+  }
+  .brand-name {
+    font-size: 22px
+  }
+  .brand {
+    gap: 7px
+  }
+  .brand-caption,.live-status,.help-button {
+    display: none
+  }
+  .intro {
+    top: 27%;
+    left: 4%
+  }
+  .intro .eyebrow {
+    font-size: 5px;
+    letter-spacing: 1.1px;
+    margin-bottom: 13px
+  }
+  .intro h1 {
+    font-size: 43px;
+    letter-spacing: -1.6px
+  }
+  .intro h1 em {
+    letter-spacing: -1.8px
+  }
+  .intro-description {
+    font-size: 8px;
+    margin: 12px 0
+  }
+  .weather-summary,.weather-details {
+    display: none
+  }
+  .time-card {
+    top: 14px;
+    right: 18px;
+    width: 111px
+  }
+  .time-card button {
+    padding: 5px 7px;
+    border-radius: 8px;
+    gap: 6px
+  }
+  .time-copy>span:first-child {
+    font-size: 6px
+  }
+  .time-copy>span:last-child {
+    font-size: 12px
+  }
+  .time-icon {
+    width: 23px;
+    height: 23px
+  }
+  .time-icon svg {
+    width: 21px;
+    height: 21px
+  }
+  .time-suffix {
+    font-size: 6px
+  }
+  .time-card p,.time-progress,.time-chevron {
+    display: none
+  }
+  .bottom-bar {
+    bottom: 13px;
+    left: 18px;
+    right: 18px
+  }
+  .season-controls {
+    height: 46px;
+    border-radius: 10px;
+    padding: 4px 7px 4px 4px
+  }
+  .season-button {
+    width: 72px;
+    gap: 6px;
+    flex-direction: row;
+    border-radius: 6px
+  }
+  .season-button>span {
+    font-size: 8px
+  }
+  .season-button>svg {
+    width: 18px;
+    height: 18px
+  }
+  .control-divider {
+    height: 23px;
+    margin: 0 7px
+  }
+  .cycle-button {
+    height: 34px;
+    width: 29px
+  }
+  .cycle-ring {
+    width: 27px;
+    height: 27px;
+    left: 1px
+  }
+  .cycle-icon {
+    width: 11px;
+    height: 11px;
+    margin-top: -7px
+  }
+  .cycle-button>span {
+    font-size: 4.5px
+  }
+  .edition,.coordinates,.explore-hint {
+    display: none
+  }
+  .utility-controls {
+    flex-direction: row;
+    gap: 6px
+  }
+  .utility-controls .icon-button {
+    width: 30px;
+    height: 30px
+  }
+  .utility-controls .icon-button svg {
+    width: 14px;
+    height: 14px
+  }
+  .fullscreen-button {
+    display: none
+  }
+  .utility-controls #reset-button {
+    display: grid
+  }
+  .landmark-label {
+    font-size: 6px;
+    padding: 4px 6px;
+    gap: 4px
+  }
+  .landmark-label:before {
+    height: 9px
+  }
+  .landmark-label svg {
+    width: 8px;
+    height: 8px
+  }
+  .toast {
+    bottom: 68px;
+    font-size: 8px
+  }
+  .debug {
+    top: 54px;
+    left: 18px;
+    font-size: 7px
+  }
+  dialog {
+    padding: 25px;
+    max-height: calc(100dvh - 20px)
+  }
+  dialog h2 {
+    font-size: 33px
+  }
+  dialog .eyebrow {
+    margin: 0 0 14px;
+    font-size: 5px
+  }
+  dialog>p:not(.eyebrow) {
+    font-size: 10px
+  }
+  .dialog-instructions {
+    font-size: 8px;
+    gap: 8px;
+    padding: 12px 0;
+    margin-top: 10px
+  }
+  .dialog-footnote {
+    font-size: 7px;
+    margin: 12px 0
+  }
+  .dialog-done {
+    margin-top: 13px;
+    padding: 8px 11px;
+    font-size: 8px
+  }
+}
+
+@media(max-width:600px) and (max-height:440px) {
+  .intro {
+    display: none
+  }
+  .topbar {
+    padding: 11px 13px
+  }
+  .brand-mark {
+    width: 23px;
+    height: 26px
+  }
+  .brand-mark svg {
+    width: 22px;
+    height: 22px
+  }
+  .brand-name {
+    font-size: 21px
+  }
+  .time-card {
+    top: 11px;
+    right: 13px;
+    width: 94px
+  }
+  .time-copy>span:first-child {
+    font-size: 5px
+  }
+  .time-icon svg {
+    width: 19px;
+    height: 19px
+  }
+  .time-copy>span:last-child {
+    font-size: 11px
+  }
+  .time-suffix {
+    font-size: 5px
+  }
+  .time-card button {
+    padding: 4px 6px;
+    gap: 4px
+  }
+  .bottom-bar {
+    left: 12px;
+    right: 12px;
+    bottom: 10px;
+    justify-content: space-between;
+    gap: 6px
+  }
+  .season-controls {
+    height: 39px;
+    padding: 3px 5px 3px 3px;
+    border-radius: 10px
+  }
+  .season-button {
+    width: 33px;
+    padding: 0;
+    gap: 0;
+    min-height: 31px
+  }
+  .season-button>span {
+    display: none
+  }
+  .season-button>svg {
+    width: 18px;
+    height: 18px
+  }
+  .season-tabs {
+    gap: 2px
+  }
+  .control-divider {
+    margin: 0 5px;
+    height: 21px
+  }
+  .cycle-button {
+    width: 27px;
+    height: 31px
+  }
+  .cycle-ring {
+    width: 26px;
+    height: 26px;
+    left: .5px
+  }
+  .cycle-icon {
+    margin-top: -6px;
+    width: 10px;
+    height: 10px
+  }
+  .cycle-button>span {
+    font-size: 4px;
+    bottom: -1px
+  }
+  .utility-controls {
+    gap: 5px
+  }
+  .utility-controls .icon-button {
+    width: 29px;
+    height: 29px
+  }
+  .landmark-label {
+    display: none!important
+  }
+  .toast {
+    bottom: 57px;
+    max-width: calc(100% - 24px);
+    white-space: normal;
+    text-align: center;
+    font-size: 7px
+  }
+  .loading-screen {
+    font-size: 8px
+  }
+  .loading-mark {
+    font-size: 40px
+  }
+  .fallback h2 {
+    font-size: 23px;
+    margin: 8px 0
+  }
+  .fallback p {
+    font-size: 8px;
+    max-width: 260px;
+    margin: 4px 0
+  }
+  .fallback-icon {
+    font-size: 32px;
+    line-height: 1
+  }
+  .fallback button {
+    font-size: 9px;
+    padding: 8px 17px;
+    margin-top: 8px
+  }
+}
+
+@media(max-width:600px) and (min-height:441px) and (max-height:700px) {
+  .intro {
+    display: none
+  }
+  .time-card {
+    top: 83px
+  }
+  .season-button {
+    width: 44px
+  }
+  .bottom-bar {
+    gap: 8px
+  }
+  .explore-hint {
+    bottom: 101px
+  }
+}
+
+@media(min-width:601px) and (max-width:900px) and (max-height:440px) {
+  .intro {
+    display: none
+  }
+}
+
+@media(prefers-reduced-motion:reduce) {
+  *,*:before,*:after {
+    scroll-behavior: auto!important;
+    animation: none!important;
+    transition: none!important
+  }
+}

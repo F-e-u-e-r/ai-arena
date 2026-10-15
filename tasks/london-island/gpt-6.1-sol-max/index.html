@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f4f1e8">
+  <meta name="description" content="A little London, above it all. Explore a floating miniature city through four seasons and an ever-changing sky.">
+  <title>Little London — Above it all</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=DM+Sans:wght@400;450;500;550;600;650;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js"></script>
+  <script defer src="main.js"></script>
+</head>
+<body>
+  <svg class="svg-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="i-spring" viewBox="0 0 24 24"><path d="M12 9C6 0 1 8 8 12c-9 6-1 12 4 4 5 8 13 2 4-4 7-4 2-12-4-3Z"/><circle cx="12" cy="12" r="2.2"/></symbol>
+    <symbol id="i-summer" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></symbol>
+    <symbol id="i-autumn" viewBox="0 0 24 24"><path d="m12 2 2 5 3-2-.3 5 4 .3-3.5 4.2 1.2 3.5-5.6-.7L12 22l-.8-4.7-5.6.7 1.2-3.5-3.5-4.2 4-.3L7 5l3 2Z"/><path d="M12 7v11m0-5-3-2m3 4 3-3"/></symbol>
+    <symbol id="i-winter" viewBox="0 0 24 24"><path d="M12 2v20M3.3 7l17.4 10M3.3 17 20.7 7M9 4l3 3 3-3M9 20l3-3 3 3M4 10l4-1-1-4m10 14-1-4 4-1M4 14l4 1-1 4M17 5l-1 4 4 1"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.5 14A8.8 8.8 0 0 1 10 3.5 8.8 8.8 0 1 0 20.5 14Z"/><path d="m18 2 .5 2 2 .5-2 .5-.5 2-.5-2-2-.5 2-.5Z"/></symbol>
+    <symbol id="i-dusk" viewBox="0 0 24 24"><path d="M2 17h20M4 21h16M7 17a5 5 0 0 1 10 0M12 2v3M4 8l2 2m14-2-2 2M12 8V3m-2 2 2-2 2 2"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14" stroke-width="3"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="m9 5 10 7-10 7Z"/></symbol>
+    <symbol id="i-volume" viewBox="0 0 24 24"><path d="m11 4-6 5H2v6h3l6 5ZM15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/></symbol>
+    <symbol id="i-muted" viewBox="0 0 24 24"><path d="m11 4-6 5H2v6h3l6 5ZM16 9l6 6m0-6-6 6"/></symbol>
+    <symbol id="i-expand" viewBox="0 0 24 24"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></symbol>
+    <symbol id="i-reset" viewBox="0 0 24 24"><path d="M3 10a9 9 0 1 1 2 8M3 4v6h6"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v.2"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+    <symbol id="i-wind" viewBox="0 0 24 24"><path d="M3 8h12a3 3 0 1 0-3-3M2 12h17a3 3 0 1 1-3 3M4 16h5a3 3 0 1 1-3 3"/></symbol>
+    <symbol id="i-drop" viewBox="0 0 24 24"><path d="M12 2s7 8 7 13a7 7 0 0 1-14 0c0-5 7-13 7-13Z"/><path d="M8 15a4 4 0 0 0 4 4"/></symbol>
+    <symbol id="i-drag" viewBox="0 0 24 24"><path d="M4 12h16M7 9l-3 3 3 3m10-6 3 3-3 3"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 19 19 5M6 5h13v13"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M19 10c0 5-7 12-7 12S5 15 5 10a7 7 0 0 1 14 0Z"/><circle cx="12" cy="10" r="2"/></symbol>
+  </svg>
+
+  <main id="app">
+    <div class="sky" aria-hidden="true"></div>
+    <div class="sky-grain" aria-hidden="true"></div>
+    <div id="scene" role="img" aria-label="Interactive 3D floating London island with Big Ben, the London Eye, and Tower Bridge. Drag to rotate."></div>
+    <div class="vignette" aria-hidden="true"></div>
+
+    <header class="topbar">
+      <a class="brand" href="#" id="brand-reset" aria-label="Little London, reset view">
+        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 36 36"><path d="M5 24c7 5 19 5 26 0M9 27l9 5 9-5M15 24V11h6v13M14 11h8l-4-6-4 6ZM18 3v3M12 24v-7H8v7m16 0v-9h4v9"/><circle cx="18" cy="14" r="2"/><path d="m18 13 0 1 1 1"/></svg></span>
+        <span class="brand-name">little london<span class="brand-dot">.</span></span>
+      </a>
+      <div class="brand-caption">A SMALL WORLD.<br>A LITTLE WONDER.</div>
+      <div class="topbar-end"><span class="live-status"><i></i> A LIVING LITTLE WORLD</span><button id="help-button" class="icon-button help-button" aria-label="About this little world" title="About & shortcuts"><svg><use href="#i-info"/></svg></button></div>
+    </header>
+
+    <section class="intro" aria-label="Welcome to Little London">
+      <p class="eyebrow"><span></span> A CITY ABOVE THE CLOUDS</p>
+      <h1>London.<br><em>Above it all.</em></h1>
+      <p class="intro-description">A tiny city. Four seasons.<br>A little wonder, whatever the weather.</p>
+      <div class="weather-summary" aria-live="polite" aria-atomic="true">
+        <div class="temperature"><span id="temperature">12</span><sup>°</sup><svg id="weather-icon"><use href="#i-spring"/></svg></div>
+        <div class="weather-copy"><span id="weather-title">A breath of spring</span><span id="weather-description">Soft skies & a little morning mist</span></div>
+      </div>
+      <div class="weather-details"><span><svg><use href="#i-drop"/></svg><span id="humidity">82</span>% humidity</span><span><svg><use href="#i-wind"/></svg><span id="wind">8</span> km/h</span></div>
+    </section>
+
+    <aside class="time-card" aria-label="Day and night cycle">
+      <button id="time-button" title="Jump to the next time of day (D)" aria-label="Change time of day">
+        <span class="time-icon"><svg><use id="time-icon-use" href="#i-summer"/></svg></span>
+        <span class="time-copy"><span id="phase-name">Morning light</span><span><span id="clock-time">09:41</span><span class="time-suffix" id="clock-suffix"> AM</span></span></span>
+        <svg class="time-chevron" viewBox="0 0 16 16"><path d="m6 4 4 4-4 4"/></svg>
+      </button>
+      <div class="time-progress"><span id="day-progress"></span></div>
+      <p>A whole day in 15 seconds</p>
+    </aside>
+
+    <div id="landmark-labels" aria-label="Explore landmarks">
+      <button class="landmark-label" id="label-bigben" data-landmark="bigben"><i></i><span>Big Ben</span><svg><use href="#i-arrow"/></svg></button>
+      <button class="landmark-label" id="label-eye" data-landmark="eye"><i></i><span>London Eye</span><svg><use href="#i-arrow"/></svg></button>
+      <button class="landmark-label" id="label-bridge" data-landmark="bridge"><i></i><span>Tower Bridge</span><svg><use href="#i-arrow"/></svg></button>
+    </div>
+
+    <div class="explore-hint" id="explore-hint"><svg><use href="#i-drag"/></svg><span>DRAG TO WANDER</span><span class="hint-divider"></span><span class="hint-secondary">SCROLL TO GET CLOSER</span></div>
+    <div class="coordinates"><svg><use href="#i-pin"/></svg>51°30′26.4″ N &nbsp; 0°07′39.6″ W<span>A LITTLE CLOSER TO MAGIC</span></div>
+
+    <footer class="bottom-bar">
+      <div class="edition"><span class="edition-line"></span><span>THE LONDON COLLECTION<span class="edition-number">NO. 001 / IN THE CLOUDS</span></span></div>
+      <div class="season-controls" aria-label="Choose a season">
+        <div class="season-tabs" role="group" aria-label="Seasons">
+          <button class="season-button selected" data-season="0" aria-pressed="true" title="Spring (1)"><svg><use href="#i-spring"/></svg><span>Spring</span><small>01</small></button>
+          <button class="season-button" data-season="1" aria-pressed="false" title="Summer (2)"><svg><use href="#i-summer"/></svg><span>Summer</span><small>02</small></button>
+          <button class="season-button" data-season="2" aria-pressed="false" title="Autumn (3)"><svg><use href="#i-autumn"/></svg><span>Autumn</span><small>03</small></button>
+          <button class="season-button" data-season="3" aria-pressed="false" title="Winter (4)"><svg><use href="#i-winter"/></svg><span>Winter</span><small>04</small></button>
+        </div>
+        <span class="control-divider"></span>
+        <button id="cycle-button" class="cycle-button" aria-label="Pause automatic seasons" aria-pressed="true" title="Pause automatic seasons (Space)"><svg class="cycle-ring" viewBox="0 0 36 36"><circle class="ring-track" cx="18" cy="18" r="15"/><circle id="season-progress" class="ring-value" cx="18" cy="18" r="15"/></svg><svg class="cycle-icon"><use id="cycle-icon-use" href="#i-pause"/></svg><span>AUTO</span></button>
+      </div>
+      <div class="utility-controls"><button id="reset-button" class="icon-button" aria-label="Reset camera" title="Reset view (R)"><svg><use href="#i-reset"/></svg></button><button id="sound-button" class="icon-button" aria-label="Enable ambient sound" aria-pressed="false" title="Ambient sound (M)"><svg><use id="sound-icon-use" href="#i-muted"/></svg></button><button id="fullscreen-button" class="icon-button fullscreen-button" aria-label="Enter fullscreen" title="Fullscreen (F)"><svg><use href="#i-expand"/></svg></button></div>
+    </footer>
+
+    <div class="loading-screen" id="loading-screen"><span class="loading-mark">ll.</span><span>A little London is coming to life<span class="loading-dots">...</span></span></div>
+    <div class="toast" id="toast" role="status"></div>
+    <div class="debug" id="debug" hidden></div>
+    <div id="fallback" class="fallback" hidden><span class="fallback-icon">☁</span><h2>A little pause in the clouds.</h2><p id="fallback-message">This world needs WebGL and an internet connection to load Three.js. Please try a current browser.</p><button id="retry-button">Try again <span>↗</span></button></div>
+
+    <dialog id="info-dialog" aria-labelledby="dialog-title"><button id="dialog-close" class="icon-button dialog-close" aria-label="Close"><svg><use href="#i-close"/></svg></button><p class="eyebrow" id="dialog-eyebrow">WELCOME TO YOUR LITTLE ESCAPE</p><h2 id="dialog-title">Small city.<br><em>Endless wonder.</em></h2><p id="dialog-description">A floating love letter to London. Watch the light move, let the seasons turn, and stay a little longer.</p><div id="dialog-extra"><div class="dialog-instructions"><span>Drag left or right</span><span>Wander around</span><span>Scroll or pinch</span><span>Get a little closer</span><span>1 · 2 · 3 · 4</span><span>Pick a season</span><span>D / Space</span><span>Change light / auto seasons</span><span>R / M / F</span><span>Reset / sound / fullscreen</span></div><p class="dialog-footnote">A day lasts 15 seconds. A season stays for 30.<br>Everything keeps moving, just like the real thing.</p></div><button class="dialog-done" id="dialog-done">Back to the clouds <svg><use href="#i-arrow"/></svg></button></dialog>
+    <noscript><div class="noscript">Turn on JavaScript to visit Little London.</div></noscript>
+  </main>
+</body>
+</html>
