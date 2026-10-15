@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#8cc9d5" />
+    <meta name="description" content="A tiny floating Tokyo diorama, drifting through a fifteen-second day and night." />
+    <title>Floating Tokyo — A Sky Island</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main id="app" aria-label="Animated three-dimensional floating Tokyo island">
+      <canvas id="scene" aria-label="Drag left or right to rotate the floating island"></canvas>
+      <div class="atmosphere" aria-hidden="true"></div>
+
+      <header class="brand">
+        <span class="eyebrow">A LITTLE WORLD ABOVE THE CLOUDS</span>
+        <h1><span class="brand-jp">浮遊東京</span><span class="brand-en">Floating Tokyo</span></h1>
+        <p>A little autumn in the sky. One day in fifteen seconds.</p>
+      </header>
+
+      <div class="time-panel" aria-live="off">
+        <span class="time-panel__dot" aria-hidden="true"></span>
+        <span id="phase-label">DAYLIGHT</span>
+        <span class="time-panel__divider" aria-hidden="true"></span>
+        <span id="time-label">12:00</span>
+      </div>
+
+      <button id="speed-button" class="speed-button" type="button" aria-label="Time speed: one times. Click to accelerate." title="Change time speed (Space)">
+        <span class="speed-button__icon" aria-hidden="true">◷</span>
+        <span id="speed-label">1×</span>
+      </button>
+
+      <footer class="footer">
+        <div class="drag-hint" aria-hidden="true"><span class="drag-hint__arrow">↔</span><span class="drag-hint__long">DRAG TO EXPLORE</span><span class="drag-hint__short">DRAG</span></div>
+        <div class="cycle" aria-hidden="true">
+          <span class="cycle__label">DAY</span>
+          <div class="cycle__track"><span id="cycle-progress" class="cycle__progress"></span><span id="cycle-marker" class="cycle__marker"></span></div>
+          <span class="cycle__label">NIGHT</span>
+        </div>
+        <span class="footer__note">TOKYO, SOMEWHERE IN THE SKY · 15 SEC LOOP</span>
+      </footer>
+
+      <div id="loading" class="loading" role="status">Gathering clouds…</div>
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+    <script src="main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f6cfab">
+  <title>Tokyo in the Sky — A Floating World</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="experience" aria-label="Interactive three-dimensional floating Tokyo island">
+    <canvas id="scene" aria-label="Drag to rotate the floating Tokyo island"></canvas>
+
+    <header class="brand">
+      <div class="brand-mark" aria-hidden="true"><span></span></div>
+      <div class="brand-copy"><strong>TOKYO <i>IN THE SKY</i></strong><small>A LITTLE WORLD ABOVE THE CLOUDS</small></div>
+    </header>
+
+    <div class="chapter" aria-hidden="true"><span class="chapter-line"></span><span>01 / FLOATING WORLDS</span></div>
+
+    <div class="side-copy" aria-hidden="true">東京 · 空に浮かぶ街</div>
+
+    <div class="bottom-bar">
+      <div class="intro"><span class="intro-kicker">AN EVER-CHANGING SKY</span><h1>A day in <em>Tokyo.</em></h1><p>Follow the falling maple leaves through a tiny world.</p></div>
+      <div class="controls" aria-label="Scene controls">
+        <div class="cycle-display"><span id="phase-icon" class="phase-icon" aria-hidden="true">☀</span><div class="cycle-copy"><strong id="phase-label">Golden morning</strong><span>15 SECOND SKY CYCLE</span></div><div class="progress"><span id="progress-fill"></span></div></div>
+        <button id="speed-button" class="control-button" type="button" title="Change time speed" aria-label="Change time speed, currently normal">1×</button>
+        <button id="pause-button" class="control-button pause-button" type="button" title="Pause animation" aria-label="Pause animation"><span id="pause-icon">Ⅱ</span></button>
+      </div>
+    </div>
+
+    <div class="drag-hint" aria-hidden="true"><span class="drag-symbol">↔</span> DRAG TO EXPLORE</div>
+    <div id="fallback" class="fallback" hidden>WebGL is needed to view this little world.</div>
+  </main>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.152.2/three.min.js"></script>
+  <script src="main.js" defer></script>
+</body>
+</html>
