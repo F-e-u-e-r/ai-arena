@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#94d6db" />
+  <title>Little London — Seasons in the Sky</title>
+  <link rel="stylesheet" href="style.css" />
+  <script type="importmap">
+    {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+  </script>
+</head>
+<body>
+  <main class="experience" aria-label="A floating, animated London island">
+    <div id="scene" class="scene"></div>
+    <div class="sky-wash" aria-hidden="true"></div>
+    <header class="brand"><span class="brand-mark">✦</span><span><b>LITTLE LONDON</b><small>SEASONS IN THE SKY</small></span></header>
+    <div class="weather-note"><span class="weather-icon" id="weatherIcon">☁</span><span><b id="seasonName">SPRING</b><small id="weatherLabel">SOFT MORNING MIST</small></span></div>
+    <div class="island-label"><span>✦</span> A little world above the clouds <span>✦</span></div>
+    <div class="controls" aria-label="Scene controls">
+      <button class="season-btn" data-season="0" aria-label="Spring" title="Spring">🌱</button>
+      <button class="season-btn" data-season="1" aria-label="Summer" title="Summer">☀</button>
+      <button class="season-btn" data-season="2" aria-label="Autumn" title="Autumn">🍂</button>
+      <button class="season-btn" data-season="3" aria-label="Winter" title="Winter">❄</button>
+      <span class="control-divider"></span>
+      <button id="cycleButton" class="cycle-btn" aria-label="Pause seasonal cycle" title="Pause seasonal cycle">Ⅱ</button>
+    </div>
+    <div class="drag-hint" aria-hidden="true"><span>↔</span> DRAG TO EXPLORE</div>
+    <div id="loading" class="loading"><span class="loader-star">✦</span> Waking up London…</div>
+    <noscript>This little London needs JavaScript to come alive.</noscript>
+  </main>
+  <script type="module" src="main.js"></script>
+</body>
+</html>

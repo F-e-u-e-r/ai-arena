@@ -3357,6 +3357,27 @@
       "verifiedAt": "2026-10-13",
       "displayName": "xAI: Grok 4.7",
       "note": "Standard-tier list rate ($2/$0.50/$6 per 1M in/cached/out). 4.6 reproduces grok CLI billing exactly; 4.7 within ~8% (long-context >=200k tier not modeled). Build-TUI variant actual billing runs higher."
+    },
+    "gpt-6-luna": {
+      "input": 0.1,
+      "output": 0.5,
+      "source": "openrouter",
+      "verifiedAt": "2026-10-15",
+      "openRouterModel": "openai/gpt-6-luna",
+      "displayName": "OpenAI: GPT-6 Luna",
+      "cachedInput": 0.01,
+      "context": 1050000,
+      "aliasFor": "openai/gpt-6-luna"
+    },
+    "openai/gpt-6-luna": {
+      "input": 0.1,
+      "output": 0.5,
+      "source": "openrouter",
+      "verifiedAt": "2026-10-15",
+      "openRouterModel": "openai/gpt-6-luna",
+      "displayName": "OpenAI: GPT-6 Luna",
+      "cachedInput": 0.01,
+      "context": 1050000
     }
   }
 }

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f5a66b">
+  <title>Tokyo in the Clouds</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script defer src="main.js"></script>
+</head>
+<body>
+  <main id="stage" aria-label="Interactive floating Tokyo island">
+    <div id="scene" aria-hidden="true"></div>
+    <header class="hud">
+      <div class="brand"><span class="seal">東</span><span class="brand-name">TOKYO <i>IN THE CLOUDS</i></span></div>
+      <div class="phase"><span class="phase-dot"></span><span id="phaseName">DAYLIGHT</span><span class="phase-clock" id="phaseClock">00:00</span></div>
+    </header>
+    <div class="caption"><span class="caption-line"></span><span>35° 40′ N &nbsp;·&nbsp; A little island above the city</span></div>
+    <div class="controls" aria-label="Scene controls">
+      <button id="pauseBtn" title="Pause day cycle" aria-label="Pause day cycle">Ⅱ</button>
+      <button id="speedBtn" title="Change cycle speed" aria-label="Change cycle speed">1×</button>
+      <span class="drag-hint"><span class="drag-icon">↔</span> DRAG TO ORBIT</span>
+    </div>
+    <div id="loading" class="loading">BUILDING YOUR SKY ISLAND…</div>
+  </main>
+</body>
+</html>

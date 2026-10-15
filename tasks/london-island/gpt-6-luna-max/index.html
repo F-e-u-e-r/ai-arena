@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#91cfe3" />
+    <meta name="description" content="A tiny floating London, drifting through the seasons and a whole day in fifteen seconds." />
+    <title>Little London — Sky Island</title>
+    <link rel="stylesheet" href="style.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <main id="app" aria-label="Interactive floating London island">
+      <div id="scene" aria-label="3D London island. Drag to orbit the scene." role="img"></div>
+
+      <header class="topbar">
+        <div class="brand" aria-label="Little London, a floating island">
+          <span class="brand-mark" aria-hidden="true">✦</span>
+          <span class="brand-copy"><strong>LITTLE LONDON</strong><small>SKY ISLAND No. 01</small></span>
+        </div>
+
+        <nav class="controls" aria-label="Scene controls">
+          <button class="season-button" type="button" data-season="spring" aria-label="Switch to spring" aria-pressed="false" title="Spring">🌱</button>
+          <button class="season-button" type="button" data-season="summer" aria-label="Switch to summer" aria-pressed="false" title="Summer">☀️</button>
+          <button class="season-button" type="button" data-season="autumn" aria-label="Switch to autumn" aria-pressed="false" title="Autumn">🍁</button>
+          <button class="season-button" type="button" data-season="winter" aria-label="Switch to winter" aria-pressed="false" title="Winter">❄️</button>
+          <span class="control-divider" aria-hidden="true"></span>
+          <button id="day-toggle" class="day-button" type="button" aria-label="Skip to nighttime" title="Skip between day and night">
+            <span aria-hidden="true">◐</span>
+          </button>
+        </nav>
+      </header>
+
+      <aside class="scene-status" aria-live="polite">
+        <span class="status-dot"></span>
+        <span id="season-label">SPRING</span>
+        <span class="status-separator">/</span>
+        <span id="day-label">DAYLIGHT</span>
+      </aside>
+
+      <div class="orbit-hint" id="orbit-hint"><span aria-hidden="true">↔</span> DRAG TO EXPLORE</div>
+      <div class="loading" id="loading"><span class="loading-mark">✦</span><span>Waking up the city...</span></div>
+      <div class="error-message" id="error-message" hidden>Could not load Three.js. Please check your connection and refresh.</div>
+    </main>
+    <script type="module" src="main.js"></script>
+  </body>
+</html>

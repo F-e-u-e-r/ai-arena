@@ -3,11 +3,29 @@
 // :focus-visible rendering/clipping, rendered ARIA, and moveBefore iframe-state
 // preservation. Pure filter/sort logic stays in test/filter-core.test.mjs (node:test).
 //
-// Fixtures are the committed, deterministic manifest (tasks.json → #savannah-ecosystem,
-// 17 submissions, 5 clients, 13 models) served same-origin by static-server.mjs.
+// Fixtures are the committed manifest (tasks.json → #savannah-ecosystem) served same-origin
+// by static-server.mjs. Expected counts are DERIVED from that manifest (TOTAL/GROK/... below)
+// with plain filters independent of filter-core, so they track the data (adding submissions
+// never silently breaks them) while still discriminating a real filter/count regression.
 import { test, expect } from '@playwright/test';
 
 const TASK = '/#savannah-ecosystem';
+
+// --- WS-GPT6: ground truth DERIVED from the committed manifest (not hardcoded) ---
+import { readFileSync } from 'node:fs';
+const _manifest = JSON.parse(readFileSync(new URL('../../tasks.json', import.meta.url)));
+const _savSubs = (_manifest.tasks || _manifest).find(t => (t.id || t.slug) === 'savannah-ecosystem').submissions;
+const TOTAL = _savSubs.length;
+// mirrors CLIENT_LABELS in assets/app.js (a plain script, not an importable module)
+const _CLIENT_LABELS = { 'claude-code': 'Claude', codex: 'Codex', cursor: 'Cursor', grok: 'Grok' };
+const _clientLabel = (c) => _CLIENT_LABELS[c] || c;
+const modelCount = (name) => _savSubs.filter(s => s.model === name).length;
+const clientCount = (lbl) => _savSubs.filter(s => _clientLabel(s.client) === lbl).length;
+const clientEffortCount = (lbl, e) => _savSubs.filter(s => _clientLabel(s.client) === lbl && s.effort === e).length;
+const GROK = ['Grok 4.5', 'Grok 4.6', 'Grok 4.7'].reduce((n, m) => n + modelCount(m), 0);
+const GPT56 = ['GPT-5.6 Luna', 'GPT-5.6 Sol', 'GPT-5.6 Terra'].reduce((n, m) => n + modelCount(m), 0);
+const GROK45 = modelCount('Grok 4.5');
+const GROK47 = modelCount('Grok 4.7');
 
 // ---- A. 320px responsive overflow (WS1 contract) ---------------------------
 test('A: no horizontal page overflow at a 320px viewport (not masked by overflow clipping)', async ({ page }) => {
@@ -86,12 +104,12 @@ test('C: filter chips reflect aria-pressed; Only replaces (not toggles) and pres
 
   // canonical Any: nothing pressed
   await expect(grok).toHaveAttribute('aria-pressed', 'false');
-  await expect(count).toHaveText('顯示 17/17');
+  await expect(count).toHaveText(`顯示 ${TOTAL}/${TOTAL}`);
 
   // toggle select → pressed + count narrows
   await grok.click();
   await expect(grok).toHaveAttribute('aria-pressed', 'true');
-  await expect(count).toHaveText('顯示 1/17');
+  await expect(count).toHaveText(`顯示 ${GROK45}/${TOTAL}`);
 
   // Discriminating Only: first select client A, then Only client B. `only` must REPLACE
   // {A}→{B}; a toggle-wired handler would yield {A,B}. (From the Any initial state only()
@@ -121,7 +139,7 @@ test('C: filter chips reflect aria-pressed; Only replaces (not toggles) and pres
   // reset → every chip back to Any, full count
   await page.locator('.chip-action', { hasText: '重設篩選' }).click();
   await expect(grok).toHaveAttribute('aria-pressed', 'false');
-  await expect(count).toHaveText('顯示 17/17');
+  await expect(count).toHaveText(`顯示 ${TOTAL}/${TOTAL}`);
 });
 
 // ---- D. Sort direction ARIA + real reorder (membership preserved, no aria-pressed) ----
@@ -276,14 +294,14 @@ test('G: family shortcut bulk-selects a model line, preserves cross-family selec
 
   // Grok family → its three members selected, count narrows
   await page.locator('.family-btn', { hasText: 'Grok' }).click();
-  await expect(count).toHaveText('顯示 3/17');
+  await expect(count).toHaveText(`顯示 ${GROK}/${TOTAL}`);
   const pressed1 = await page.locator('.chip-toggle[aria-pressed="true"]')
     .evaluateAll(bs => bs.map(b => b.childNodes[0].textContent.trim()));  // label node, excludes the count span
   expect(pressed1.sort()).toEqual(['Grok 4.5', 'Grok 4.6', 'Grok 4.7']);
 
   // cross-family union: + GPT-5.6 preserves Grok (OD-WS3-4)
   await page.locator('.family-btn', { hasText: 'GPT-5.6' }).click();
-  await expect(count).toHaveText('顯示 9/17');
+  await expect(count).toHaveText(`顯示 ${GROK + GPT56}/${TOTAL}`);
   const pressed2 = await page.locator('.chip-toggle[aria-pressed="true"]')
     .evaluateAll(bs => bs.map(b => b.childNodes[0].textContent.trim()));
   for (const m of ['Grok 4.5', 'Grok 4.6', 'Grok 4.7', 'GPT-5.6 Luna', 'GPT-5.6 Sol', 'GPT-5.6 Terra']) {
@@ -291,11 +309,11 @@ test('G: family shortcut bulk-selects a model line, preserves cross-family selec
   }
   // clicking Grok again when all members present is an idempotent no-op (no dup, count stable)
   await page.locator('.family-btn', { hasText: 'Grok' }).click();
-  await expect(count).toHaveText('顯示 9/17');
+  await expect(count).toHaveText(`顯示 ${GROK + GPT56}/${TOTAL}`);
 
   // reset → Any
   await page.locator('.chip-action', { hasText: '重設篩選' }).click();
-  await expect(count).toHaveText('顯示 17/17');
+  await expect(count).toHaveText(`顯示 ${TOTAL}/${TOTAL}`);
   expect(await page.locator('.chip-toggle[aria-pressed="true"]').count()).toBe(0);
 });
 
@@ -332,19 +350,19 @@ test('H: faceted counts reflect other-facet constraints; a zero count never dese
     };
   });
   // initial = raw availability (all Any)
-  expect(snap.initialClient['Codex']).toBe(8);
-  expect(snap.initialClient['Grok']).toBe(3);
+  expect(snap.initialClient['Codex']).toBe(clientCount('Codex'));
+  expect(snap.initialClient['Grok']).toBe(clientCount('Grok'));
   // recomputation happens after EACH change: effort counts constrained by client=Cursor (max only)
   expect(snap.effortAfterCursor).not.toEqual(snap.initialEffort);
-  expect(snap.effortAfterCursor['high']).toBe(0);  // was 6 at all-Any; Cursor has no high
-  expect(snap.effortAfterCursor['max']).toBe(1);   // Cursor's single submission is max
+  expect(snap.effortAfterCursor['high']).toBe(clientEffortCount('Cursor', 'high'));  // was 6 at all-Any; Cursor has no high
+  expect(snap.effortAfterCursor['max']).toBe(clientEffortCount('Cursor', 'max'));   // Cursor's single submission is max
   // under effort=high only codex/grok have high submissions; others drop to 0 (independent of client selection)
-  expect(snap.clientUnderHigh['Codex']).toBe(3);
-  expect(snap.clientUnderHigh['Grok']).toBe(3);
-  expect(snap.clientUnderHigh['Cursor']).toBe(0);
+  expect(snap.clientUnderHigh['Codex']).toBe(clientEffortCount('Codex', 'high'));
+  expect(snap.clientUnderHigh['Grok']).toBe(clientEffortCount('Grok', 'high'));
+  expect(snap.clientUnderHigh['Cursor']).toBe(clientEffortCount('Cursor', 'high'));
   // the selected zero-count Cursor is NOT deselected → a legitimate zero result, counter authoritative
   expect(snap.cursorPressed).toBe('true');
-  expect(snap.visible).toBe('顯示 0/17');
+  expect(snap.visible).toBe(`顯示 0/${TOTAL}`);
 });
 
 // ---- I. Active filter summary (WS3): derived removable tags, last→Any, collapse, reset ----
@@ -384,7 +402,7 @@ test('I: active filter summary — removable constraints, × removes one (last�
   expect(r.afterRemoveOne).toEqual(['工具：Codex', '模型：Grok 4.5', '模型：Grok 4.7']);
   expect(r.codexPressed).toBe('false');
   expect(r.afterRemoveLastClient).toEqual(['模型：Grok 4.5', '模型：Grok 4.7']); // client gone (Any), models remain
-  expect(r.countAfterRemove).toBe('顯示 2/17');                // removing Codex changed the visible result (not just the tags)
+  expect(r.countAfterRemove).toBe(`顯示 ${GROK45 + GROK47}/${TOTAL}`);                // removing Codex changed the visible result (not just the tags)
   expect(r.activeAfterRemove).toBe('summary-x');              // focus moved to the next × (not lost to <body>)
 
   // collapse: >=5 model values collapse to a single "模型：N 項" tag, whose × clears the facet
