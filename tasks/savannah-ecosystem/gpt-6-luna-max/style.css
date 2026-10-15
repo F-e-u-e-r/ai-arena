@@ -1,0 +1,171 @@
+* { box-sizing: border-box; }
+
+:root {
+  color-scheme: dark;
+  font-family: ui-rounded, "Avenir Next", Avenir, "Segoe UI", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  --ink: #f5f0dc;
+  --muted: rgba(245, 240, 220, .62);
+  --deck: #263b35;
+  --deck-edge: rgba(255, 240, 196, .13);
+  --gold: #efc66d;
+}
+
+html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #263b35; }
+body { min-width: 280px; }
+.app {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 200px;
+  overflow: hidden;
+  background: #263b35;
+}
+.scene { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; background: #d2aa69; }
+#savannah { display: block; width: 100%; height: 100%; }
+.scene-heading {
+  position: absolute;
+  z-index: 2;
+  top: 10px;
+  left: 13px;
+  right: 14px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  pointer-events: none;
+  color: var(--ink);
+  text-shadow: 0 1px 9px rgba(42, 50, 38, .45);
+}
+.brand-lockup { display: flex; align-items: flex-start; gap: 7px; }
+.brand-mark { color: #f7d47f; font-size: 17px; line-height: 16px; filter: drop-shadow(0 1px 3px #775633); }
+h1 { margin: 0; font-size: 10px; line-height: 13px; font-weight: 800; letter-spacing: .17em; }
+h1 span { color: rgba(255, 246, 220, .77); font-weight: 550; }
+.brand-caption { margin: 1px 0 0; color: rgba(255, 248, 224, .73); font-size: 8px; letter-spacing: .045em; }
+.season-readout {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 20px;
+  margin-top: 1px;
+  padding: 3px 7px;
+  border: 1px solid rgba(255, 246, 221, .35);
+  border-radius: 20px;
+  background: rgba(43, 59, 48, .28);
+  backdrop-filter: blur(5px);
+  color: rgba(255, 248, 224, .92);
+  font-size: 7px;
+  font-weight: 750;
+  letter-spacing: .13em;
+}
+.readout-dot { width: 5px; height: 5px; border-radius: 50%; background: #f1cf7d; box-shadow: 0 0 6px #f1cf7d; }
+.scene-caption {
+  position: absolute;
+  left: 14px;
+  bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+  color: rgba(255, 246, 222, .76);
+  font-size: 7px;
+  font-weight: 750;
+  letter-spacing: .14em;
+  text-shadow: 0 1px 4px rgba(52, 49, 30, .7);
+}
+.caption-line { width: 14px; height: 1px; background: var(--gold); }
+
+.control-deck {
+  position: relative;
+  z-index: 3;
+  flex: 0 0 46px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 8px;
+  border-top: 1px solid var(--deck-edge);
+  background: var(--deck);
+  box-shadow: 0 -8px 24px rgba(32, 45, 37, .16);
+}
+.weather-controls { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 4px; }
+.weather-button, .season-button {
+  appearance: none;
+  color: rgba(244, 241, 221, .7);
+  border: 1px solid transparent;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: background-color .18s ease, color .18s ease, border-color .18s ease, transform .18s ease;
+}
+.weather-button {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 33px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: transparent;
+}
+.weather-button:hover, .season-button:hover { color: #fff7dc; background: rgba(255, 247, 213, .08); }
+.weather-button:active, .season-button:active { transform: translateY(1px); }
+.weather-button.is-active {
+  color: #fff2ca;
+  border-color: rgba(241, 201, 119, .3);
+  background: rgba(231, 187, 100, .15);
+  box-shadow: inset 0 0 0 1px rgba(242, 208, 141, .04);
+}
+.weather-button:focus-visible, .season-button:focus-visible { outline: 2px solid #f1ca75; outline-offset: 1px; }
+.weather-icon { display: inline-flex; align-items: center; justify-content: center; width: 16px; font-size: 16px; line-height: 1; color: #f0cf83; }
+.weather-name { display: none; font-size: 8px; font-weight: 700; letter-spacing: .025em; white-space: nowrap; }
+.season-button {
+  flex: 0 0 69px;
+  height: 33px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0 5px;
+  border-color: rgba(232, 223, 187, .16);
+  border-radius: 9px;
+  background: rgba(15, 31, 28, .18);
+  color: #e9d99f;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .1em;
+}
+.season-icon { font-size: 12px; color: #b9ca8c; }
+.switch-glyph { margin-left: 1px; color: rgba(239, 230, 197, .52); font-size: 11px; }
+
+@media (min-width: 560px) {
+  .control-deck { flex-basis: 54px; gap: 10px; padding: 7px 12px; }
+  .weather-controls { gap: 6px; }
+  .weather-button { height: 38px; }
+  .weather-name { display: block; font-size: 9px; }
+  .season-button { flex-basis: 86px; height: 38px; font-size: 9px; }
+  .scene-heading { top: 15px; left: 20px; right: 20px; }
+  h1 { font-size: 12px; line-height: 15px; }
+  .brand-caption { font-size: 9px; }
+  .scene-caption { left: 20px; bottom: 16px; font-size: 8px; }
+}
+@media (max-width: 380px) {
+  .control-deck { gap: 5px; padding-left: 6px; padding-right: 6px; }
+  .weather-controls { gap: 2px; }
+  .weather-button { height: 32px; border-radius: 8px; padding: 0 1px; }
+  .weather-icon { width: 15px; font-size: 15px; }
+  .season-button { flex-basis: 64px; gap: 3px; height: 32px; padding: 0 3px; }
+  .switch-glyph { display: none; }
+  .brand-caption { display: none; }
+  .scene-heading { top: 8px; left: 10px; right: 10px; }
+  .scene-caption { bottom: 7px; left: 10px; font-size: 6px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .weather-button, .season-button { transition: none; }
+}

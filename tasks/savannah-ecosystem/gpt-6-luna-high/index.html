@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#192b25">
+  <title>Wildlight — Savannah Ecosystem</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="experience" aria-label="Interactive African savannah ecosystem">
+    <section class="scene" aria-label="Animated savannah">
+      <canvas id="savannah" aria-label="A living savannah with lions, elephants, leopards and changing weather"></canvas>
+      <div class="brand"><span class="brand-mark">✳</span><span>WILDLIGHT <small> SAVANNAH FIELD NOTES</small></span></div>
+      <div class="conditions" aria-live="polite"><span id="weatherLabel">SUNNY</span><i></i><span id="seasonLabel">DRY SEASON</span></div>
+      <div class="scene-caption"><span class="caption-dot"></span><span id="moodLabel">Herd on the move</span></div>
+      <div class="quiet-hud"><span id="animalCount">06</span> WILDLIFE <b>·</b> <span id="particleCount">000</span> DRIFTS</div>
+    </section>
+    <footer class="toolbar">
+      <div class="weather-controls" role="group" aria-label="Choose weather">
+        <button class="weather-button active" data-weather="sunny" aria-label="Sunny weather" title="Sunny (1)"><span>☼</span><em>Sunny</em></button>
+        <button class="weather-button" data-weather="rain" aria-label="Rain" title="Rain (2)"><span>⌁</span><em>Rain</em></button>
+        <button class="weather-button" data-weather="heavyRain" aria-label="Heavy rain" title="Heavy rain (3)"><span>☔</span><em>Heavy</em></button>
+        <button class="weather-button" data-weather="snow" aria-label="Snow" title="Snow (4)"><span>❄</span><em>Snow</em></button>
+        <button class="weather-button" data-weather="thunderstorm" aria-label="Thunderstorm" title="Thunderstorm (5)"><span>ϟ</span><em>Storm</em></button>
+        <button class="weather-button" data-weather="tornado" aria-label="Tornado" title="Tornado (6)"><span>◌</span><em>Tornado</em></button>
+      </div>
+      <button id="seasonButton" class="season-button" aria-label="Switch season">
+        <span class="season-icon">◒</span><span class="season-copy"><b id="seasonButtonTitle">DRY SEASON</b><small id="seasonTimer">AUTO · 60s</small></span><span class="season-swap">↗</span>
+      </button>
+      <div class="keyboard-note" aria-hidden="true">1—6 WEATHER　 S SEASON</div>
+    </footer>
+  </main>
+  <script src="main.js"></script>
+</body>
+</html>

@@ -332,6 +332,48 @@
         "path": "tasks/savannah-ecosystem/gpt-5.6-sol-max/"
       },
       {
+        "provider": "openai",
+        "model": "GPT-6 Luna",
+        "modelId": "gpt-6-luna",
+        "effort": "high",
+        "client": "codex",
+        "skills": "Nil",
+        "subagents": "Nil",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-10-14T00:24:01.586Z",
+        "metrics": {
+          "durationMs": 167003,
+          "inputTokens": 39427,
+          "outputTokens": 24303,
+          "cachedInputTokens": 254720,
+          "totalTokens": 318450
+        },
+        "id": "gpt-6-luna-high",
+        "costUsd": 0.018641,
+        "path": "tasks/savannah-ecosystem/gpt-6-luna-high/"
+      },
+      {
+        "provider": "openai",
+        "model": "GPT-6 Luna",
+        "modelId": "gpt-6-luna",
+        "effort": "max",
+        "client": "codex",
+        "skills": "Nil",
+        "subagents": "Nil",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-10-14T00:51:42.341Z",
+        "metrics": {
+          "durationMs": 371108,
+          "inputTokens": 65804,
+          "outputTokens": 42880,
+          "cachedInputTokens": 782080,
+          "totalTokens": 890764
+        },
+        "id": "gpt-6-luna-max",
+        "costUsd": 0.035841,
+        "path": "tasks/savannah-ecosystem/gpt-6-luna-max/"
+      },
+      {
         "provider": "xai",
         "model": "Grok 4.5",
         "modelId": "grok-4.5",
@@ -613,6 +655,48 @@
         "path": "tasks/tokyo-island/gpt-5.6-sol-max/"
       },
       {
+        "provider": "openai",
+        "model": "GPT-6 Luna",
+        "modelId": "gpt-6-luna",
+        "effort": "high",
+        "client": "codex",
+        "skills": "Nil",
+        "subagents": "Nil",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-10-14T00:57:15.264Z",
+        "metrics": {
+          "durationMs": 92535,
+          "inputTokens": 18833,
+          "outputTokens": 11035,
+          "cachedInputTokens": 91904,
+          "totalTokens": 121772
+        },
+        "id": "gpt-6-luna-high",
+        "costUsd": 0.00832,
+        "path": "tasks/tokyo-island/gpt-6-luna-high/"
+      },
+      {
+        "provider": "openai",
+        "model": "GPT-6 Luna",
+        "modelId": "gpt-6-luna",
+        "effort": "max",
+        "client": "codex",
+        "skills": "Nil",
+        "subagents": "Nil",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-10-14T00:55:42.679Z",
+        "metrics": {
+          "durationMs": 240281,
+          "inputTokens": 50137,
+          "outputTokens": 28609,
+          "cachedInputTokens": 68864,
+          "totalTokens": 147610
+        },
+        "id": "gpt-6-luna-max",
+        "costUsd": 0.020007,
+        "path": "tasks/tokyo-island/gpt-6-luna-max/"
+      },
+      {
         "provider": "xai",
         "model": "Grok 4.5",
         "modelId": "grok-4.5",
@@ -829,6 +913,48 @@
         "runtime": "webgl",
         "id": "gpt-5.6-sol-max",
         "path": "tasks/london-island/gpt-5.6-sol-max/"
+      },
+      {
+        "provider": "openai",
+        "model": "GPT-6 Luna",
+        "modelId": "gpt-6-luna",
+        "effort": "high",
+        "client": "codex",
+        "skills": "Nil",
+        "subagents": "Nil",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-10-14T01:04:06.840Z",
+        "metrics": {
+          "durationMs": 101926,
+          "inputTokens": 18158,
+          "outputTokens": 10728,
+          "cachedInputTokens": 117248,
+          "totalTokens": 146134
+        },
+        "id": "gpt-6-luna-high",
+        "costUsd": 0.008352,
+        "path": "tasks/london-island/gpt-6-luna-high/"
+      },
+      {
+        "provider": "openai",
+        "model": "GPT-6 Luna",
+        "modelId": "gpt-6-luna",
+        "effort": "max",
+        "client": "codex",
+        "skills": "Nil",
+        "subagents": "Nil",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-10-14T01:02:24.848Z",
+        "metrics": {
+          "durationMs": 309519,
+          "inputTokens": 56744,
+          "outputTokens": 36750,
+          "cachedInputTokens": 200192,
+          "totalTokens": 293686
+        },
+        "id": "gpt-6-luna-max",
+        "costUsd": 0.026051,
+        "path": "tasks/london-island/gpt-6-luna-max/"
       },
       {
         "provider": "xai",

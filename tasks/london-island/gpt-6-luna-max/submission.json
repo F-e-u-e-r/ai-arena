@@ -1,0 +1,19 @@
+{
+  "$schema": "../../../schema/submission.schema.json",
+  "provider": "openai",
+  "model": "GPT-6 Luna",
+  "modelId": "gpt-6-luna",
+  "effort": "max",
+  "client": "codex",
+  "skills": "Nil",
+  "subagents": "Nil",
+  "author": "F-e-u-e-r",
+  "generatedAt": "2026-10-14T01:02:24.848Z",
+  "metrics": {
+    "durationMs": 309519,
+    "inputTokens": 56744,
+    "outputTokens": 36750,
+    "cachedInputTokens": 200192,
+    "totalTokens": 293686
+  }
+}

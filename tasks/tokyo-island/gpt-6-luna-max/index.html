@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#17264d" />
+    <meta name="description" content="A tiny floating Tokyo island, wandering through a 15 second day." />
+    <title>Tokyo Sky Island</title>
+    <link rel="stylesheet" href="./style.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+        }
+      }
+    </script>
+    <script type="module" src="./main.js"></script>
+  </head>
+  <body>
+    <main class="experience" aria-label="Interactive Tokyo floating island scene">
+      <div id="stage" class="stage" aria-label="3D scene. Drag horizontally to orbit the island."></div>
+
+      <header class="hud-top">
+        <div class="brand" aria-label="Tokyo Sky Island">
+          <span class="brand-mark" aria-hidden="true"><i></i><b></b><em></em></span>
+          <span class="brand-copy">
+            <strong>TOKYO</strong>
+            <small>SKY ISLAND · 01</small>
+          </span>
+        </div>
+
+        <button id="cycleButton" class="cycle-button" type="button" aria-label="Pause day and night cycle">
+          <span class="cycle-orb" aria-hidden="true"></span>
+          <span class="cycle-copy">
+            <strong id="phaseLabel">DAYLIGHT</strong>
+            <small id="cycleClock">15 SEC LOOP</small>
+          </span>
+          <span id="pauseGlyph" class="pause-glyph" aria-hidden="true">Ⅱ</span>
+        </button>
+      </header>
+
+      <div class="sky-caption" aria-hidden="true">
+        <span class="caption-rule"></span>
+        <span>A LITTLE WORLD ABOVE THE CLOUDS</span>
+      </div>
+
+      <footer class="hud-bottom">
+        <div class="leaf-counter" aria-label="108 animated maple leaves">
+          <span class="leaf-dot" aria-hidden="true">✦</span>
+          <span><b>108</b><small> MAPLE LEAVES</small></span>
+        </div>
+
+        <div class="orbit-control" aria-label="Camera orbit controls">
+          <button id="orbitLeft" type="button" aria-label="Rotate view left" title="Rotate left">↶</button>
+          <span>DRAG TO ORBIT</span>
+          <button id="orbitRight" type="button" aria-label="Rotate view right" title="Rotate right">↷</button>
+        </div>
+      </footer>
+      <div class="grain" aria-hidden="true"></div>
+    </main>
+  </body>
+</html>

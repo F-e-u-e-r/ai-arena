@@ -1,0 +1,212 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+  color-scheme: light;
+  font-family: 'DM Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --ink: #25465a;
+  --glass: rgba(255, 255, 255, 0.74);
+  --glass-border: rgba(255, 255, 255, 0.78);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  overflow: hidden;
+  background: #9bd9e5;
+}
+
+body { overscroll-behavior: none; }
+
+#app {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  isolation: isolate;
+  background: linear-gradient(180deg, #bde9eb 0%, #f4d7ad 100%);
+}
+
+#scene {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  touch-action: none;
+  cursor: grab;
+}
+
+#scene:active { cursor: grabbing; }
+#scene canvas { display: block; width: 100%; height: 100%; outline: 0; }
+
+.topbar {
+  position: absolute;
+  z-index: 2;
+  inset: max(12px, env(safe-area-inset-top)) 14px auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.brand, .controls, .scene-status, .orbit-hint {
+  border: 1px solid var(--glass-border);
+  background: var(--glass);
+  box-shadow: 0 8px 26px rgba(50, 83, 98, 0.10), inset 0 1px 0 rgba(255,255,255,.55);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 7px 12px 7px 8px;
+  border-radius: 14px;
+  color: var(--ink);
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  flex: 0 0 26px;
+  width: 26px;
+  height: 26px;
+  border-radius: 9px;
+  color: #fff9e7;
+  background: linear-gradient(145deg, #f6ae61, #ef846b);
+  font-size: 15px;
+  box-shadow: 0 3px 8px rgba(213, 113, 72, .25);
+}
+
+.brand-copy { display: grid; gap: 1px; line-height: 1; }
+.brand-copy strong { font-size: 10px; letter-spacing: .13em; font-weight: 800; white-space: nowrap; }
+.brand-copy small { color: #72909a; font-family: 'DM Mono', monospace; font-size: 7px; letter-spacing: .08em; white-space: nowrap; }
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 14px;
+  pointer-events: auto;
+}
+
+.controls button {
+  display: grid;
+  place-items: center;
+  width: 31px;
+  height: 31px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  color: #426274;
+  background: transparent;
+  font: inherit;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform .18s ease, background .18s ease, box-shadow .18s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.controls button:hover { transform: translateY(-1px); background: rgba(255,255,255,.85); }
+.controls button:active { transform: scale(.92); }
+.controls button:focus-visible { outline: 2px solid #417d94; outline-offset: 2px; }
+.controls .season-button[aria-pressed="true"] { background: #fff; box-shadow: 0 2px 8px rgba(46, 81, 96, .13), inset 0 0 0 1px rgba(72, 121, 139, .12); }
+.controls .day-button { font-size: 19px; background: rgba(233, 244, 245, .72); }
+.control-divider { width: 1px; height: 18px; margin: 0 2px; background: rgba(82, 117, 132, .2); }
+
+.scene-status {
+  position: absolute;
+  z-index: 2;
+  left: 14px;
+  bottom: max(14px, env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 11px;
+  border-radius: 999px;
+  color: #426274;
+  font-family: 'DM Mono', monospace;
+  font-size: 8px;
+  letter-spacing: .1em;
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.status-dot { width: 6px; height: 6px; border-radius: 50%; background: #70b787; box-shadow: 0 0 0 3px rgba(112,183,135,.15); }
+.status-separator { opacity: .42; }
+
+.orbit-hint {
+  position: absolute;
+  z-index: 2;
+  right: 14px;
+  bottom: max(14px, env(safe-area-inset-bottom));
+  padding: 8px 11px;
+  border-radius: 999px;
+  color: #547483;
+  font-family: 'DM Mono', monospace;
+  font-size: 8px;
+  letter-spacing: .08em;
+  line-height: 1;
+  pointer-events: none;
+  transition: opacity .6s ease, transform .6s ease;
+}
+
+.orbit-hint span { margin-right: 5px; color: #d78e66; font-size: 12px; vertical-align: -1px; }
+.orbit-hint.is-hidden { opacity: 0; transform: translateY(5px); }
+
+.loading {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  color: #456d7d;
+  background: linear-gradient(155deg, #c5eceb, #f4d7b6);
+  font-size: 12px;
+  letter-spacing: .04em;
+  transition: opacity .7s ease, visibility .7s ease;
+}
+
+.loading.is-gone { opacity: 0; visibility: hidden; }
+.loading-mark { color: #f1a45d; animation: twinkle 1.4s ease-in-out infinite; }
+.error-message { position: absolute; z-index: 5; inset: auto 12px 52px; padding: 10px; border-radius: 10px; color: #663c35; background: #fff5ed; font-size: 12px; text-align: center; }
+
+@keyframes twinkle { 50% { transform: scale(.72) rotate(18deg); opacity: .55; } }
+
+@media (max-width: 480px) {
+  .topbar { inset-inline: 9px; gap: 6px; }
+  .brand { gap: 6px; padding: 6px 8px 6px 6px; border-radius: 12px; }
+  .brand-mark { width: 23px; height: 23px; flex-basis: 23px; border-radius: 8px; font-size: 13px; }
+  .brand-copy strong { font-size: 8px; letter-spacing: .11em; }
+  .brand-copy small { display: none; }
+  .controls { gap: 2px; padding: 3px; border-radius: 12px; }
+  .controls button { width: 27px; height: 29px; border-radius: 8px; font-size: 14px; }
+  .controls .day-button { font-size: 17px; }
+  .control-divider { height: 16px; margin-inline: 1px; }
+  .scene-status { left: 9px; bottom: max(9px, env(safe-area-inset-bottom)); gap: 5px; padding: 7px 8px; font-size: 7px; }
+  .orbit-hint { right: 9px; bottom: max(9px, env(safe-area-inset-bottom)); padding: 7px 8px; font-size: 7px; }
+}
+
+@media (max-width: 340px) {
+  .topbar { inset-inline: 7px; gap: 4px; }
+  .brand { padding-inline: 5px 6px; }
+  .brand-copy strong { font-size: 7px; letter-spacing: .08em; }
+  .controls { gap: 1px; padding: 3px; }
+  .controls button { width: 25px; }
+  .scene-status { left: 7px; }
+  .orbit-hint { right: 7px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
