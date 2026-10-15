@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#eee9d9">
+  <meta name="description" content="A living, interactive African savannah in Canvas 2D.">
+  <title>Wildlands — The Living Savannah</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="main.js" defer></script>
+</head>
+<body>
+  <main class="app-shell">
+    <header class="site-header">
+      <div class="brand" aria-label="Wildlands, the living savannah">
+        <span class="brand-mark" aria-hidden="true"><span></span></span>
+        <span class="brand-type"><strong>WILDLANDS</strong><small>THE LIVING SAVANNAH</small></span>
+      </div>
+      <div class="header-center">AN INTERACTIVE FIELD STUDY <span class="header-line"></span> 01 / AFRICAN PLAINS</div>
+      <div class="header-live"><span class="live-dot"></span> LIVE ECOSYSTEM</div>
+    </header>
+
+    <section class="scene" aria-label="Animated African savannah ecosystem">
+      <canvas id="savannah" role="img" aria-label="Animated savannah with lions, elephants, leopards, landscape, and changing weather">Your browser needs Canvas 2D to show the savannah.</canvas>
+      <div class="scene-top-left" aria-hidden="true">
+        <div class="eyebrow"><span class="eyebrow-line"></span> FIELD OBSERVATION · 001</div>
+        <h1>Life on the <em>plains.</em></h1>
+        <p>Where the wild moves with the weather.</p>
+      </div>
+      <div class="scene-top-right" aria-live="polite">
+        <span class="scene-indicator"></span>
+        <span id="sceneCondition">GOLDEN HOUR</span>
+      </div>
+      <div class="scene-bottom-left" aria-hidden="true">
+        <span class="coordinate">02° 15′ S&nbsp; / &nbsp;34° 49′ E</span>
+        <span class="scene-divider"></span>
+        <span id="sceneStory">The plains are waking</span>
+      </div>
+      <div class="scene-bottom-right" aria-label="Animation statistics">
+        <span>FPS <b id="fpsValue">60</b></span>
+        <span>PARTICLES <b id="particleValue">0</b></span>
+      </div>
+    </section>
+
+    <section class="controls" aria-label="Ecosystem controls">
+      <div class="controls-heading">
+        <div><span class="section-kicker">01 — THE ELEMENTS</span><h2>Change the atmosphere</h2></div>
+        <p>Watch the wildlife respond in real time.</p>
+      </div>
+      <div class="controls-main">
+        <div class="weather-options" role="group" aria-label="Weather, choose one">
+          <button class="weather-button is-active" type="button" data-weather="sunny" aria-label="Sunny" aria-pressed="true" title="Sunny (1)">
+            <svg viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="5"/><path d="M14 2v3m0 18v3M2 14h3m18 0h3M5.5 5.5l2.2 2.2m12.6 12.6 2.2 2.2m0-17-2.2 2.2M7.7 20.3l-2.2 2.2"/></svg><span>Sunny</span><small>01</small>
+          </button>
+          <button class="weather-button" type="button" data-weather="rain" aria-label="Rain" aria-pressed="false" title="Rain (2)">
+            <svg viewBox="0 0 28 28" aria-hidden="true"><path d="M7 17a5 5 0 0 1 1-9.9A7 7 0 0 1 21 10a4 4 0 0 1 0 8H7"/><path d="m9 21-1 3m6-3-1 3m6-3-1 3"/></svg><span>Rain</span><small>02</small>
+          </button>
+          <button class="weather-button" type="button" data-weather="heavy" aria-label="Heavy Rain" aria-pressed="false" title="Heavy rain (3)">
+            <svg viewBox="0 0 28 28" aria-hidden="true"><path d="M7 15a5 5 0 0 1 1-9.9A7 7 0 0 1 21 8a4 4 0 0 1 0 8H7"/><path d="m8 19-2 5m7-5-2 5m7-5-2 5m6-5-2 5"/></svg><span>Heavy rain</span><small>03</small>
+          </button>
+          <button class="weather-button" type="button" data-weather="snow" aria-label="Snow" aria-pressed="false" title="Snow — rare in the dry season (4)">
+            <svg viewBox="0 0 28 28" aria-hidden="true"><path d="M14 2v24M3.6 8l20.8 12M3.6 20 24.4 8M11 5l3 3 3-3m-6 18 3-3 3 3M5 12l4 1-1-4m15 7-4-1 1 4M8 19l1-4-4 1m15-7-1 4 4-1"/></svg><span>Snow</span><small>04</small>
+          </button>
+          <button class="weather-button" type="button" data-weather="thunder" aria-label="Thunderstorm" aria-pressed="false" title="Thunderstorm (5)">
+            <svg viewBox="0 0 28 28" aria-hidden="true"><path d="M7 15a5 5 0 0 1 1-9.9A7 7 0 0 1 21 8a4 4 0 0 1 0 8H7"/><path d="m15 17-4 5h3l-2 5 7-8h-4l2-2"/></svg><span>Thunder</span><small>05</small>
+          </button>
+          <button class="weather-button" type="button" data-weather="tornado" aria-label="Tornado" aria-pressed="false" title="Tornado (6)">
+            <svg viewBox="0 0 28 28" aria-hidden="true"><path d="M2 5c8 3 16 3 24 0M5 10c6 2 12 2 18 0M8 15c4 2 8 2 12 0m-9 5c2 1 4 1 6 0m-4 5h2"/></svg><span>Tornado</span><small>06</small>
+          </button>
+        </div>
+        <button id="seasonButton" class="season-button" type="button" aria-label="Switch to wet season" title="Switch season (S)">
+          <span class="season-symbol" id="seasonIcon" aria-hidden="true">☀</span>
+          <span class="season-copy"><small>SEASON <span id="seasonCountdown">01:00</span></small><strong id="seasonLabel">Dry season</strong></span>
+          <span class="season-arrow" aria-hidden="true">↗</span>
+        </button>
+      </div>
+    </section>
+  </main>
+  <div class="sr-only" id="announcement" role="status" aria-live="polite"></div>
+</body>
+</html>

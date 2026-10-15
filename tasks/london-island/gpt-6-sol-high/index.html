@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#b5dcec">
+  <title>London, Afloat — Four Seasons</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app" aria-label="Animated floating London island">
+    <div id="scene" aria-hidden="true"></div>
+    <div class="grain" aria-hidden="true"></div>
+
+    <header class="masthead">
+      <div class="brand-mark" aria-hidden="true"><span>✦</span></div>
+      <div class="brand-copy"><strong>LONDON, AFLOAT</strong><span>A tiny city in the sky</span></div>
+    </header>
+
+    <div class="top-status"><span class="live-dot"></span><span>LIVE LITTLE WORLD</span></div>
+
+    <section class="story" aria-label="Scene introduction">
+      <div class="eyebrow"><span class="eyebrow-line"></span> A CITY ABOVE THE CLOUDS</div>
+      <h1>London in<br><em>every season.</em></h1>
+      <p>Watch the light wander, the weather turn, and a little London come alive.</p>
+      <div class="drag-hint"><span class="drag-icon">↔</span> Drag to explore</div>
+    </section>
+
+    <div class="scene-caption" aria-hidden="true"><span class="caption-line"></span><span>51°30′ N &nbsp; 0°07′ W<br>ABOVE THE EVERYDAY</span></div>
+
+    <div class="bottom-ui">
+      <div class="weather-card" aria-live="polite">
+        <span class="weather-glyph" id="weather-glyph">✿</span>
+        <span class="weather-copy"><strong id="season-name">Spring</strong><small id="weather-description">Misty morning</small></span>
+        <span class="weather-divider"></span>
+        <span class="weather-copy time-copy"><strong id="time-name">Daylight</strong><small>15s day &amp; night</small></span>
+      </div>
+      <nav class="control-dock" aria-label="Scene controls">
+        <button class="season-button active" data-season="0" type="button" aria-label="Spring" aria-pressed="true"><span class="button-icon">✿</span><span class="button-label">Spring</span></button>
+        <button class="season-button" data-season="1" type="button" aria-label="Summer" aria-pressed="false"><span class="button-icon">☀</span><span class="button-label">Summer</span></button>
+        <button class="season-button" data-season="2" type="button" aria-label="Autumn" aria-pressed="false"><span class="button-icon">❧</span><span class="button-label">Autumn</span></button>
+        <button class="season-button" data-season="3" type="button" aria-label="Winter" aria-pressed="false"><span class="button-icon">❄</span><span class="button-label">Winter</span></button>
+        <span class="dock-separator" aria-hidden="true"></span>
+        <button id="time-toggle" class="utility-button" type="button" aria-label="Jump to night" title="Jump between day and night"><span id="time-icon">☾</span></button>
+        <button id="auto-toggle" class="utility-button" type="button" aria-label="Pause automatic seasons" title="Pause or resume seasons"><span id="auto-icon">Ⅱ</span></button>
+      </nav>
+    </div>
+
+    <div class="loading" id="loading" role="status">Painting the sky…</div>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>

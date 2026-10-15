@@ -416,6 +416,48 @@
         "path": "tasks/savannah-ecosystem/gpt-6-luna-max/"
       },
       {
+        "provider": "openai",
+        "model": "GPT-6 Sol",
+        "modelId": "gpt-6-sol",
+        "effort": "high",
+        "client": "codex",
+        "skills": "Nil",
+        "subagents": "Nil",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-10-14T16:15:50.233Z",
+        "metrics": {
+          "durationMs": 691746,
+          "inputTokens": 47239,
+          "outputTokens": 35104,
+          "cachedInputTokens": 788608,
+          "totalTokens": 870951
+        },
+        "id": "gpt-6-sol-high",
+        "costUsd": 0.60324,
+        "path": "tasks/savannah-ecosystem/gpt-6-sol-high/"
+      },
+      {
+        "provider": "openai",
+        "model": "GPT-6 Sol",
+        "modelId": "gpt-6-sol",
+        "effort": "max",
+        "client": "codex",
+        "skills": "Nil",
+        "subagents": "Nil",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-10-14T16:04:18.437Z",
+        "metrics": {
+          "durationMs": 1147918,
+          "inputTokens": 108966,
+          "outputTokens": 60927,
+          "cachedInputTokens": 3992832,
+          "totalTokens": 4162725
+        },
+        "id": "gpt-6-sol-max",
+        "costUsd": 1.625768,
+        "path": "tasks/savannah-ecosystem/gpt-6-sol-max/"
+      },
+      {
         "provider": "xai",
         "model": "Grok 4.5",
         "modelId": "grok-4.5",
@@ -781,6 +823,48 @@
         "path": "tasks/tokyo-island/gpt-6-luna-max/"
       },
       {
+        "provider": "openai",
+        "model": "GPT-6 Sol",
+        "modelId": "gpt-6-sol",
+        "effort": "high",
+        "client": "codex",
+        "skills": "Nil",
+        "subagents": "Nil",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-10-14T16:34:43.848Z",
+        "metrics": {
+          "durationMs": 336937,
+          "inputTokens": 29796,
+          "outputTokens": 21042,
+          "cachedInputTokens": 283904,
+          "totalTokens": 334742
+        },
+        "id": "gpt-6-sol-high",
+        "costUsd": 0.326793,
+        "path": "tasks/tokyo-island/gpt-6-sol-high/"
+      },
+      {
+        "provider": "openai",
+        "model": "GPT-6 Sol",
+        "modelId": "gpt-6-sol",
+        "effort": "max",
+        "client": "codex",
+        "skills": "Nil",
+        "subagents": "Nil",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-10-14T16:29:06.845Z",
+        "metrics": {
+          "durationMs": 796502,
+          "inputTokens": 63903,
+          "outputTokens": 45066,
+          "cachedInputTokens": 1228800,
+          "totalTokens": 1337769
+        },
+        "id": "gpt-6-sol-max",
+        "costUsd": 0.824226,
+        "path": "tasks/tokyo-island/gpt-6-sol-max/"
+      },
+      {
         "provider": "xai",
         "model": "Grok 4.5",
         "modelId": "grok-4.5",
@@ -1081,6 +1165,48 @@
         "id": "gpt-6-luna-max",
         "costUsd": 0.026051,
         "path": "tasks/london-island/gpt-6-luna-max/"
+      },
+      {
+        "provider": "openai",
+        "model": "GPT-6 Sol",
+        "modelId": "gpt-6-sol",
+        "effort": "high",
+        "client": "codex",
+        "skills": "Nil",
+        "subagents": "Nil",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-10-14T17:04:32.225Z",
+        "metrics": {
+          "durationMs": 1006953,
+          "inputTokens": 88828,
+          "outputTokens": 43608,
+          "cachedInputTokens": 4670976,
+          "totalTokens": 4803412
+        },
+        "id": "gpt-6-sol-high",
+        "costUsd": 1.547931,
+        "path": "tasks/london-island/gpt-6-sol-high/"
+      },
+      {
+        "provider": "openai",
+        "model": "GPT-6 Sol",
+        "modelId": "gpt-6-sol",
+        "effort": "max",
+        "client": "codex",
+        "skills": "Nil",
+        "subagents": "Nil",
+        "author": "F-e-u-e-r",
+        "generatedAt": "2026-10-14T16:47:45.171Z",
+        "metrics": {
+          "durationMs": 781259,
+          "inputTokens": 63640,
+          "outputTokens": 52610,
+          "cachedInputTokens": 1089792,
+          "totalTokens": 1206042
+        },
+        "id": "gpt-6-sol-max",
+        "costUsd": 0.871338,
+        "path": "tasks/london-island/gpt-6-sol-max/"
       },
       {
         "provider": "xai",

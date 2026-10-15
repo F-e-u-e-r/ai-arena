@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1a2b29">
+  <meta name="description" content="A living, animated African savannah ecosystem.">
+  <title>Living Savannah — An Ecosystem in Motion</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app" aria-label="Living Savannah interactive ecosystem">
+    <header class="topbar">
+      <div class="identity">
+        <span class="identity-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+        <div class="identity-copy">
+          <span class="eyebrow">FIELD STUDY / 001</span>
+          <h1>Living Savannah<span class="title-dot">.</span></h1>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <span class="live-indicator"><span></span> LIVE ECOSYSTEM</span>
+        <button class="season-control" id="seasonToggle" type="button" aria-label="Switch season" title="Switch season (S)">
+          <span class="season-orb" aria-hidden="true"></span>
+          <span class="season-copy"><strong id="seasonName">DRY SEASON</strong><small id="seasonTimer">NEXT SHIFT · 1:00</small></span>
+          <span class="season-chevron" aria-hidden="true">↔</span>
+        </button>
+      </div>
+    </header>
+
+    <section class="scene" aria-label="Animated African savannah with lions, elephants and leopards">
+      <canvas id="savannahCanvas" aria-label="African savannah animation"></canvas>
+      <div class="scene-vignette" aria-hidden="true"></div>
+      <div class="scene-heading" aria-live="polite">
+        <span class="scene-index">01 / THE OPEN PLAINS</span>
+        <h2 id="weatherTitle">Under a golden sky</h2>
+        <p id="weatherDescription">A quiet hour on the savannah.</p>
+      </div>
+      <div class="scene-corner scene-corner-top" aria-hidden="true">SERENGETI <span>02°20′S 34°50′E</span></div>
+      <div class="scene-bottomline" aria-hidden="true">
+        <span><i></i> AN ECOSYSTEM IN MOTION</span>
+        <span class="species-list">02 ELEPHANTS <b>·</b> 02 LIONS <b>·</b> 02 LEOPARDS</span>
+      </div>
+      <div class="debug" id="debugPanel" hidden></div>
+    </section>
+
+    <footer class="control-deck">
+      <div class="control-intro">
+        <span class="control-kicker">CHANGE THE ATMOSPHERE</span>
+        <span class="control-hint">Watch the wildlife adapt</span>
+      </div>
+      <div class="weather-controls" role="group" aria-label="Weather">
+        <button class="weather-button active" data-weather="sunny" type="button" aria-pressed="true" title="Sunny (1)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 1.8v2.3M12 19.9v2.3M1.8 12h2.3M19.9 12h2.3M4.8 4.8l1.7 1.7m11 11 1.7 1.7M19.2 4.8l-1.7 1.7m-11 11-1.7 1.7"/></svg>
+          <span>Sunny</span>
+        </button>
+        <button class="weather-button" data-weather="rain" type="button" aria-pressed="false" title="Rain (2)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 16.2a4.5 4.5 0 0 1 .6-8.9 6.5 6.5 0 0 1 12.2 1.6 3.7 3.7 0 0 1 .1 7.3H5.5Z"/><path d="m8 18.5-1 2.3m5-2.3-1 2.3m5-2.3-1 2.3"/></svg>
+          <span>Rain</span>
+        </button>
+        <button class="weather-button" data-weather="heavy" type="button" aria-pressed="false" title="Heavy Rain (3)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 14.7a4.3 4.3 0 0 1 .6-8.5 6.5 6.5 0 0 1 12.2 1.6 3.5 3.5 0 0 1 .1 6.9H5.5Z"/><path d="m6 17-1.5 4m5-4-1.5 4m5-4-1.5 4m5-4-1.5 4"/></svg>
+          <span>Heavy rain</span>
+        </button>
+        <button class="weather-button" data-weather="snow" type="button" aria-pressed="false" title="Snow (4)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v20M3.3 7l17.4 10M20.7 7 3.3 17M9.5 4.5 12 7l2.5-2.5M9.5 19.5 12 17l2.5 2.5M4.2 10.4l3.4-.9-.9-3.4m13.1 7.5-3.4.9.9 3.4M6.7 17.9l.9-3.4-3.4-.9m13.1-7.5-.9 3.4 3.4.9"/></svg>
+          <span>Snow</span>
+        </button>
+        <button class="weather-button" data-weather="thunder" type="button" aria-pressed="false" title="Thunderstorm (5)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 13.4a4.1 4.1 0 0 1 1.1-8 6.3 6.3 0 0 1 11.8 1.5 3.5 3.5 0 0 1 .6 6.5H15"/><path d="m12.5 12.3-4 5.1h3.3l-1.1 4.3 5-6.2h-3.4l.2-3.2Z"/></svg>
+          <span>Thunder</span>
+        </button>
+        <button class="weather-button" data-weather="tornado" type="button" aria-pressed="false" title="Tornado (6)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5h20M4 9h16M6 13h12M8 17h8M10 21h4"/></svg>
+          <span>Tornado</span>
+        </button>
+      </div>
+      <div class="shortcut-hint">1–6 WEATHER <span>·</span> S SEASON <span>·</span> D STATS</div>
+    </footer>
+  </main>
+  <script src="main.js" defer></script>
+</body>
+</html>

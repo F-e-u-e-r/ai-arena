@@ -1,0 +1,60 @@
+:root{font-family:"Avenir Next","Segoe UI",Arial,sans-serif;color:#f2ecd9;background:#192a28;font-synthesis:none;--ink:#182a28;--cream:#f4efdf;--gold:#d7a75d}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{overflow:hidden}
+button{font:inherit}
+button:focus-visible{outline:2px solid #ffe2a2;outline-offset:3px}
+.app{display:flex;flex-direction:column;height:100vh;height:100dvh;min-height:200px;overflow:hidden;background:#162724}
+.topbar{z-index:3;display:flex;align-items:center;justify-content:space-between;gap:16px;flex:0 0 78px;padding:0 clamp(20px,3vw,54px);background:#1c302d;border-bottom:1px solid #ffffff14}
+.identity,.topbar-right,.season-control,.weather-controls,.weather-button{display:flex;align-items:center}
+.identity{gap:15px;min-width:0}
+.identity-mark{position:relative;display:block;width:30px;height:33px;flex:none;border:1px solid #d6ad67;border-radius:50%;overflow:hidden}
+.identity-mark:before{content:"";position:absolute;left:4px;top:5px;width:20px;height:20px;border-radius:50%;background:#e4b66d}
+.identity-mark span{position:absolute;bottom:0;left:-5px;width:38px;height:9px;background:#304538;border-radius:50% 50% 0 0;transform:rotate(-9deg)}
+.identity-mark span:nth-child(2){left:5px;bottom:-2px;background:#5f6b44;transform:rotate(12deg)}
+.identity-mark span:nth-child(3){left:18px;bottom:1px;width:2px;height:19px;background:#233a30;transform:rotate(-17deg);border-radius:2px}
+.identity-copy{min-width:0}
+.eyebrow,.control-kicker,.scene-index,.scene-corner,.scene-bottomline,.live-indicator,.shortcut-hint,.season-copy small{font-family:"Avenir Next","Segoe UI",Arial,sans-serif;font-size:9px;font-weight:700;letter-spacing:.18em}
+.eyebrow{color:#c2ac7f}
+h1{font-size:23px;line-height:1;margin:5px 0 0;font-weight:700;letter-spacing:-.055em;white-space:nowrap}
+.title-dot{color:#dfa95d}
+.topbar-right{gap:30px}
+.live-indicator{color:#c6cbb5;white-space:nowrap}
+.live-indicator span,.scene-bottomline i{display:inline-block;width:6px;height:6px;background:#a9c985;border-radius:50%;margin-right:8px;box-shadow:0 0 0 4px #a9c9851e}
+.season-control{gap:12px;min-width:174px;padding:8px 12px;border:1px solid #f0e5c229;border-radius:5px;color:#f3ecd8;background:#ffffff0a;text-align:left;cursor:pointer;transition:background .2s,border-color .2s}
+.season-control:hover{background:#ffffff16;border-color:#e7c5887a}
+.season-orb{width:28px;height:28px;flex:none;border-radius:50%;background:linear-gradient(135deg,#f2d389,#bd8046);box-shadow:0 0 0 2px #eed3a229,0 0 18px #e6a45844;transition:background .6s}
+.season-control.wet .season-orb{background:linear-gradient(135deg,#a5d6ca,#4e93aa);box-shadow:0 0 0 2px #9ed5ce30,0 0 18px #76c5d044}
+.season-copy{display:flex;flex-direction:column;gap:4px;flex:1;white-space:nowrap}
+.season-copy strong{font-size:10px;letter-spacing:.13em}
+.season-copy small{font-size:8px;color:#c7cbb7;letter-spacing:.08em}
+.season-chevron{color:#d9b679;font-size:15px}
+.scene{position:relative;flex:1;min-height:0;overflow:hidden;background:#a8c5bd}
+canvas{position:absolute;inset:0;display:block;width:100%;height:100%}
+.scene-vignette{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,#1c302531 0%,transparent 30%,transparent 75%,#1a2b261b 100%),linear-gradient(0deg,#17251e37,transparent 18%,transparent 80%,#1d32202a)}
+.scene-heading{position:absolute;top:clamp(24px,5vh,64px);left:clamp(22px,5vw,80px);max-width:320px;pointer-events:none;text-shadow:0 2px 12px #24312b4d}
+.scene-index{color:#f8e4b6}
+.scene-heading h2{margin:12px 0 6px;font-size:clamp(25px,3.3vw,47px);line-height:1.03;font-weight:600;letter-spacing:-.07em;color:#fff6dd}
+.scene-heading p{margin:0;font-size:12px;font-weight:600;color:#fff4d3d9}
+.scene-corner{position:absolute;top:27px;right:clamp(22px,4vw,62px);color:#fff1cbdb;text-align:right}
+.scene-corner span{display:block;margin-top:6px;font-size:8px;opacity:.8}
+.scene-bottomline{position:absolute;bottom:24px;left:clamp(22px,4vw,62px);right:clamp(22px,4vw,62px);display:flex;justify-content:space-between;align-items:center;color:#fff3d1e0;text-shadow:0 1px 8px #1d322a90}
+.species-list b{color:#efd0a7;margin:0 9px}
+.debug{position:absolute;right:20px;bottom:50px;padding:6px 9px;background:#132923bb;border:1px solid #fff4;color:#f7f2df;font:10px monospace;white-space:pre-line}
+.control-deck{z-index:3;display:flex;align-items:center;gap:clamp(20px,3vw,50px);flex:0 0 106px;padding:12px clamp(20px,3vw,54px);background:#1b302c;border-top:1px solid #ffffff21}
+.control-intro{display:flex;flex-direction:column;gap:6px;min-width:176px}
+.control-kicker{color:#deb977}
+.control-hint{color:#b6c4b6;font-size:10px}
+.weather-controls{flex:1;gap:6px;min-width:0;height:100%}
+.weather-button{position:relative;flex:1;flex-direction:column;justify-content:center;gap:7px;min-width:0;height:70px;padding:5px 2px;border:1px solid transparent;border-radius:5px;background:transparent;color:#c0cdc1;cursor:pointer;transition:background .2s,color .2s,border-color .2s,transform .2s}
+.weather-button:hover{background:#ffffff0c;color:#fff4d6;transform:translateY(-2px)}
+.weather-button.active{color:#f9d8a2;background:#e5bc7740;border-color:#e8bf756e}
+.weather-button.active:before{content:"";position:absolute;left:24%;right:24%;top:-13px;height:2px;background:#dfac65}
+.weather-button svg{width:24px;height:24px;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;fill:none}
+.weather-button span{font-size:10px;font-weight:700;white-space:nowrap}
+.shortcut-hint{color:#8da397;font-size:8px;white-space:nowrap;line-height:1.8}
+.shortcut-hint span{color:#d0b884;margin:0 3px}
+@media(max-width:980px){.live-indicator,.shortcut-hint{display:none}.control-intro{min-width:150px}.control-deck{gap:14px}}
+@media(max-width:620px){.topbar{flex-basis:55px;padding:0 14px}.identity{gap:9px}.identity-mark{width:24px;height:27px}.identity-mark:before{width:16px;height:16px;left:3px;top:4px}.eyebrow{font-size:7px;letter-spacing:.12em}h1{font-size:17px}.season-control{min-width:125px;padding:5px 6px;gap:6px}.season-orb{width:20px;height:20px}.season-copy strong{font-size:8px}.season-copy small{font-size:7px}.season-chevron{display:none}.control-deck{flex-basis:72px;padding:6px 8px}.control-intro{display:none}.weather-controls{gap:2px}.weather-button{height:56px;gap:3px}.weather-button svg{width:19px;height:19px}.weather-button span{font-size:8px}.weather-button.active:before{top:-8px}.scene-heading{top:17px;left:16px}.scene-heading h2{font-size:24px;margin:6px 0 0}.scene-heading p,.scene-corner,.scene-bottomline{display:none}.scene-index{font-size:7px}}
+@media(max-width:380px), (max-height:300px){.topbar{flex-basis:35px;padding:0 7px}.identity{gap:5px}.identity-mark{width:17px;height:19px}.identity-mark:before{left:2px;top:2px;width:11px;height:11px}.identity-mark span{height:5px}.identity-mark span:nth-child(3){height:11px}.eyebrow{display:none}h1{font-size:13px;margin:0}.season-control{min-width:91px;height:27px;padding:3px 5px;gap:5px}.season-orb{width:15px;height:15px}.season-copy{gap:1px}.season-copy strong{font-size:7px}.season-copy small{font-size:6px}.control-deck{flex-basis:43px;padding:3px 4px}.weather-controls{gap:1px}.weather-button{height:35px;gap:1px;padding:2px 0}.weather-button svg{width:15px;height:15px}.weather-button span{font-size:7px}.weather-button.active:before{top:-4px}.scene-heading{top:8px;left:9px}.scene-index{font-size:6px}.scene-heading h2{font-size:15px;margin:3px 0 0}.scene-vignette{background:linear-gradient(90deg,#1c302526,transparent 40%)}}
+@media(prefers-reduced-motion:reduce){.weather-button,.season-control,.season-orb{transition:none}}

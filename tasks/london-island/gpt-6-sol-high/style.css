@@ -1,0 +1,58 @@
+:root { color-scheme: light; font-family: "DM Sans", sans-serif; }
+* { box-sizing: border-box; }
+html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+body { background: #b7deec; }
+button { font: inherit; }
+.app { position: relative; width: 100%; height: 100%; min-height: 200px; overflow: hidden; isolation: isolate; background: linear-gradient(#a4d8ee, #e5ebdf); }
+#scene { position: absolute; inset: 0; z-index: 0; touch-action: none; cursor: grab; }
+#scene:active { cursor: grabbing; }
+#scene canvas { display: block; width: 100%; height: 100%; }
+.grain { pointer-events: none; position: absolute; inset: 0; z-index: 1; opacity: .13; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.55' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.32'/%3E%3C/svg%3E"); mix-blend-mode: multiply; }
+.masthead, .top-status, .story, .scene-caption, .bottom-ui { position: absolute; z-index: 3; }
+.masthead { top: clamp(18px, 3vw, 42px); left: clamp(20px, 4vw, 58px); display: flex; align-items: center; gap: 10px; color: #273e50; }
+.brand-mark { width: 36px; height: 36px; display: grid; place-items: center; background: #234454; color: #fff4d5; border-radius: 11px; transform: rotate(-9deg); box-shadow: 0 4px 12px #355a6830; }
+.brand-mark span { font-size: 21px; transform: rotate(9deg); }
+.brand-copy { display: grid; gap: 1px; }
+.brand-copy strong { font-size: 11px; letter-spacing: .19em; font-weight: 700; }
+.brand-copy span { font-family: "Playfair Display", Georgia, serif; font-style: italic; font-size: 12px; opacity: .75; }
+.top-status { top: clamp(22px, 3.3vw, 47px); right: clamp(20px, 4vw, 58px); display: flex; align-items: center; gap: 8px; border: 1px solid #ffffff85; border-radius: 100px; padding: 8px 13px; background: #ffffff77; color: #315162; font-size: 9px; letter-spacing: .18em; font-weight: 700; box-shadow: 0 4px 20px #456d7a10; backdrop-filter: blur(12px); }
+.live-dot { width: 6px; height: 6px; border-radius: 50%; background: #69af77; box-shadow: 0 0 0 3px #69af7730; }
+.story { left: clamp(25px, 5.8vw, 90px); top: 33%; transform: translateY(-30%); width: 290px; pointer-events: none; color: #274559; text-shadow: 0 1px 12px #eaf4ef4d; }
+.eyebrow { display: flex; align-items: center; gap: 10px; font-size: 10px; letter-spacing: .24em; font-weight: 700; }
+.eyebrow-line { display: block; width: 22px; height: 1px; background: currentColor; }
+.story h1 { margin: 19px 0 13px; font-family: "Playfair Display", Georgia, serif; font-size: clamp(36px, 4.2vw, 67px); line-height: 1.1; font-weight: 600; letter-spacing: -.045em; }
+.story h1 em { font-weight: 500; color: #ce775c; }
+.story p { max-width: 260px; margin: 0; font-size: 13px; line-height: 1.65; opacity: .7; }
+.drag-hint { display: inline-flex; align-items: center; gap: 9px; margin-top: 27px; font-size: 11px; font-weight: 700; letter-spacing: .04em; }
+.drag-icon { width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid #45677580; border-radius: 50%; font-size: 16px; font-weight: 400; }
+.scene-caption { right: clamp(25px, 5vw, 75px); top: 48%; display: flex; align-items: flex-start; gap: 12px; font-size: 9px; line-height: 1.8; letter-spacing: .2em; color: #365769; font-weight: 700; text-align: right; }
+.caption-line { width: 1px; height: 29px; background: #54798870; }
+.bottom-ui { left: clamp(20px, 4vw, 58px); right: clamp(20px, 4vw, 58px); bottom: clamp(19px, 3.5vw, 46px); display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+.weather-card { display: flex; align-items: center; gap: 14px; min-width: 252px; padding: 13px 18px; border: 1px solid #ffffff9e; border-radius: 18px; background: #fffdf4a8; box-shadow: 0 12px 30px #4e738028; backdrop-filter: blur(18px); color: #304b57; }
+.weather-glyph { width: 30px; font-size: 29px; line-height: 1; text-align: center; color: #cc785c; }
+.weather-copy { display: grid; gap: 3px; white-space: nowrap; }
+.weather-copy strong { font-family: "Playfair Display", Georgia, serif; font-size: 16px; font-weight: 600; }
+.weather-copy small { font-size: 9px; color: #6b7c80; letter-spacing: .06em; }
+.weather-divider { width: 1px; height: 29px; background: #61777a3b; margin: 0 2px; }
+.control-dock { display: flex; align-items: center; gap: 3px; padding: 6px; border: 1px solid #ffffffb5; border-radius: 18px; background: #fffdf4c9; box-shadow: 0 12px 30px #4e73802a; backdrop-filter: blur(20px); }
+.control-dock button { border: 0; color: #597079; cursor: pointer; transition: background .2s, color .2s, transform .2s; }
+.control-dock button:hover { transform: translateY(-2px); }
+.control-dock button:focus-visible { outline: 2px solid #c9795b; outline-offset: 2px; }
+.season-button { min-width: 64px; height: 46px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: transparent; border-radius: 12px; }
+.season-button.active { color: #fff; background: #315a64; box-shadow: 0 3px 10px #315a6438; }
+.button-icon { height: 20px; font-size: 20px; line-height: 20px; }
+.button-label { font-size: 9px; font-weight: 700; }
+.dock-separator { width: 1px; height: 29px; margin: 0 5px; background: #6d858c41; }
+.utility-button { width: 35px; height: 40px; display: grid; place-items: center; background: transparent; border-radius: 11px; font-size: 22px; }
+#auto-icon { font-size: 16px; font-weight: 700; }
+.loading { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 5; font-family: "Playfair Display", Georgia, serif; font-style: italic; font-size: 17px; color: #345361; pointer-events: none; transition: opacity .5s; }
+.loading.hidden { opacity: 0; }
+@media (max-width: 1100px) { .story { top: 31%; width: 230px; } .story h1 { font-size: clamp(34px, 4vw, 48px); } .story p { font-size: 11px; max-width: 205px; } .scene-caption { display: none; } }
+@media (max-width: 760px) { .story { display: none; } .weather-card { min-width: 0; padding: 10px 12px; gap: 8px; } .time-copy, .weather-divider { display: none; } .bottom-ui { bottom: 14px; } .control-dock { margin-left: auto; } }
+@media (max-width: 520px), (max-height: 360px) {
+  .masthead { top: 9px; left: 12px; gap: 6px; } .brand-mark { width: 24px; height: 24px; border-radius: 7px; } .brand-mark span { font-size: 15px; } .brand-copy strong { font-size: 8px; letter-spacing: .12em; } .brand-copy span { display: none; }
+  .top-status { top: 9px; right: 10px; padding: 6px 8px; font-size: 7px; letter-spacing: .08em; } .live-dot { width: 5px; height: 5px; }
+  .bottom-ui { left: 8px; right: 8px; bottom: 7px; justify-content: center; } .weather-card { display: none; } .control-dock { width: min(100%, 306px); margin: 0; justify-content: space-around; gap: 1px; padding: 3px; border-radius: 13px; }
+  .season-button { min-width: 38px; height: 31px; border-radius: 9px; } .button-icon { font-size: 17px; height: 18px; line-height: 18px; } .button-label { display: none; }
+  .utility-button { width: 30px; height: 30px; font-size: 19px; } #auto-icon { font-size: 13px; } .dock-separator { height: 18px; margin: 0 1px; }
+}
