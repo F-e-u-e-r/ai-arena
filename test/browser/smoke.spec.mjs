@@ -559,6 +559,13 @@ test('L: header has the >_ / AI Arena / Eric · Feuer lockup and a keyboard-focu
       headerHasContactCTA: /contact|mailto:/i.test(header ? header.innerHTML : ''),
       headerNavLinkCount: header ? header.querySelectorAll('nav a, .nav a, .menu a').length : -1,
       headerLinkCount: header ? header.querySelectorAll('a').length : -1,
+      // no hamburger / contact <details> / menu chrome of any kind
+      headerButtonCount: header ? header.querySelectorAll('button, summary, [class*="hamburger"], [class*="menu"]').length : -1,
+      // decorative glyphs must be out of the a11y tree so the link's accessible name is clean
+      linkAriaLabel: link ? link.getAttribute('aria-label') : null,
+      markAriaHidden: mark ? mark.getAttribute('aria-hidden') : null,
+      arrowAriaHidden: link && link.querySelector('.portfolio-link__arrow')
+        ? link.querySelector('.portfolio-link__arrow').getAttribute('aria-hidden') : null,
     };
   });
 
@@ -572,14 +579,19 @@ test('L: header has the >_ / AI Arena / Eric · Feuer lockup and a keyboard-focu
   // return link — real anchor, correct external target, clear accessible name, same-tab back-nav
   expect(dom.linkTag).toBe('A');
   expect(dom.linkHref).toBe('https://portfolio.secc.dev/');
-  expect((dom.linkAccName || '').length).toBeGreaterThan(0);
-  expect(dom.linkAccName).toContain('Portfolio');
+  // accessible name comes from an EXPLICIT aria-label (not the visible-text fallback), and the
+  // decorative >_ / ← are aria-hidden — so dropping the label or un-hiding a glyph fails this.
+  expect(dom.linkAriaLabel).toBeTruthy();
+  expect(dom.linkAriaLabel).toContain('Portfolio');
+  expect(dom.markAriaHidden).toBe('true');
+  expect(dom.arrowAriaHidden).toBe('true');
   expect(dom.linkTarget === '' || dom.linkTarget === '_self').toBe(true);   // ← is a return affordance, not a popup
 
   // no full Portfolio nav / hamburger / contact CTA; the only header link is ← Portfolio
   expect(dom.headerHasContactCTA).toBe(false);
   expect(dom.headerNavLinkCount).toBe(0);
   expect(dom.headerLinkCount).toBe(1);
+  expect(dom.headerButtonCount).toBe(0);
 
   // keyboard reachable with a visible focus ring
   let tries = 0, onLink = false;
@@ -598,4 +610,20 @@ test('L: header has the >_ / AI Arena / Eric · Feuer lockup and a keyboard-focu
   expect(focus.style).not.toBe('none');              // a ring is drawn…
   expect(focus.width).toBeGreaterThanOrEqual(2);     // …at ≥2px
   expect(focus.color).toBe('rgb(53, 224, 161)');     // emerald ring (var(--accent)), visible on the dark header
+
+  // responsive: the header never forces horizontal overflow and ← Portfolio stays on-screen at the
+  // target widths (it wraps to its own line on the narrow ones, sits on the bar on the wide ones).
+  for (const width of [320, 768, 1440]) {
+    await page.setViewportSize({ width, height: 800 });
+    const r = await page.evaluate(() => {
+      const de = document.documentElement;
+      const link = document.querySelector('.portfolio-link').getBoundingClientRect();
+      return {
+        overflow: de.scrollWidth > de.clientWidth,
+        linkInView: link.right <= window.innerWidth + 0.5 && link.left >= -0.5,
+      };
+    });
+    expect(r.overflow, `no horizontal overflow at ${width}px`).toBe(false);
+    expect(r.linkInView, `← Portfolio within viewport at ${width}px`).toBe(true);
+  }
 });

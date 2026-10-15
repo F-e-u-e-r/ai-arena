@@ -66,8 +66,9 @@ body {
 .brand__by { color: var(--muted); font-family: var(--font-mono); font-size: 13px; white-space: nowrap; }   /* "Eric · Feuer" attribution */
 .tagline { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
 
-/* Return-to-Portfolio link — quiet by default, emerald on hover/focus; focusable anchor with a
-   visible focus ring (emerald on the dark header ≈ WCAG 1.4.11 pass). No decorative motion (deferred). */
+/* Return-to-Portfolio link — quiet by default (muted text + hairline border); emerald text + border
+   on :hover, and an emerald focus RING on :focus-visible (ring only, no text/border recolour on
+   focus). Emerald on the dark header ≈ WCAG 1.4.11 pass. No decorative motion (deferred). */
 .portfolio-link { display: inline-flex; align-items: center; gap: .4em; font-family: var(--font-mono); font-size: 14px; color: var(--muted); text-decoration: none; padding: 5px 10px; border: 1px solid var(--border); border-radius: 6px; white-space: nowrap; }
 .portfolio-link__arrow { color: var(--accent-muted); }
 .portfolio-link:hover { color: var(--text); border-color: var(--accent); }
