@@ -192,6 +192,17 @@ test('F1: sorting preserves the loaded submission iframe (no reload) through mov
   const supported = await page.evaluate(() => typeof document.body.moveBefore === 'function');
   test.skip(!supported, 'moveBefore unsupported in this browser — app falls back to append (reload)');
 
+  // The gallery renders cards only AFTER init()'s async fetch('tasks.json') resolves, which lands
+  // well past page.goto's 'load' event. Without an explicit wait, the document.querySelector(
+  // '.card .placeholder') in the next turn can run first and return null → .click() throws (the
+  // transient race this test was prone to). Wait on the real element — never a sleep (owner F1.3) —
+  // and confirm it is actionable, because the in-page DOM .click() below bypasses Playwright's own
+  // actionability auto-wait. This does NOT split the click/listener attach: those stay in one
+  // synchronous evaluate turn below so the initial load still cannot fire before the listener.
+  const placeholder = page.locator('.card .placeholder').first();
+  await placeholder.waitFor({ state: 'visible' });
+  await expect(placeholder).toBeEnabled();
+
   // Click the placeholder AND attach the load counter in the SAME synchronous turn (the click
   // handler builds the iframe synchronously), so the initial load cannot fire before the listener.
   await page.evaluate(() => {
