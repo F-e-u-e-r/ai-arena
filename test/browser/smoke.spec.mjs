@@ -458,25 +458,26 @@ test('J: selected chip focus ring is dark (var(--bg)) on emerald; unselected con
 
   const sel = await page.evaluate(() => {
     const a = document.activeElement;
-    // resolve --bg (hex) to the rgb form getComputedStyle reports for outline-color
-    const probe = document.createElement('span');
-    probe.style.color = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
-    document.body.appendChild(probe);
-    const bgRgb = getComputedStyle(probe).color;
-    probe.remove();
+    // resolve --bg / --accent (hex) to the rgb form getComputedStyle reports
+    const toRgb = (hex) => { const p = document.createElement('span'); p.style.color = hex; document.body.appendChild(p); const v = getComputedStyle(p).color; p.remove(); return v; };
+    const root = getComputedStyle(document.documentElement);
     return {
       cls: a.className,
       pressed: a.getAttribute('aria-pressed'),
       focusVisible: a.matches(':focus-visible'),
       outline: getComputedStyle(a).outlineColor,
-      bgRgb,
+      fill: getComputedStyle(a).backgroundColor,
+      bgRgb: toRgb(root.getPropertyValue('--bg').trim()),
+      accentRgb: toRgb(root.getPropertyValue('--accent').trim()),
     };
   });
   expect(sel.cls).toContain('chip-toggle');
   expect(sel.pressed).toBe('true');
   expect(sel.focusVisible).toBe(true);                       // keyboard focus → :focus-visible really matched
-  expect(sel.outline).toBe(sel.bgRgb);                       // dark ring = var(--bg)
+  expect(sel.fill).toBe(sel.accentRgb);                      // the SELECTED chip is emerald-filled (so the ring is tested on emerald, not dark-on-dark)
+  expect(sel.outline).toBe(sel.bgRgb);                       // dark ring = var(--bg), against that emerald fill
   expect(sel.outline).not.toBe('rgb(255, 255, 255)');        // explicitly NOT the white ring
+  expect(sel.outline).not.toBe(sel.fill);                    // ring and fill differ (a visible ring)
 
   // control: the adjacent unselected control (chip-only) keeps the white ring on its dark bg
   await page.keyboard.press('Tab');
@@ -497,15 +498,36 @@ test('K: self-hosted JetBrains Mono loads and applies to metrics/labels (model n
   const r = await page.evaluate(async () => {
     await document.fonts.ready;
     const famOf = (sel) => { const e = document.querySelector(sel); return e ? getComputedStyle(e).fontFamily : null; };
+    // read the @font-face src straight from CSSOM (so a root-absolute URL is caught even on the
+    // repo-root test server, where it would still load but would 404 under the /ai-arena/ subpath)
+    let faceSrc = null;
+    for (const sheet of document.styleSheets) {
+      let rules; try { rules = sheet.cssRules; } catch { continue; }
+      for (const rule of rules) {
+        if (rule.constructor?.name === 'CSSFontFaceRule' &&
+            (rule.style.getPropertyValue('font-family') || '').includes('JetBrains Mono')) {
+          faceSrc = rule.style.getPropertyValue('src');
+        }
+      }
+    }
+    const pre = document.querySelector('link[rel="preload"][as="font"]');
     return {
       jbmLoaded: [...document.fonts].some(f => f.family.includes('JetBrains Mono') && f.status === 'loaded'),
       metricV: famOf('.metric-v'),
       promptLabel: famOf('.prompt-label'),
       model: famOf('.model'),
+      faceSrc,
+      preloadHref: pre ? pre.getAttribute('href') : null,     // raw attribute (not the resolved absolute URL)
     };
   });
-  expect(r.jbmLoaded).toBe(true);                            // the self-hosted woff2 actually loaded from the relative URL
+  expect(r.jbmLoaded).toBe(true);                            // the self-hosted woff2 actually loaded
   expect(r.metricV).toContain('JetBrains Mono');             // mono drives metric values
   expect(r.promptLabel).toContain('JetBrains Mono');         // and micro-labels
   expect(r.model).not.toContain('JetBrains Mono');           // model names stay on the native sans face
+  // subpath safety: @font-face src and preload href MUST be relative, else they 404 under /ai-arena/
+  expect(r.faceSrc).toContain('./fonts/');                   // relative @font-face url
+  expect(r.faceSrc).not.toMatch(/url\(\s*["']?\//);          // never a root-absolute url(/...)
+  expect(r.preloadHref).toBeTruthy();
+  expect(r.preloadHref.startsWith('/')).toBe(false);         // preload href is relative…
+  expect(r.preloadHref.startsWith('http')).toBe(false);      // …and not an absolute URL
 });

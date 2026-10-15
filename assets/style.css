@@ -196,7 +196,7 @@ body {
 }
 /* 主體＝normal multi-select toggle。selected 用「✓ 前綴 + accent 填色」雙編碼（不只靠顏色）、
    未選取＝中性無符號（去除 ✕、無刪除線、無虛線框）；固定保留 ✓ 寬度避免切換時跳動。
-   對比：selected 深色字 on accent ≈5.8:1、未選取 text on panel-2 ≈12.8:1，皆 ≥WCAG AA 4.5:1。 */
+   對比：selected 深色字（var(--bg)）on emerald accent ≈11.46:1、未選取 text on panel-2 ≈14.30:1，皆 ≥WCAG AA 4.5:1。 */
 .chip-toggle { padding: 4px 10px; color: var(--text); }
 .chip-toggle::before { content: '✓'; display: inline-block; width: 1.1em; visibility: hidden; }
 .chip-toggle[aria-pressed="true"] { background: var(--accent); color: var(--bg); }
