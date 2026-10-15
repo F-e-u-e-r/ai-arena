@@ -1,12 +1,31 @@
+/* JetBrains Mono — self-hosted, variable weight, latin subset (Fontsource 5.3.0, OFL-1.1;
+   see assets/fonts/JetBrainsMono-OFL.txt). RELATIVE url so it resolves under the /ai-arena/
+   GitHub-Pages project subpath — never a root-absolute /fonts/… (that 404s off-root).
+   latin unicode-range already covers ASCII + Latin-1 accents; CJK/latin-ext fall back to the
+   mono stack in --font-mono. `swap` = render in the fallback immediately, no FOIT. */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 800;
+  src: url('./fonts/jetbrains-mono-latin-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 :root {
-  --bg: #0b0d12;
-  --panel: #141821;
-  --panel-2: #1b202b;
-  --border: #262d3a;
-  --text: #e6e9ef;
-  --muted: #8b93a7;
-  --accent: #4f8cff;
-  --accent-2: #ff5ea8;
+  /* WS4 Option A — Portfolio-aligned green-black palette (docs/brand-tokens.md).
+     Surfaces are the Owner-approved Arena green-black values; text/muted/border are
+     Portfolio's own tokens (github.com/F-e-u-e-r/portfolio). Functional colours
+     (effort/client badges, --accent-2 error pink) are intentionally NOT recoloured. */
+  --bg: #0a0d0c;         /* page */
+  --panel: #111715;      /* primary surface (cards, panels) */
+  --panel-2: #172019;    /* nested surface (inputs, chips) */
+  --border: rgba(170, 205, 190, .16);  /* green-alpha hairline (Portfolio --border-subtle) */
+  --text: #e8efeb;       /* Portfolio --c-fg */
+  --muted: #9aa8a2;      /* Portfolio --c-fg-muted */
+  --accent: #35e0a1;     /* emerald — brand accent, reserved for interactive/selected */
+  --accent-2: #ff5ea8;   /* error/status pink — functional, NOT brand-recoloured */
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 * { box-sizing: border-box; }
@@ -19,6 +38,15 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+}
+
+/* WS4: JetBrains Mono for technical chrome — metadata, micro-labels, metrics, prompt text.
+   Prose, titles, model names and badges keep the native sans face (mirrors Portfolio's
+   "native face for text, mono for metadata/labels/code"); this also keeps the card-head and
+   4-col metrics row from widening into extra wraps (density preserved). */
+.sidebar-title, .task-link-meta, .prompt-label, .prompt-text,
+.metric-k, .metric-v, .chip-count, .filter-count, .generated-at {
+  font-family: var(--font-mono);
 }
 
 /* ---- header ---- */
@@ -103,7 +131,7 @@ body {
   overflow: auto;
   white-space: pre-wrap;
   font-size: 13px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* font-family: var(--font-mono) via the WS4 mono group above (JetBrains Mono + mono fallbacks). */
 }
 .prompt-text code {
   font-family: inherit;
@@ -113,7 +141,7 @@ body {
 .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
 .btn {
   background: var(--accent);
-  color: #fff;
+  color: var(--bg);   /* dark on emerald ≈11.3:1 (white would be ~1.7:1 — WCAG fail) */
   border: none;
   padding: 7px 14px;
   border-radius: 7px;
@@ -168,7 +196,7 @@ body {
 }
 /* 主體＝normal multi-select toggle。selected 用「✓ 前綴 + accent 填色」雙編碼（不只靠顏色）、
    未選取＝中性無符號（去除 ✕、無刪除線、無虛線框）；固定保留 ✓ 寬度避免切換時跳動。
-   對比：selected 深色字 on accent ≈5.8:1、未選取 text on panel-2 ≈12.8:1，皆 ≥WCAG AA 4.5:1。 */
+   對比：selected 深色字（var(--bg)）on emerald accent ≈11.46:1、未選取 text on panel-2 ≈14.30:1，皆 ≥WCAG AA 4.5:1。 */
 .chip-toggle { padding: 4px 10px; color: var(--text); }
 .chip-toggle::before { content: '✓'; display: inline-block; width: 1.1em; visibility: hidden; }
 .chip-toggle[aria-pressed="true"] { background: var(--accent); color: var(--bg); }
@@ -195,12 +223,17 @@ body {
 .chip-toggle[aria-pressed="true"] .chip-count { opacity: .85; }    /* accent 填色上仍可讀 */
 
 /* 鍵盤 focus：.chip 的 overflow:hidden（修剪 pill 圓角）會一併剪掉子按鈕預設 outline，
-   改用 inset（負 offset）outline 畫在按鈕內緣、不被剪裁；白色對未選取（panel-2 深底 ≈16:1）
-   與已選取（accent 藍底 ≈3.2:1）兩狀態皆達 WCAG 1.4.11 的 ≥3:1。 */
+   改用 inset（負 offset）outline 畫在按鈕內緣、不被裁剪。未選取的 toggle 與 Only 尾段都是深底
+   （panel-2 ≈16:1），用白框即可。但「已選取」toggle 改為 emerald 亮底填色後，白框只剩約
+   1.70:1（WCAG 1.4.11 FAIL）——故已選取 toggle 改用深色框（var(--bg) #0a0d0c on emerald ≈11.3:1）。
+   這條 WS4 的深框修正必須與 emerald 換色同批出現，不可留下「emerald 底 ＋ 舊白框」的中間狀態。 */
 .chip-toggle:focus-visible,
 .chip-only:focus-visible {
   outline: 2px solid #fff;
   outline-offset: -2px;
+}
+.chip-toggle[aria-pressed="true"]:focus-visible {
+  outline-color: var(--bg);
 }
 
 /* Touch／窄視窗：把低調的 Only 尾段放大成 34px tap target（owner 32–36 區間、§5.3「足夠大」契約）。
@@ -315,7 +348,7 @@ body {
   text-transform: uppercase;
   letter-spacing: .5px;
 }
-.provider { color: #c4cad8; }
+.provider { color: #c5cfca; }   /* Portfolio --c-fg-body (green-neutral, was blue-grey) */
 .badge.effort {
   color: #fff;
   border-color: transparent;
@@ -416,17 +449,17 @@ body {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  background: linear-gradient(135deg, #161b25, #0f131b);
+  background: linear-gradient(135deg, var(--panel-2), var(--bg));  /* green-black (was blue-black) */
   color: var(--text);
   cursor: pointer;
 }
-.placeholder:hover { background: linear-gradient(135deg, #1b2230, #12161f); }
+.placeholder:hover { background: linear-gradient(135deg, #1e2a24, var(--panel)); }
 .placeholder .play {
   width: 46px;
   height: 46px;
   border-radius: 50%;
   background: var(--accent);
-  color: #fff;
+  color: var(--bg);   /* dark ▶ on emerald ≈11.3:1 (white would be ~1.7:1) */
   display: flex;
   align-items: center;
   justify-content: center;
