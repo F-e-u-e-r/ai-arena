@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#edf0df">
+  <meta name="description" content="A tiny floating London. Four seasons, endless little wonders. An interactive 3D postcard.">
+  <title>Little London — A world of little wonders</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Libre+Caslon+Display&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script defer src="main.js"></script>
+</head>
+<body>
+  <svg class="icon-definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 1v2m0 18v2M1 12h2m18 0h2M4.2 4.2l1.4 1.4m12.8 12.8 1.4 1.4m0-15.6-1.4 1.4M5.6 18.4l-1.4 1.4"/></symbol>
+    <symbol id="i-spring" viewBox="0 0 24 24"><path d="M12 22V11m0 7c-6 0-8-3-8-6 5-1 8 2 8 6Zm0-3c6 0 8-3 8-6-5-1-8 2-8 6Z"/><path d="M12 10C5 9 7 4 9 5c-1-6 7-5 6 0 5-1 5 5-3 5Z"/></symbol>
+    <symbol id="i-leaf" viewBox="0 0 24 24"><path d="m12 2 3 5 4-2-1 5 4 2-6 4 .5 4-4.5-2-4.5 2 .5-4-6-4 4-2-1-5 4 2 3-5Zm0 9v12"/></symbol>
+    <symbol id="i-snow" viewBox="0 0 24 24"><path d="M12 2v20M3.3 7l17.4 10M3.3 17 20.7 7M9 4l3 3 3-3M9 20l3-3 3 3M4 10l4-1-1-4m10 14-1-4 4-1M4 14l4 1-1 4M17 5l-1 4 4 1"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.7 14A9 9 0 0 1 10 3.3 9 9 0 1 0 20.7 14Z"/><path d="m18 2 .6 2.4L21 5l-2.4.6L18 8l-.6-2.4L15 5l2.4-.6L18 2Z"/></symbol>
+    <symbol id="i-sound" viewBox="0 0 24 24"><path d="M11 4 6 8H3v8h3l5 4V4Zm4 4a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/></symbol>
+    <symbol id="i-mute" viewBox="0 0 24 24"><path d="M11 4 6 8H3v8h3l5 4V4Zm5 5 5 6m0-6-5 6"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v.1"/></symbol>
+    <symbol id="i-reset" viewBox="0 0 24 24"><path d="M4 10a8 8 0 1 1 2 8M4 4v6h6"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="m8 4 12 8-12 8V4Z"/></symbol>
+    <symbol id="i-drag" viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="16" rx="5"/><path d="M12 5v4M3 19l-2 2 2 2m18-4 2 2-2 2M1 21h6m10 0h6"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></symbol>
+  </svg>
+
+  <main id="experience">
+    <div class="sky-grain" aria-hidden="true"></div>
+    <div id="scene" role="img" aria-label="An animated floating London island with Big Ben, the London Eye, and Tower Bridge. Drag horizontally to orbit; use arrow keys when focused." tabindex="0"></div>
+
+    <header class="header">
+      <a class="brand" href="./" aria-label="Little London home">
+        <svg class="brand-mark" viewBox="0 0 32 42" fill="none" aria-hidden="true"><path d="M16 1v5m-5 4 5-6 5 6v6h3v24H8V16h3v-6Z" stroke="currentColor" stroke-width="1.5"/><path d="M9 27h14M9 35h14M12 29v4m4-4v4m4-4v4M12 37v3m8-3v3" stroke="currentColor"/><circle cx="16" cy="21" r="4" stroke="currentColor"/><path d="M16 18v3l2 1M12 13h8" stroke="currentColor"/></svg>
+        <span>little london<span class="brand-dot">.</span></span>
+      </a>
+      <div class="header-right">
+        <span class="live-label"><span></span> A LITTLE WORLD, ALWAYS ALIVE</span>
+        <button class="icon-button" id="sound-button" title="Turn ambient sound on" aria-label="Turn ambient sound on" aria-pressed="false"><svg><use href="#i-mute"/></svg></button>
+        <button class="icon-button" id="info-button" title="About this little world" aria-label="About this little world"><svg><use href="#i-info"/></svg></button>
+      </div>
+    </header>
+
+    <section class="intro" aria-label="Welcome">
+      <div class="eyebrow"><span class="tiny-line"></span> AN INTERACTIVE POSTCARD</div>
+      <h1>A little city.<br>A world of<br><em>wonder.</em></h1>
+      <p>A familiar place. A fresh perspective.<br>Watch London turn with the seasons.</p>
+      <div class="intro-foot"><span class="small-star">✳</span> A moment away from the everyday.</div>
+    </section>
+
+    <button class="time-chip" id="time-button" title="Skip to the next time of day (D)" aria-label="Skip to the next time of day"><svg><use id="time-icon" href="#i-sun"/></svg><span id="time-value">12:00</span><span class="chip-divider"></span><span id="day-label">Daylight</span><span class="time-dot"></span></button>
+
+    <aside class="forecast" aria-label="Current season">
+      <div class="eyebrow">THE LITTLE FORECAST</div>
+      <div class="forecast-symbol"><svg><use id="forecast-icon" href="#i-sun"/></svg><span id="temperature">24<span>°</span></span></div>
+      <h2 id="season-greeting">Hello, summer.</h2>
+      <p id="season-description">Golden hours.<br>A little more daydreaming.</p>
+      <div class="weather-detail"><span class="weather-dot"></span><span id="weather-label">SUN-KISSED & UNHURRIED</span></div>
+      <div class="forecast-rule"></div>
+      <div class="cycle-note"><span>A day in a daydream</span><span>15 sec <svg><use href="#i-reset"/></svg></span></div>
+    </aside>
+
+    <section class="season-controls" aria-label="Season controls">
+      <div class="season-caption"><span></span> FOUR SEASONS. ONE LITTLE LONDON. <span></span></div>
+      <div class="season-dock" role="group" aria-label="Choose a season">
+        <button class="season-button" data-season="0" aria-label="Spring, mist and blossoms" aria-pressed="false"><svg><use href="#i-spring"/></svg><span>Spring</span><small>01</small><i></i></button>
+        <button class="season-button active" data-season="1" aria-label="Summer, warm sunshine" aria-pressed="true"><svg><use href="#i-sun"/></svg><span>Summer</span><small>02</small><i></i></button>
+        <button class="season-button" data-season="2" aria-label="Autumn, falling maple leaves" aria-pressed="false"><svg><use href="#i-leaf"/></svg><span>Autumn</span><small>03</small><i></i></button>
+        <button class="season-button" data-season="3" aria-label="Winter, falling snow" aria-pressed="false"><svg><use href="#i-snow"/></svg><span>Winter</span><small>04</small><i></i></button>
+      </div>
+      <div class="flow-controls"><button id="auto-button" class="auto-button" aria-pressed="true" title="Toggle automatic seasons (A)"><span class="switch"><span></span></span><span>Let the seasons flow</span></button><span class="flow-separator"></span><button id="pause-button" class="pause-button" aria-label="Pause time" aria-pressed="false" title="Pause time (Space)"><svg><use id="pause-icon" href="#i-pause"/></svg></button></div>
+    </section>
+
+    <footer class="footer">
+      <div class="location"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="m16 2 3 11 11 3-11 3-3 11-3-11-11-3 11-3Z" fill="none" stroke="currentColor"/><path d="m16 7 2 9-2 9-2-9Z" fill="currentColor"/></svg><div><span>LONDON, IN MINIATURE</span><small>51°30′26.4″N &nbsp; 0°07′39.6″W</small></div></div>
+      <div class="explore-hint"><svg><use href="#i-drag"/></svg><span>Drag to wander</span><span class="hint-divider"></span><button id="reset-button" class="icon-button" aria-label="Reset camera view" title="Reset view (R)"><svg><use href="#i-reset"/></svg></button></div>
+    </footer>
+    <div id="loading" class="loading" role="status"><span></span> Building your little escape…</div>
+    <output id="debug" class="debug" hidden></output>
+  </main>
+
+  <dialog id="about-dialog">
+    <button id="close-dialog" class="icon-button dialog-close" aria-label="Close information"><svg><use href="#i-close"/></svg></button>
+    <div class="eyebrow">A SMALL ESCAPE</div>
+    <h2>Welcome to<br>little london<span>.</span></h2>
+    <p>A city suspended between the seasons. Take a breath, turn the island, and find a different kind of London.</p>
+    <ul><li><span>Drag / ← →</span>Wander around the island</li><li><span>1 · 2 · 3 · 4</span>Find your favourite season</li><li><span>D</span>Chase the sun or the moon</li><li><span>Space / A</span>Pause time / auto seasons</li><li><span>R / F</span>Reset view / show statistics</li></ul>
+    <p class="about-small">One day lasts 15 seconds. Each season stays for 24.<br>Built with Three.js. Every little detail made of geometry.</p>
+    <button id="back-button" class="back-button">Back to daydreaming <svg><use href="#i-arrow"/></svg></button>
+  </dialog>
+</body>
+</html>
