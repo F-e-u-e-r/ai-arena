@@ -1,0 +1,464 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f6f5ef" />
+    <meta
+      name="description"
+      content="A small window into the wild. Explore a living, interactive African savanna, painted entirely with Canvas."
+    />
+    <title>Savanna — A living landscape</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="main.js" defer></script>
+  </head>
+  <body>
+    <svg
+      class="icon-library"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <symbol id="i-sun" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="4" />
+        <path
+          d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
+        />
+      </symbol>
+      <symbol id="i-rain" viewBox="0 0 24 24">
+        <path
+          d="M6 15a4 4 0 1 1 .9-7.9A5.5 5.5 0 0 1 17.4 8 3.5 3.5 0 1 1 18 15M8 18l-1 3m6-3-1 3m6-3-1 3"
+        />
+      </symbol>
+      <symbol id="i-heavy" viewBox="0 0 24 24">
+        <path
+          d="M5 13a3.5 3.5 0 0 1 1.5-6.7A5.5 5.5 0 0 1 17 7a3.5 3.5 0 0 1 1 6M7 16l-2 5m7-5-2 5m7-5-2 5m7-5-2 5"
+        />
+      </symbol>
+      <symbol id="i-snow" viewBox="0 0 24 24">
+        <path
+          d="M12 2v20M3.3 7l17.4 10M3.3 17 20.7 7M9 4l3 3 3-3M9 20l3-3 3 3M3.5 10l4-1-1-4M17.5 19l-1-4 4-1M3.5 14l4 1-1 4M17.5 5l-1 4 4 1"
+        />
+      </symbol>
+      <symbol id="i-storm" viewBox="0 0 24 24">
+        <path
+          d="M6 14a4 4 0 1 1 .9-7.9A5.5 5.5 0 0 1 17.4 7 3.5 3.5 0 0 1 18 14M12 11l-4 6h5l-2 6 7-8h-5l2-4"
+        />
+      </symbol>
+      <symbol id="i-tornado" viewBox="0 0 24 24">
+        <path d="M3 4h18M5 8h14M7 12h11m-8 4h7m-5 4h3" />
+      </symbol>
+      <symbol id="i-leaf" viewBox="0 0 24 24">
+        <path
+          d="M19.5 3.5C9 2 3 7 5 13s12 8 14.5-9.5ZM4 21 15 10M9 16l-1-5m5 1 4 .5"
+        />
+      </symbol>
+      <symbol id="i-sprout" viewBox="0 0 24 24">
+        <path
+          d="M12 22V12m0 4C3 16 2 11 3 6c7 0 10 3 9 10Zm0-4c0-7 4-10 9-9 0 7-3 10-9 9Z"
+        />
+      </symbol>
+      <symbol id="i-arrow" viewBox="0 0 24 24">
+        <path d="M5 12h14m-5-5 5 5-5 5" />
+      </symbol>
+      <symbol id="i-book" viewBox="0 0 24 24">
+        <path
+          d="M12 5v15M3 4c4-1 6 0 9 2 3-2 5-3 9-2v15c-4-1-6 0-9 2-3-2-5-3-9-2Z"
+        />
+      </symbol>
+      <symbol id="i-sound" viewBox="0 0 24 24">
+        <path
+          d="m11 4-6 5H2v6h3l6 5ZM15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"
+        />
+      </symbol>
+      <symbol id="i-muted" viewBox="0 0 24 24">
+        <path d="m11 4-6 5H2v6h3l6 5Zm5 5 5 6m0-6-5 6" />
+      </symbol>
+      <symbol id="i-pause" viewBox="0 0 24 24">
+        <path d="M8 5v14M16 5v14" stroke-width="3" />
+      </symbol>
+      <symbol id="i-play" viewBox="0 0 24 24">
+        <path d="m8 4 12 8-12 8Z" />
+      </symbol>
+      <symbol id="i-expand" viewBox="0 0 24 24">
+        <path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5" />
+      </symbol>
+      <symbol id="i-close" viewBox="0 0 24 24">
+        <path d="m6 6 12 12M6 18 18 6" />
+      </symbol>
+      <symbol id="i-pin" viewBox="0 0 24 24">
+        <path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 0 1 14 0Z" />
+        <circle cx="12" cy="10" r="2" />
+      </symbol>
+    </svg>
+
+    <header class="site-header">
+      <a class="brand" href="./index.html" aria-label="Savanna home">
+        <span class="brand-mark"
+          ><svg viewBox="0 0 36 36" fill="none" aria-hidden="true">
+            <circle cx="23" cy="11" r="4" fill="currentColor" />
+            <path
+              d="M6 27h24M9 25l6-11 8 11M19 25l4-7 5 7"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M15 8V5M9 10 7 8M23 19l3 1"
+              stroke="currentColor"
+              stroke-width="1.3"
+              stroke-linecap="round"
+            /></svg
+        ></span>
+        <span class="brand-name"
+          >savanna<span class="brand-period">.</span></span
+        >
+        <span class="brand-caption">A LIVING<br />LANDSCAPE</span>
+      </a>
+      <div class="header-right">
+        <span class="made-of-life"
+          ><span class="tiny-dot"></span> A small window into the wild</span
+        >
+        <button class="guide-button" id="guide-button">
+          <svg class="icon"><use href="#i-book" /></svg><span>Field guide</span
+          ><svg class="icon arrow"><use href="#i-arrow" /></svg>
+        </button>
+      </div>
+    </header>
+
+    <main>
+      <section class="intro" aria-labelledby="page-title">
+        <div>
+          <p class="eyebrow">NATURE, FOLLOWING ITS OWN RHYTHM</p>
+          <h1 id="page-title">Where the <em>wild</em> lives.</h1>
+          <p class="intro-copy">
+            Change the skies. Follow the herds. Stay a little while.
+          </p>
+        </div>
+        <div class="season-summary">
+          <span class="season-orbit"
+            ><svg class="icon" id="summary-icon"><use href="#i-sun" /></svg
+            ><svg viewBox="0 0 48 48" class="orbit-svg" aria-hidden="true">
+              <circle cx="24" cy="24" r="22" />
+              <circle id="season-ring" cx="24" cy="24" r="22" /></svg
+          ></span>
+          <div>
+            <span class="eyebrow" id="season-title">THE DRY SEASON</span>
+            <p id="season-description">Golden days. Unhurried ways.</p>
+            <span class="season-countdown" id="season-countdown"
+              >Wet season arrives in 60s</span
+            >
+          </div>
+        </div>
+      </section>
+
+      <section
+        class="ecosystem"
+        id="ecosystem"
+        aria-label="Interactive savanna ecosystem"
+      >
+        <div class="scene" id="scene">
+          <canvas
+            id="savanna-canvas"
+            role="img"
+            aria-label="Animated African savanna with three lions, three elephants, and two leopards. Use the controls below to change weather and season."
+            >Your browser needs Canvas support to display the savanna. All
+            controls are described in the field guide.</canvas
+          >
+          <div class="scene-top">
+            <div class="scene-location">
+              <div class="live-label">
+                <span class="live-dot"></span
+                ><span id="live-text">LIVE ECOSYSTEM</span>
+              </div>
+              <div class="location-title">
+                The Serengeti<span class="location-country">, Tanzania</span>
+              </div>
+              <span class="coordinates"
+                >2°19′ S &nbsp; 34°50′ E &nbsp; / &nbsp; ELEV. 1,480 M</span
+              >
+            </div>
+            <div class="scene-time">
+              <svg class="icon" id="scene-weather-icon">
+                <use href="#i-sun" /></svg
+              ><span id="scene-weather-name">Golden hour</span
+              ><span class="scene-temperature" id="temperature">29°</span>
+            </div>
+          </div>
+          <div class="scene-bottom">
+            <span class="population"
+              ><span class="tiny-dot"></span
+              ><span id="population-text"
+                >8 animals, one shared home</span
+              ></span
+            >
+            <div class="scene-actions">
+              <button
+                class="scene-button"
+                id="sound-button"
+                aria-label="Enable nature sounds"
+                aria-pressed="false"
+                title="Nature sounds (M)"
+              >
+                <svg class="icon"><use href="#i-muted" /></svg></button
+              ><button
+                class="scene-button"
+                id="pause-button"
+                aria-label="Pause ecosystem"
+                aria-pressed="false"
+                title="Pause / play (Space)"
+              >
+                <svg class="icon"><use href="#i-pause" /></svg></button
+              ><span class="action-divider"></span
+              ><button
+                class="scene-button"
+                id="fullscreen-button"
+                aria-label="Expand ecosystem"
+                aria-pressed="false"
+                title="Expand view (F)"
+              >
+                <svg class="icon"><use href="#i-expand" /></svg>
+              </button>
+            </div>
+          </div>
+          <div class="animal-tooltip" id="animal-tooltip" hidden></div>
+          <pre class="debug-panel" id="debug-panel" hidden></pre>
+          <div
+            class="scene-message"
+            id="scene-message"
+            role="status"
+            hidden
+          ></div>
+        </div>
+
+        <div class="control-deck">
+          <div class="weather-block">
+            <div class="control-heading">
+              <span class="eyebrow">A CHANGE IN THE AIR</span
+              ><span class="control-hint">Set the weather</span>
+            </div>
+            <div class="weather-options" role="group" aria-label="Weather">
+              <button
+                class="weather-button is-active"
+                data-weather="sunny"
+                aria-pressed="true"
+                title="Sunny (1)"
+              >
+                <svg class="icon"><use href="#i-sun" /></svg><span>Sunny</span>
+              </button>
+              <button
+                class="weather-button"
+                data-weather="rain"
+                aria-pressed="false"
+                title="Rain (2)"
+              >
+                <svg class="icon"><use href="#i-rain" /></svg><span>Rain</span>
+              </button>
+              <button
+                class="weather-button"
+                data-weather="heavy"
+                aria-pressed="false"
+                title="Heavy rain (3)"
+              >
+                <svg class="icon"><use href="#i-heavy" /></svg
+                ><span>Heavy rain</span>
+              </button>
+              <button
+                class="weather-button"
+                data-weather="snow"
+                aria-pressed="false"
+                title="Snow — dry season only (4)"
+              >
+                <svg class="icon"><use href="#i-snow" /></svg><span>Snow</span>
+              </button>
+              <button
+                class="weather-button"
+                data-weather="storm"
+                aria-pressed="false"
+                title="Thunderstorm (5)"
+              >
+                <svg class="icon"><use href="#i-storm" /></svg
+                ><span>Thunderstorm</span>
+              </button>
+              <button
+                class="weather-button"
+                data-weather="tornado"
+                aria-pressed="false"
+                title="Tornado (6)"
+              >
+                <svg class="icon"><use href="#i-tornado" /></svg
+                ><span>Tornado</span>
+              </button>
+            </div>
+          </div>
+          <div class="season-block">
+            <div class="control-heading">
+              <span class="eyebrow">THE SEASON</span
+              ><span class="auto-label"
+                ><span class="tiny-dot"></span> AUTO
+                <span id="auto-count">60s</span></span
+              >
+            </div>
+            <div class="season-options" role="group" aria-label="Season">
+              <button
+                class="season-button is-active"
+                data-season="dry"
+                aria-pressed="true"
+                title="Dry season (S)"
+              >
+                <svg class="icon"><use href="#i-sun" /></svg
+                ><span>Dry<span class="season-word"> season</span></span>
+              </button>
+              <button
+                class="season-button"
+                data-season="wet"
+                aria-pressed="false"
+                title="Wet season (S)"
+              >
+                <svg class="icon"><use href="#i-sprout" /></svg
+                ><span>Wet<span class="season-word"> season</span></span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="understory" aria-label="Wildlife and field notes">
+        <div class="residents">
+          <div class="residents-heading">
+            <span class="eyebrow">A FEW FAMILIAR FACES</span
+            ><span>Meet your neighbours</span>
+          </div>
+          <div class="species-list">
+            <button
+              class="species-card"
+              data-species="lion"
+              aria-pressed="false"
+              title="Follow the lions"
+            >
+              <canvas
+                class="animal-portrait"
+                data-portrait="lion"
+                width="140"
+                height="88"
+                aria-hidden="true"
+              ></canvas
+              ><span class="species-copy"
+                ><strong>The lions</strong><span>Better together</span></span
+              ><span class="species-count">03</span>
+            </button>
+            <button
+              class="species-card"
+              data-species="elephant"
+              aria-pressed="false"
+              title="Follow the elephants"
+            >
+              <canvas
+                class="animal-portrait"
+                data-portrait="elephant"
+                width="140"
+                height="88"
+                aria-hidden="true"
+              ></canvas
+              ><span class="species-copy"
+                ><strong>The elephants</strong
+                ><span>Gentle wanderers</span></span
+              ><span class="species-count">03</span>
+            </button>
+            <button
+              class="species-card"
+              data-species="leopard"
+              aria-pressed="false"
+              title="Follow the leopards"
+            >
+              <canvas
+                class="animal-portrait"
+                data-portrait="leopard"
+                width="140"
+                height="88"
+                aria-hidden="true"
+              ></canvas
+              ><span class="species-copy"
+                ><strong>The leopards</strong
+                ><span>A world of their own</span></span
+              ><span class="species-count">02</span>
+            </button>
+          </div>
+        </div>
+        <aside class="field-note">
+          <span class="note-icon"
+            ><svg class="icon"><use href="#i-leaf" /></svg
+          ></span>
+          <div>
+            <span class="eyebrow">NOTES FROM THE FIELD</span>
+            <p id="field-note">
+              In the golden hush of the dry season,<br />life moves a little
+              slower.
+            </p>
+            <span class="note-signature"
+              >Every season tells a different story.</span
+            >
+          </div>
+        </aside>
+      </section>
+      <footer>
+        <span>A little perspective. A little peace.</span
+        ><span class="footer-right"
+          ><span class="tiny-dot"></span> Always changing. Always alive.
+          <button id="shortcuts-button" title="Open keyboard shortcuts">
+            Keyboard shortcuts <span>↗</span>
+          </button></span
+        >
+      </footer>
+    </main>
+
+    <dialog id="field-guide" aria-labelledby="guide-title">
+      <button
+        class="dialog-close"
+        id="close-guide"
+        aria-label="Close field guide"
+      >
+        <svg class="icon"><use href="#i-close" /></svg>
+      </button>
+      <p class="eyebrow">THE SAVANNA FIELD GUIDE</p>
+      <h2 id="guide-title">A world with<br />its own <em>rhythm.</em></h2>
+      <p class="guide-intro">
+        Eight neighbours. Two seasons. An ever-changing sky. This small
+        landscape is alive with little decisions.
+      </p>
+      <div class="guide-species">
+        <p>
+          <strong>Lions</strong> stay close to their pride, amble across the
+          plains, and settle down for a well-earned rest.
+        </p>
+        <p>
+          <strong>Elephants</strong> follow their family, stop by the waterhole,
+          and raise their trunks to greet the air.
+        </p>
+        <p>
+          <strong>Leopards</strong> prefer their own company. Look for a quick,
+          quiet stride or a retreat into an acacia tree.
+        </p>
+      </div>
+      <p class="guide-detail">
+        Seasons turn every 60 seconds. The rains bring greener grass and more
+        activity; the dry season draws families closer. Storms send the animals
+        hurrying, and lightning always finds a clear path. Snow is an
+        imaginative highland mode available in the dry season.
+      </p>
+      <div class="keyboard-grid">
+        <span><kbd>1</kbd>–<kbd>6</kbd> Weather</span
+        ><span><kbd>S</kbd> Switch season</span
+        ><span><kbd>Space</kbd> Pause / play</span
+        ><span><kbd>M</kbd> Nature sounds</span
+        ><span><kbd>F</kbd> Expand view</span
+        ><span><kbd>D</kbd> Performance</span>
+      </div>
+      <p class="guide-footnote">
+        Tap an animal for a closer introduction, or select a family below the
+        landscape to follow them. All artwork is drawn live with Canvas.
+      </p>
+    </dialog>
+    <div class="sr-only" id="announcement" aria-live="polite"></div>
+  </body>
+</html>

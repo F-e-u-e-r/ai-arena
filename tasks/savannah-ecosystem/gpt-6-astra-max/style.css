@@ -1,0 +1,1614 @@
+:root {
+  --page: #f6f5ef;
+  --paper: #fdfcf8;
+  --ink: #303d32;
+  --muted: #879080;
+  --green: #4e6449;
+  --line: #e2e5d9;
+  --gold: #a88748;
+  font-family: Arial, Helvetica, sans-serif;
+  color: var(--ink);
+  background: var(--page);
+  font-synthesis: none;
+  color-scheme: light;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid #899b56;
+  outline-offset: 4px;
+}
+button {
+  touch-action: manipulation;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+.icon-library {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+.icon {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+}
+button svg {
+  pointer-events: none;
+}
+.eyebrow {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 1.65px;
+  line-height: 1.6;
+  margin: 0;
+}
+.tiny-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #84956f;
+  flex-shrink: 0;
+}
+.site-header {
+  height: 74px;
+  width: 100%;
+  max-width: 1392px;
+  margin: 0 auto;
+  padding: 0 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line);
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.brand-mark {
+  width: 40px;
+  height: 40px;
+  background: #e9ebdf;
+  border-radius: 11px;
+  color: #526249;
+  padding: 3px;
+}
+.brand-mark svg {
+  width: 100%;
+  height: 100%;
+}
+.brand-name {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 32px;
+  letter-spacing: -1.7px;
+  margin-top: -4px;
+}
+.brand-period {
+  color: #95a079;
+}
+.brand-caption {
+  font-size: 8px;
+  letter-spacing: 1.9px;
+  line-height: 1.65;
+  padding-left: 16px;
+  margin-left: 10px;
+  border-left: 1px solid #d8ddce;
+  color: #87907d;
+}
+.header-right {
+  display: flex;
+  gap: 29px;
+  align-items: center;
+}
+.made-of-life {
+  font-size: 10px;
+  letter-spacing: 0.2px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: #8b9182;
+}
+.guide-button {
+  border: 1px solid #d9decf;
+  background: transparent;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 13px;
+  font-size: 10px;
+}
+.guide-button .icon {
+  width: 15px;
+  height: 15px;
+}
+.guide-button .arrow {
+  width: 13px;
+  margin-left: 10px;
+}
+.guide-button:hover {
+  background: #e9eddf;
+}
+main {
+  max-width: 1392px;
+  margin: 0 auto;
+  padding: 0 44px;
+}
+.intro {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 22px 0 18px;
+}
+.intro > .eyebrow,
+.intro .eyebrow {
+  color: #7e8a70;
+  font-size: 8px;
+  letter-spacing: 1.8px;
+}
+h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 46px;
+  font-weight: 400;
+  line-height: 1.18;
+  letter-spacing: -1.8px;
+  margin: 6px 0 8px;
+}
+h1 em {
+  color: #728267;
+  font-weight: 400;
+}
+.intro-copy {
+  font-size: 11px;
+  letter-spacing: 0.1px;
+  color: #8a8d7f;
+  margin: 0;
+}
+.season-summary {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding-right: 3px;
+  padding-top: 9px;
+}
+.season-orbit {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  color: #ac8e52;
+}
+.season-orbit > .icon {
+  width: 21px;
+  height: 21px;
+}
+.orbit-svg {
+  position: absolute;
+  inset: 0;
+  fill: none;
+  stroke: #e3e4d8;
+  stroke-width: 1.1;
+}
+.orbit-svg circle:last-child {
+  stroke: #b8bd9a;
+  stroke-dasharray: 138.23;
+  stroke-dashoffset: 0;
+  transform: rotate(-90deg);
+  transform-origin: center;
+  transition: stroke-dashoffset 0.4s linear;
+}
+.season-summary .eyebrow {
+  font-size: 8px;
+  letter-spacing: 1.4px;
+  color: #6b795d;
+}
+.season-summary p {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 14px;
+  margin: 3px 0 4px;
+}
+.season-countdown {
+  font-size: 9px;
+  color: #95988b;
+}
+.ecosystem {
+  border: 1px solid #dce0d2;
+  background: var(--paper);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 6px 18px #45512e04;
+}
+.scene {
+  height: clamp(315px, calc(100dvh - 484px), 500px);
+  min-height: 100px;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background: #e3c682;
+}
+.scene canvas#savanna-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: pan-y;
+}
+.scene-top {
+  position: absolute;
+  inset: 25px 27px auto;
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+  color: #596045;
+}
+.live-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 7px;
+  letter-spacing: 1.6px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.live-dot {
+  width: 5px;
+  height: 5px;
+  background: #748852;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px #89956818;
+  animation: breathe 3s infinite;
+}
+.location-title {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 24px;
+  letter-spacing: -0.5px;
+  color: #48543b;
+}
+.location-country {
+  font-size: 15px;
+  font-style: italic;
+  color: #737859;
+  margin-left: 2px;
+}
+.coordinates {
+  font-size: 6.5px;
+  letter-spacing: 1.1px;
+  display: block;
+  margin-top: 7px;
+  opacity: 0.65;
+}
+.scene-time {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  font-size: 9px;
+  color: #7d7958;
+}
+.scene-time > .icon {
+  width: 18px;
+  height: 18px;
+  stroke-width: 1.2;
+}
+.scene-temperature {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 20px;
+  border-left: 1px solid #88875d38;
+  padding-left: 10px;
+  margin-left: 3px;
+}
+.scene-bottom {
+  position: absolute;
+  inset: auto 20px 17px 26px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;
+}
+.population {
+  font-size: 8px;
+  letter-spacing: 0.5px;
+  color: #f7f5df;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  text-shadow: 0 1px 4px #3b3e2655;
+}
+.population .tiny-dot {
+  background: #e0e1b6;
+  width: 4px;
+  height: 4px;
+}
+.scene-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  pointer-events: auto;
+}
+.scene-button {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid #f4eed14a;
+  background: #f9f4d912;
+  color: #fff8de;
+  border-radius: 50%;
+  backdrop-filter: blur(6px);
+  transition: background 0.15s;
+}
+.scene-button > .icon {
+  width: 14px;
+  height: 14px;
+}
+.scene-button:hover,
+.scene-button[aria-pressed="true"] {
+  background: #faf2db45;
+}
+.action-divider {
+  height: 15px;
+  width: 1px;
+  background: #eee5c440;
+  margin: 0 3px;
+}
+.animal-tooltip {
+  position: absolute;
+  background: #fbfaefee;
+  border: 1px solid #faf8e9;
+  border-radius: 9px;
+  padding: 10px 13px;
+  font-size: 10px;
+  color: #414c38;
+  box-shadow: 0 4px 20px #2d371522;
+  pointer-events: none;
+  min-width: 108px;
+  transform: translate(-50%, -100%);
+  backdrop-filter: blur(10px);
+}
+.animal-tooltip strong {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 15px;
+  font-weight: 400;
+  display: block;
+  margin-bottom: 4px;
+}
+.animal-tooltip span {
+  color: #7a8169;
+  font-size: 9px;
+}
+.debug-panel {
+  position: absolute;
+  right: 16px;
+  top: 64px;
+  color: #e5f5da;
+  background: #223326db;
+  font: 10px/1.65 monospace;
+  border-radius: 7px;
+  padding: 10px;
+  pointer-events: none;
+  z-index: 4;
+  max-width: calc(100% - 32px);
+}
+.scene-message {
+  position: absolute;
+  bottom: 62px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 14px;
+  background: #f9f7e8eb;
+  color: #49563d;
+  border-radius: 20px;
+  font-size: 10px;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 3px 16px #33401e18;
+}
+.control-deck {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 244px;
+  gap: 24px;
+  padding: 20px 24px 22px;
+}
+.control-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 11px;
+  height: 13px;
+}
+.control-heading .eyebrow {
+  font-size: 8px;
+  letter-spacing: 1.4px;
+  color: #717d65;
+}
+.control-hint {
+  font-size: 8px;
+  color: #a0a596;
+}
+.weather-options {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 7px;
+}
+.weather-button {
+  height: 40px;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid #e4e7dd;
+  border-radius: 6px;
+  background: #fdfcf8;
+  font-size: 10px;
+  color: #86907c;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+.weather-button .icon {
+  width: 17px;
+  height: 17px;
+  stroke-width: 1.3;
+}
+.weather-button:hover {
+  background: #f0f2e8;
+  border-color: #bcc6ad;
+  color: #526448;
+}
+.weather-button.is-active {
+  background: #edf0e2;
+  border-color: #9aaa81;
+  color: #586a45;
+  box-shadow: 0 0 0 1px #9aaa810a;
+}
+.weather-button.is-active[data-weather="sunny"] .icon {
+  color: #a38744;
+}
+.weather-button:disabled {
+  opacity: 0.36;
+  background: #f1f0e8;
+}
+.season-block {
+  padding-left: 24px;
+  border-left: 1px solid #e4e7dc;
+}
+.auto-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 6.5px;
+  letter-spacing: 0.7px;
+  color: #929b81;
+}
+.auto-label .tiny-dot {
+  width: 3px;
+  height: 3px;
+}
+.auto-label > span:last-child {
+  min-width: 19px;
+  text-align: right;
+  letter-spacing: 0;
+  color: #9ba38e;
+}
+.season-options {
+  height: 40px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  background: #f0f1e8;
+  border: 1px solid #e9ecdf;
+  border-radius: 6px;
+  padding: 3px;
+}
+.season-button {
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 4px;
+  font-size: 10px;
+  color: #8c947f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 5px;
+  white-space: nowrap;
+}
+.season-button .icon {
+  height: 14px;
+  width: 14px;
+}
+.season-button.is-active {
+  background: #fdfcf6;
+  color: #5b6b4b;
+  border-color: #e3e7d7;
+  box-shadow: 0 1px 3px #4b5b3010;
+}
+.season-button:hover {
+  color: #455d38;
+}
+.understory {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 335px;
+  gap: 32px;
+  padding: 20px 1px 18px;
+}
+.residents-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 9px;
+}
+.residents-heading .eyebrow {
+  font-size: 8px;
+  letter-spacing: 1.5px;
+  color: #849077;
+}
+.residents-heading > span:last-child {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 11px;
+  font-style: italic;
+  color: #939981;
+}
+.species-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.species-card {
+  background: transparent;
+  border: 1px solid #e0e4d7;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px 5px 4px;
+  text-align: left;
+  min-width: 0;
+  transition:
+    background 0.18s,
+    border-color 0.18s;
+}
+.species-card:hover,
+.species-card.is-active {
+  background: #edf0e3;
+  border-color: #b3bea2;
+}
+.animal-portrait {
+  width: 66px;
+  height: 43px;
+  flex-shrink: 0;
+}
+.species-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  white-space: nowrap;
+}
+.species-copy strong {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 13px;
+  font-weight: 400;
+}
+.species-copy > span {
+  font-size: 8px;
+  color: #929a84;
+}
+.species-count {
+  margin-left: auto;
+  font-size: 9px;
+  color: #95a187;
+  font-variant-numeric: tabular-nums;
+  padding-left: 2px;
+}
+.field-note {
+  border-left: 1px solid #dfe3d4;
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  padding: 5px 0 2px 28px;
+}
+.note-icon {
+  background: #ebeddf;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  color: #8b9975;
+  flex-shrink: 0;
+  margin-top: 13px;
+}
+.note-icon > .icon {
+  width: 16px;
+  height: 16px;
+}
+.field-note .eyebrow {
+  font-size: 7px;
+  letter-spacing: 1.35px;
+  color: #919981;
+}
+.field-note p {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 14px;
+  line-height: 1.55;
+  margin: 6px 0 5px;
+  color: #6c795c;
+}
+.note-signature {
+  font-size: 8px;
+  color: #a2a793;
+}
+footer {
+  border-top: 1px solid var(--line);
+  padding: 15px 0 21px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 8px;
+  letter-spacing: 0.2px;
+  color: #9ba28e;
+}
+.footer-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.footer-right .tiny-dot {
+  width: 3px;
+  height: 3px;
+}
+#shortcuts-button {
+  border: 0;
+  border-left: 1px solid #d7ddcd;
+  background: transparent;
+  font-size: 8px;
+  color: #929a84;
+  margin-left: 13px;
+  padding: 0 0 0 17px;
+}
+#shortcuts-button span {
+  padding-left: 7px;
+}
+dialog {
+  width: min(490px, calc(100% - 32px));
+  max-height: calc(100dvh - 28px);
+  border: 1px solid #dce3cf;
+  background: #faf9f0;
+  color: var(--ink);
+  padding: 32px 36px 24px;
+  border-radius: 15px;
+  box-shadow: 0 24px 100px #1e2d3040;
+}
+dialog::backdrop {
+  background: #23352660;
+  backdrop-filter: blur(5px);
+}
+.dialog-close {
+  position: absolute;
+  right: 15px;
+  top: 15px;
+  width: 29px;
+  height: 29px;
+  display: grid;
+  place-items: center;
+  background: #e9eddd;
+  border: 0;
+  border-radius: 50%;
+}
+.dialog-close > .icon {
+  width: 14px;
+  height: 14px;
+}
+dialog > .eyebrow {
+  font-size: 8px;
+  color: #8d9a79;
+}
+h2 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 38px;
+  font-weight: 400;
+  line-height: 1.1;
+  letter-spacing: -1px;
+  margin: 17px 0;
+}
+h2 em {
+  color: #859475;
+  font-weight: 400;
+}
+.guide-intro {
+  font-size: 12px;
+  line-height: 1.8;
+  color: #859076;
+}
+.guide-species {
+  border-top: 1px solid #e0e5d3;
+  border-bottom: 1px solid #e0e5d3;
+  padding: 6px 0;
+  margin: 18px 0;
+}
+.guide-species p {
+  font-size: 11px;
+  line-height: 1.7;
+  color: #7c8871;
+}
+.guide-species strong {
+  color: #526547;
+  font-weight: 600;
+}
+.guide-detail,
+.guide-footnote {
+  font-size: 10px;
+  line-height: 1.8;
+  color: #8b957d;
+}
+.keyboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 11px;
+  margin: 22px 0;
+  font-size: 9px;
+  color: #7b886d;
+}
+.keyboard-grid > span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+kbd {
+  font:
+    9px Arial,
+    sans-serif;
+  border: 1px solid #dbe1cf;
+  border-bottom-width: 2px;
+  padding: 3px 5px;
+  border-radius: 4px;
+  background: #f0f2e7;
+  color: #53674a;
+}
+.guide-footnote {
+  border-top: 1px solid #e0e5d3;
+  padding-top: 14px;
+  margin-bottom: 0;
+  font-size: 9px;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+.ecosystem:fullscreen,
+.ecosystem.is-expanded {
+  width: 100%;
+  height: 100dvh;
+  border: 0;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--page);
+}
+.ecosystem:fullscreen .scene,
+.ecosystem.is-expanded .scene {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+}
+.ecosystem.is-expanded {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+}
+.ecosystem:fullscreen .control-deck,
+.ecosystem.is-expanded .control-deck {
+  flex-shrink: 0;
+}
+.scene.is-paused .live-dot {
+  animation: none;
+  background: #aa9158;
+}
+@keyframes breathe {
+  50% {
+    box-shadow: 0 0 0 5px #89956808;
+    opacity: 0.7;
+  }
+}
+@media (min-width: 1600px) {
+  .site-header,
+  main {
+    max-width: 1504px;
+  }
+  .scene {
+    height: 530px;
+  }
+  .intro {
+    padding-top: 37px;
+    padding-bottom: 32px;
+  }
+  h1 {
+    font-size: 52px;
+  }
+  .understory {
+    padding-top: 28px;
+    padding-bottom: 28px;
+  }
+}
+@media (max-width: 1150px) {
+  .site-header {
+    height: 75px;
+    padding: 0 28px;
+  }
+  main {
+    padding: 0 28px;
+  }
+  .intro {
+    padding: 24px 0;
+  }
+  .control-deck {
+    grid-template-columns: minmax(0, 1fr) 202px;
+    gap: 17px;
+    padding: 17px 18px 19px;
+  }
+  .season-block {
+    padding-left: 17px;
+  }
+  .weather-button {
+    font-size: 9px;
+    gap: 5px;
+    padding: 0 5px;
+  }
+  .weather-button .icon {
+    width: 16px;
+    height: 16px;
+  }
+  .season-button {
+    font-size: 9px;
+    gap: 5px;
+  }
+  .understory {
+    grid-template-columns: minmax(0, 1fr) 265px;
+    gap: 20px;
+  }
+  .animal-portrait {
+    width: 49px;
+  }
+  .species-card {
+    gap: 5px;
+    padding-right: 9px;
+  }
+  .species-copy strong {
+    font-size: 12px;
+  }
+  .species-copy > span {
+    font-size: 7px;
+  }
+  .field-note {
+    padding-left: 18px;
+    gap: 9px;
+  }
+  .field-note p {
+    font-size: 12px;
+  }
+  .note-icon {
+    width: 25px;
+    height: 25px;
+  }
+  .control-heading .eyebrow {
+    font-size: 7px;
+    letter-spacing: 1px;
+  }
+  h1 {
+    font-size: 42px;
+  }
+}
+@media (max-width: 900px) {
+  .brand-caption,
+  .made-of-life {
+    display: none;
+  }
+  .intro {
+    padding: 23px 0;
+  }
+  .intro .eyebrow {
+    font-size: 7px;
+  }
+  .season-summary {
+    gap: 10px;
+  }
+  .season-summary p {
+    font-size: 12px;
+  }
+  .season-summary .eyebrow {
+    font-size: 7px;
+  }
+  .season-countdown {
+    font-size: 8px;
+  }
+  .season-orbit {
+    width: 40px;
+    height: 40px;
+  }
+  .scene {
+    height: 360px;
+  }
+  .control-deck {
+    grid-template-columns: minmax(0, 1fr) 157px;
+    gap: 14px;
+    padding: 16px 14px;
+  }
+  .weather-button {
+    flex-direction: column;
+    height: 49px;
+    gap: 5px;
+    font-size: 8px;
+  }
+  .season-block {
+    padding-left: 14px;
+  }
+  .season-options {
+    height: 49px;
+  }
+  .season-button {
+    flex-direction: column;
+    gap: 6px;
+    font-size: 9px;
+  }
+  .season-word {
+    display: none;
+  }
+  .control-hint {
+    display: none;
+  }
+  .control-heading .eyebrow {
+    font-size: 6.5px;
+  }
+  .auto-label {
+    font-size: 6px;
+    letter-spacing: 0;
+  }
+  .auto-label .tiny-dot {
+    display: none;
+  }
+  .understory {
+    grid-template-columns: 1fr;
+  }
+  .field-note {
+    display: none;
+  }
+  .species-copy strong {
+    font-size: 13px;
+  }
+  .species-copy > span {
+    font-size: 8px;
+  }
+  .animal-portrait {
+    width: 60px;
+  }
+  .species-card {
+    padding-right: 15px;
+  }
+  .understory {
+    padding: 20px 0;
+  }
+  h1 {
+    font-size: 36px;
+  }
+  .intro-copy {
+    font-size: 10px;
+  }
+  .location-title {
+    font-size: 22px;
+  }
+  .location-country {
+    font-size: 14px;
+  }
+}
+@media (max-width: 600px) {
+  .site-header {
+    height: 66px;
+    padding: 0 18px;
+  }
+  .brand-name {
+    font-size: 28px;
+  }
+  .brand-mark {
+    width: 34px;
+    height: 34px;
+  }
+  .guide-button {
+    padding: 8px 10px;
+    font-size: 9px;
+    gap: 7px;
+  }
+  .guide-button .arrow {
+    display: none;
+  }
+  main {
+    padding: 0 14px;
+  }
+  .intro {
+    padding: 22px 3px 20px;
+    align-items: center;
+  }
+  .intro .eyebrow {
+    font-size: 6px;
+    letter-spacing: 1.25px;
+  }
+  h1 {
+    font-size: 31px;
+    letter-spacing: -1.2px;
+    margin: 7px 0;
+  }
+  .intro-copy {
+    font-size: 8px;
+  }
+  .season-summary {
+    padding-top: 0;
+    padding-right: 0;
+  }
+  .season-summary > div,
+  .season-orbit {
+    display: none;
+  }
+  .scene {
+    height: 330px;
+  }
+  .scene-top {
+    inset: 19px 18px auto;
+  }
+  .location-country {
+    display: none;
+  }
+  .location-title {
+    font-size: 23px;
+  }
+  .live-label {
+    font-size: 6px;
+    letter-spacing: 1.3px;
+  }
+  .coordinates {
+    font-size: 5.5px;
+    letter-spacing: 0.5px;
+  }
+  .scene-time {
+    font-size: 8px;
+    gap: 6px;
+  }
+  .scene-time > .icon {
+    width: 15px;
+  }
+  .scene-temperature {
+    font-size: 19px;
+    padding-left: 7px;
+  }
+  .scene-bottom {
+    inset: auto 13px 13px 16px;
+  }
+  .population {
+    font-size: 6px;
+    letter-spacing: 0.15px;
+    gap: 5px;
+  }
+  .scene-actions {
+    gap: 4px;
+  }
+  .scene-button {
+    width: 29px;
+    height: 29px;
+  }
+  .action-divider {
+    margin: 0 2px;
+  }
+  .control-deck {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    padding: 15px 12px;
+  }
+  .control-heading {
+    margin-bottom: 9px;
+  }
+  .control-heading .eyebrow {
+    font-size: 7px;
+    letter-spacing: 1.2px;
+  }
+  .control-hint {
+    display: block;
+    font-size: 7px;
+  }
+  .weather-options {
+    gap: 5px;
+  }
+  .weather-button {
+    height: 49px;
+    font-size: 7px;
+    padding: 0 2px;
+    gap: 6px;
+  }
+  .weather-button .icon {
+    width: 17px;
+    height: 17px;
+  }
+  .weather-button[data-weather="storm"] > span {
+    font-size: 6px;
+  }
+  .season-block {
+    padding: 0;
+    border: 0;
+    display: grid;
+    grid-template-columns: 1fr 190px;
+    gap: 10px;
+    align-items: center;
+  }
+  .season-block > .control-heading {
+    margin: 0;
+    display: block;
+    height: auto;
+  }
+  .season-block > .control-heading > .eyebrow {
+    display: block;
+  }
+  .auto-label {
+    font-size: 5.5px;
+    letter-spacing: 0.8px;
+    margin-top: 3px;
+    gap: 5px;
+  }
+  .auto-label .tiny-dot {
+    display: block;
+  }
+  .season-options {
+    height: 34px;
+  }
+  .season-button {
+    flex-direction: row;
+    font-size: 8px;
+    gap: 7px;
+  }
+  .season-word {
+    display: inline;
+  }
+  .residents-heading .eyebrow {
+    font-size: 6.5px;
+  }
+  .residents-heading > span:last-child {
+    font-size: 10px;
+  }
+  .species-list {
+    gap: 6px;
+  }
+  .species-card {
+    flex-wrap: wrap;
+    gap: 0;
+    justify-content: center;
+    padding: 7px 3px;
+    position: relative;
+  }
+  .animal-portrait {
+    width: 69px;
+    height: 36px;
+  }
+  .species-copy {
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+    padding-top: 2px;
+  }
+  .species-copy strong {
+    font-size: 11px;
+  }
+  .species-copy > span {
+    font-size: 6px;
+    letter-spacing: -0.1px;
+  }
+  .species-count {
+    position: absolute;
+    right: 7px;
+    top: 8px;
+    font-size: 7px;
+    padding: 0;
+  }
+  .understory {
+    padding: 20px 2px;
+  }
+  .ecosystem {
+    border-radius: 11px;
+  }
+  footer {
+    padding: 14px 2px;
+    font-size: 6px;
+  }
+  .footer-right {
+    font-size: 6px;
+  }
+  #shortcuts-button {
+    display: none;
+  }
+  .scene-message {
+    font-size: 8px;
+    max-width: calc(100% - 25px);
+    white-space: normal;
+    text-align: center;
+    bottom: 56px;
+  }
+  .animal-tooltip {
+    padding: 7px 10px;
+    min-width: 86px;
+  }
+  .animal-tooltip strong {
+    font-size: 12px;
+  }
+  .animal-tooltip span {
+    font-size: 8px;
+  }
+}
+.scene[data-mood="dark"] .scene-top,
+.scene[data-mood="dark"] .location-title,
+.scene[data-mood="dark"] .location-country,
+.scene[data-mood="dark"] .scene-time {
+  color: #f0edcd;
+  transition: color 1s;
+}
+.scene[data-mood="dark"] .live-dot {
+  background: #d7dfa8;
+}
+.scene[data-mood="dark"] .scene-temperature {
+  border-color: #e0e4c944;
+}
+/* Compact iframe mode: the scene keeps the space; every weather and season
+   remains a separate, labelled, keyboard-accessible button. */
+@media (max-height: 540px) and (min-width: 601px), (max-height: 420px) {
+  html,
+  body {
+    height: 100%;
+    overflow: hidden;
+  }
+  .site-header {
+    height: 42px;
+    padding: 0 16px;
+    border-bottom: 0;
+    flex-shrink: 0;
+  }
+  .brand {
+    gap: 7px;
+  }
+  .brand-mark {
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+  }
+  .brand-name {
+    font-size: 24px;
+    margin-top: -3px;
+  }
+  .brand-caption,
+  .made-of-life {
+    display: none;
+  }
+  .guide-button {
+    padding: 5px 8px;
+    font-size: 8px;
+  }
+  .guide-button .icon {
+    width: 13px;
+    height: 13px;
+  }
+  .guide-button .arrow {
+    display: none;
+  }
+  body {
+    display: flex;
+    flex-direction: column;
+  }
+  main {
+    padding: 0 12px 10px;
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .intro,
+  .understory,
+  footer {
+    display: none;
+  }
+  .ecosystem {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    border-radius: 9px;
+  }
+  .scene {
+    flex: 1;
+    height: auto;
+    min-height: 60px;
+  }
+  .scene-top {
+    inset: 13px 15px auto;
+  }
+  .location-title {
+    font-size: 19px;
+  }
+  .location-country {
+    font-size: 12px;
+  }
+  .coordinates {
+    display: none;
+  }
+  .live-label {
+    font-size: 5px;
+    margin-bottom: 4px;
+    letter-spacing: 1px;
+  }
+  .live-dot {
+    height: 4px;
+    width: 4px;
+  }
+  .scene-time {
+    font-size: 7px;
+    gap: 5px;
+  }
+  .scene-temperature {
+    font-size: 16px;
+  }
+  .scene-time > .icon {
+    height: 14px;
+    width: 14px;
+  }
+  .scene-bottom {
+    inset: auto 11px 10px 14px;
+  }
+  .population {
+    font-size: 6px;
+  }
+  .scene-button {
+    width: 25px;
+    height: 25px;
+  }
+  .scene-button > .icon {
+    width: 12px;
+    height: 12px;
+  }
+  .control-deck {
+    flex-shrink: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 128px;
+    padding: 7px 9px;
+    gap: 12px;
+  }
+  .control-heading {
+    display: none !important;
+  }
+  .weather-options {
+    gap: 5px;
+  }
+  .weather-button {
+    height: 34px;
+    flex-direction: row;
+    gap: 5px;
+    font-size: 8px;
+  }
+  .weather-button .icon {
+    width: 16px;
+    height: 16px;
+  }
+  .season-block {
+    display: block;
+    padding-left: 12px;
+    border-left: 1px solid var(--line);
+  }
+  .season-options {
+    height: 34px;
+  }
+  .season-button {
+    font-size: 8px;
+    flex-direction: row;
+    gap: 5px;
+  }
+  .season-word {
+    display: none;
+  }
+  .debug-panel {
+    top: 10px;
+    font-size: 7px;
+    padding: 7px;
+    line-height: 1.4;
+  }
+  .scene-message {
+    bottom: 43px;
+    font-size: 8px;
+  }
+  .animal-tooltip {
+    min-width: 80px;
+    padding: 6px 9px;
+  }
+  .animal-tooltip strong {
+    font-size: 12px;
+  }
+  .animal-tooltip span {
+    font-size: 8px;
+  }
+  dialog {
+    padding: 22px 27px;
+  }
+  h2 {
+    font-size: 28px;
+    margin: 10px 0;
+  }
+  .guide-intro {
+    font-size: 10px;
+  }
+  .guide-species {
+    margin: 10px 0;
+  }
+  .keyboard-grid {
+    margin: 13px 0;
+  }
+}
+@media (max-height: 420px) and (max-width: 640px) {
+  .site-header {
+    height: 33px;
+    padding: 0 9px;
+  }
+  .brand-mark {
+    width: 23px;
+    height: 23px;
+  }
+  .brand-name {
+    font-size: 21px;
+  }
+  .guide-button {
+    border: 0;
+    padding: 3px 5px;
+  }
+  .guide-button > span {
+    font-size: 7px;
+  }
+  main {
+    padding: 0 6px 6px;
+  }
+  .ecosystem {
+    border-radius: 7px;
+  }
+  .control-deck {
+    grid-template-columns: minmax(0, 1fr) 72px;
+    padding: 5px;
+    gap: 5px;
+  }
+  .weather-options {
+    gap: 3px;
+  }
+  .weather-button {
+    height: 31px;
+    padding: 0;
+    border-radius: 5px;
+  }
+  .weather-button > span {
+    display: none;
+  }
+  .weather-button[data-weather="storm"] > span {
+    display: none;
+  }
+  .weather-button > .icon {
+    width: 17px;
+    height: 17px;
+  }
+  .season-block {
+    padding-left: 5px;
+  }
+  .season-options {
+    height: 31px;
+    padding: 2px;
+    gap: 2px;
+  }
+  .season-button {
+    padding: 0;
+  }
+  .season-button > span {
+    display: none;
+  }
+  .season-button .icon {
+    width: 15px;
+    height: 15px;
+  }
+  .scene-top {
+    inset: 9px 10px auto;
+  }
+  .location-title {
+    font-size: 16px;
+  }
+  .location-country {
+    display: none;
+  }
+  .live-label {
+    font-size: 4px;
+    letter-spacing: 1px;
+    gap: 4px;
+    margin-bottom: 3px;
+  }
+  .scene-time > span:not(.scene-temperature) {
+    display: none;
+  }
+  .scene-time {
+    height: 21px;
+  }
+  .scene-temperature {
+    font-size: 15px;
+  }
+  .scene-bottom {
+    inset: auto 7px 6px 10px;
+  }
+  .scene-button {
+    width: 23px;
+    height: 23px;
+  }
+  .scene-button > .icon {
+    width: 11px;
+    height: 11px;
+  }
+  .scene-actions {
+    gap: 3px;
+  }
+  .action-divider {
+    height: 11px;
+  }
+  .population {
+    font-size: 5px;
+    max-width: 145px;
+  }
+  .animal-tooltip {
+    padding: 5px 7px;
+  }
+  .animal-tooltip strong {
+    font-size: 10px;
+  }
+  .animal-tooltip span {
+    font-size: 6px;
+  }
+  .scene-message {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .live-dot {
+    animation: none;
+  }
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto;
+    transition: none !important;
+  }
+}

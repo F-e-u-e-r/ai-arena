@@ -3378,6 +3378,27 @@
       "displayName": "OpenAI: GPT-6 Luna",
       "cachedInput": 0.01,
       "context": 1050000
+    },
+    "gpt-6-astra": {
+      "input": 10,
+      "output": 50,
+      "source": "openrouter",
+      "verifiedAt": "2026-10-15",
+      "openRouterModel": "openai/gpt-6-astra",
+      "displayName": "OpenAI: GPT-6 Astra",
+      "cachedInput": 1,
+      "context": 1050000,
+      "aliasFor": "openai/gpt-6-astra"
+    },
+    "openai/gpt-6-astra": {
+      "input": 10,
+      "output": 50,
+      "source": "openrouter",
+      "verifiedAt": "2026-10-15",
+      "openRouterModel": "openai/gpt-6-astra",
+      "displayName": "OpenAI: GPT-6 Astra",
+      "cachedInput": 1,
+      "context": 1050000
     }
   }
 }
