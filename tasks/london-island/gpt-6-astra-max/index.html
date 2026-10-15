@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#edf1e8">
+  <meta name="description" content="A little London, a world of wonder. Explore a floating 3D city through four seasons and an ever-changing sky.">
+  <title>Little Worlds — A Little London</title>
+  <link rel="stylesheet" href="style.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js" onerror="this.onerror=null;this.src='https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js'"></script>
+  <script defer src="main.js"></script>
+</head>
+<body>
+  <svg class="svg-defs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <symbol id="i-world" viewBox="0 0 32 32"><path d="m4 12 12-7 12 7-12 7-12-7Z"/><path d="m4 17 12 7 12-7M8 24l8 4 8-4M11 8v7m10-7v7"/></symbol>
+      <symbol id="i-flower" viewBox="0 0 24 24"><path d="M12 8C6 0 2 9 8 11c-9 3-2 10 2 5 1 9 10 4 6-1 9 0 7-9 1-7 2-8-7-9-5 0Z"/><circle cx="12" cy="11" r="2.5"/></symbol>
+      <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></symbol>
+      <symbol id="i-leaf" viewBox="0 0 24 24"><path d="m12 2 3 6 4-2-1 5 4 1-7 6h-3l-3-1-6-5 4-1-1-5 4 2 2-6Z"/><path d="M12 9v13m-4-9 4 3 4-3"/></symbol>
+      <symbol id="i-snow" viewBox="0 0 24 24"><path d="M12 2v20M3.3 7l17.4 10M3.3 17 20.7 7M9 4l3 3 3-3M9 20l3-3 3 3M4 10l4-1-1-4m10 14-1-4 4-1M4 14l4 1-1 4M17 5l-1 4 4 1"/></symbol>
+      <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M6 16a4 4 0 0 1-.2-8 6.5 6.5 0 0 1 12.4 1A3.5 3.5 0 0 1 18 16H6ZM5 20h8m3 0h3"/></symbol>
+      <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.6 13A8.7 8.7 0 0 1 11 3.4 8.8 8.8 0 1 0 20.6 13Z"/><path d="M18 3v4m-2-2h4"/></symbol>
+      <symbol id="i-volume" viewBox="0 0 24 24"><path d="m11 4-6 5H2v6h3l6 5V4Zm4 4a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/></symbol>
+      <symbol id="i-mute" viewBox="0 0 24 24"><path d="m11 4-6 5H2v6h3l6 5V4Zm5 5 6 6m0-6-6 6"/></symbol>
+      <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v.1"/></symbol>
+      <symbol id="i-reset" viewBox="0 0 24 24"><path d="M4 9a8 8 0 1 1 0 6M4 3v6h6"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+      <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+      <symbol id="i-drag" viewBox="0 0 24 24"><path d="m4 9-3 3 3 3m16-6 3 3-3 3M1 12h6m10 0h6"/><rect x="9" y="3" width="6" height="18" rx="3"/><path d="M12 6v3"/></symbol>
+      <symbol id="i-play" viewBox="0 0 24 24"><path d="m8 5 11 7-11 7V5Z"/></symbol>
+      <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+      <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+      <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></symbol>
+    </defs>
+  </svg>
+
+  <div class="app" id="app">
+    <div class="sky-glow" aria-hidden="true"></div>
+    <header class="masthead">
+      <a class="brand" href="./index.html" aria-label="Little Worlds home"><span class="brand-mark"><svg><use href="#i-world"/></svg></span><span>little worlds<span class="brand-period">.</span></span></a>
+      <span class="edition">A SMALL ESCAPE, EVERY DAY</span>
+      <div class="header-actions"><span class="live"><i></i> LIVE DIORAMA</span><button class="icon-button" id="sound-button" title="Turn on ambient sound (M)" aria-label="Turn on ambient sound" aria-pressed="false"><svg><use href="#i-mute"/></svg></button><button class="icon-button" id="about-button" title="About this little world" aria-label="About this little world"><svg><use href="#i-info"/></svg></button></div>
+    </header>
+
+    <main>
+      <section class="intro" aria-labelledby="page-title">
+        <p class="eyebrow"><span class="small-line"></span> THE FLOATING CITY · No. 001</p>
+        <h1 id="page-title">A little<br><em>London.</em></h1>
+        <p class="intro-copy">A familiar city. A different perspective.<br>Four seasons, one small world.<br>Stay a while. Watch it change.</p>
+        <div class="weather-note" aria-live="polite" aria-atomic="true">
+          <div class="weather-heading"><svg id="weather-icon"><use href="#i-cloud"/></svg><span id="temperature">12°</span><span class="weather-divider"></span><span id="weather-description">Misty & mild</span></div>
+          <p id="season-poem">A little mist, a little magic.</p>
+        </div>
+      </section>
+
+      <section id="scene-container" class="scene-container" aria-label="Interactive floating London island">
+        <canvas id="world" tabindex="0" aria-label="3D London. Drag left or right to rotate. Use arrow keys to rotate, plus and minus to zoom, and R to reset."></canvas>
+        <div class="scene-loading" id="scene-loading"><span class="loading-orbit"></span><p>A little world is taking shape…</p></div>
+        <div class="landmark-labels" id="landmark-labels" aria-label="Explore the landmarks">
+          <button class="landmark-label" data-landmark="eye"><span>London Eye</span><i></i></button>
+          <button class="landmark-label" data-landmark="ben"><span>Big Ben</span><i></i></button>
+          <button class="landmark-label" data-landmark="bridge"><span>Tower Bridge</span><i></i></button>
+        </div>
+      </section>
+
+      <div class="scene-caption" aria-hidden="true"><span class="caption-dot"></span> LONDON, UNITED KINGDOM <span class="caption-coordinates">51.5072° N · 0.1276° W</span></div>
+      <div class="view-controls" aria-label="View controls"><button class="icon-button" id="zoom-in" aria-label="Zoom in" title="Zoom in (+)"><svg><use href="#i-plus"/></svg></button><button class="icon-button" id="reset-view" aria-label="Reset view" title="Reset view (R)"><svg><use href="#i-reset"/></svg></button><button class="icon-button" id="zoom-out" aria-label="Zoom out" title="Zoom out (−)"><svg><use href="#i-minus"/></svg></button></div>
+      <div class="compass" aria-hidden="true"><span>N</span><div id="compass-needle"><i></i><b></b></div><span>S</span></div>
+
+      <section class="season-dock" aria-label="Season controls">
+        <div class="dock-heading"><span>EVERY SEASON TELLS A STORY</span><button id="auto-cycle" class="auto-cycle" role="switch" aria-checked="true" title="Automatically change season every 24 seconds (A)"><span class="switch-track"><i></i></span><span>Auto cycle</span></button></div>
+        <div class="season-tabs" role="group" aria-label="Choose a season">
+          <button class="season-tab active" data-season="0" aria-pressed="true" title="Spring (1)"><svg><use href="#i-flower"/></svg><span>Spring</span><i class="season-progress"></i></button>
+          <button class="season-tab" data-season="1" aria-pressed="false" title="Summer (2)"><svg><use href="#i-sun"/></svg><span>Summer</span><i class="season-progress"></i></button>
+          <button class="season-tab" data-season="2" aria-pressed="false" title="Autumn (3)"><svg><use href="#i-leaf"/></svg><span>Autumn</span><i class="season-progress"></i></button>
+          <button class="season-tab" data-season="3" aria-pressed="false" title="Winter (4)"><svg><use href="#i-snow"/></svg><span>Winter</span><i class="season-progress"></i></button>
+        </div>
+      </section>
+
+      <section class="time-dock" aria-label="Time controls">
+        <button class="time-jump" id="time-jump" aria-label="Skip to sunset" title="Skip to the next time of day (D)"><span class="time-icon"><svg id="time-icon"><use href="#i-sun"/></svg><svg class="time-ring" viewBox="0 0 48 48"><circle cx="24" cy="24" r="22"/></svg></span><span class="time-copy"><span class="time-eyebrow">A MOMENT IN TIME</span><span id="time-label">Daylight</span></span></button>
+        <button class="icon-button pause-button" id="pause-time" aria-label="Pause day and night cycle" aria-pressed="false" title="Pause day and night (Space)"><svg><use href="#i-pause"/></svg></button>
+        <div class="time-track"><div id="time-progress"></div></div>
+        <span class="time-duration">A whole day in 15 seconds</span>
+      </section>
+    </main>
+
+    <footer class="footer"><span>A world of wonder. A moment of calm.</span><span class="interaction-hint"><svg><use href="#i-drag"/></svg> DRAG TO EXPLORE <i></i> SCROLL TO ZOOM</span><span class="footer-number">01 <span>/</span> LONDON</span></footer>
+    <div class="debug" id="debug" hidden></div>
+    <div class="toast" id="toast" role="status"></div>
+
+    <dialog id="info-dialog" class="info-dialog"><button class="icon-button dialog-close" id="close-dialog" aria-label="Close"><svg><use href="#i-close"/></svg></button><span class="dialog-eyebrow" id="dialog-eyebrow">WELCOME TO LITTLE WORLDS</span><h2 id="dialog-title">Small world.<br>Endless wonder.</h2><div id="dialog-content"></div><button class="dialog-done" id="dialog-done">Back to the moment <svg><use href="#i-arrow"/></svg></button></dialog>
+  </div>
+  <noscript><p class="noscript">This little world needs JavaScript. Please enable it to explore London.</p></noscript>
+</body>
+</html>

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f3eee4">
+  <meta name="description" content="An autumn daydream above Tokyo. Explore a tiny floating world as day turns into night.">
+  <title>Tokyo Sky Garden — A little world of wonder</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=DM+Sans:wght@400;450;500;550;600;650;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js" defer></script>
+  <script src="main.js" defer></script>
+</head>
+<body>
+  <svg class="svg-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="i-leaf" viewBox="0 0 24 24"><path d="m12 2 2.1 5.7 3.6-2-1.2 5.1 4.5-.8-3.7 4.4 1.2 2.1-5.6.6-.9 4.9-.9-4.9-5.6-.6 1.2-2.1L3 10l4.5.8-1.2-5.1 3.6 2L12 2Z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></symbol>
+    <symbol id="i-sunset" viewBox="0 0 24 24"><path d="M3 17h18M5 21h14M6 17a6 6 0 1 1 12 0M12 2v3M3 7l2 2m14 0 2-2M12 8v5m-2-2 2 2 2-2"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.5 14.5A9 9 0 0 1 9.5 3.5a9 9 0 1 0 11 11Z"/><path d="M17 3v4m-2-2h4"/></symbol>
+    <symbol id="i-dawn" viewBox="0 0 24 24"><path d="M3 17h18M5 21h14M6 17a6 6 0 1 1 12 0M12 2v3M3 7l2 2m14 0 2-2M12 13V8m-2 2 2-2 2 2"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 6v12M15 6v12" stroke-width="2.5"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="m9 5 11 7-11 7Z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-reset" viewBox="0 0 24 24"><path d="M3 10a9 9 0 1 1 1 7M3 4v6h6"/></symbol>
+    <symbol id="i-sound" viewBox="0 0 24 24"><path d="m11 4-6 5H2v6h3l6 5ZM15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/></symbol>
+    <symbol id="i-muted" viewBox="0 0 24 24"><path d="m11 4-6 5H2v6h3l6 5ZM16 9l6 6m0-6-6 6"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v.1"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="i-drag" viewBox="0 0 24 24"><path d="M3 12h18M6 9l-3 3 3 3m12-6 3 3-3 3"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></symbol>
+    <symbol id="i-torii" viewBox="0 0 32 32"><path d="M3 5q13 4 26 0M5 12h22M10 9 8 28M22 9l2 19M16 8v4" stroke-width="3.2" stroke-linecap="square"/></symbol>
+  </svg>
+
+  <div class="atmosphere" aria-hidden="true"><div class="sun-wash"></div><div class="orbit-ring"></div></div>
+  <header class="site-header">
+    <a class="brand" href="./index.html" aria-label="Tokyo Sky Garden home">
+      <span class="brand-mark"><svg><use href="#i-torii"/></svg></span>
+      <span class="brand-name">TOKYO<span>SKY GARDEN</span></span>
+    </a>
+    <div class="header-note"><span class="live-dot"></span>A LITTLE WORLD. A MOMENT OF CALM.</div>
+    <button class="season-tag" id="leaf-toggle" aria-pressed="true" title="Toggle falling maple leaves"><svg><use href="#i-leaf"/></svg><span>Autumn in the air</span></button>
+  </header>
+
+  <main>
+    <section class="intro" aria-labelledby="title">
+      <div class="eyebrow"><span></span> A POSTCARD FROM THE SKY</div>
+      <h1 id="title">Somewhere<br>above <em>Tokyo.</em></h1>
+      <p class="japanese">東京、空の庭。</p>
+      <p class="description">A little island. An endless autumn.<br>Let the world turn, and stay a while.</p>
+      <button class="explore-link" id="explore">Take a slow look <span><svg><use href="#i-arrow"/></svg></span></button>
+      <div class="edition"><span>35°39′ N &nbsp; 139°44′ E</span><span>IMAGINATION, JAPAN</span></div>
+    </section>
+
+    <section id="world" aria-label="Interactive 3D floating Tokyo island. Drag left or right to orbit. Use arrow keys to rotate." tabindex="0">
+      <div id="loading"><span class="loading-mark">空</span><span>Growing a little world…</span></div>
+    </section>
+    <div class="scene-caption" aria-hidden="true"><span class="caption-line"></span><span>東京の秋</span><small>AUTUMN, SUSPENDED.</small></div>
+    <div class="drag-hint"><svg><use href="#i-drag"/></svg><span>DRAG TO WANDER</span><span class="hint-dot">·</span><span class="hint-extra">SCROLL TO GET CLOSER</span></div>
+
+    <aside class="world-status"><span class="live-dot"></span><span id="status-text">A quiet afternoon</span><span class="status-divider">/</span><span id="world-clock">12:00</span></aside>
+    <div class="time-console" aria-label="Time of day controls">
+      <div class="time-heading"><span>LET THE DAY DRIFT</span><span class="cycle-duration"><span id="cycle-seconds">15</span>s <span>/ FULL CYCLE</span></span></div>
+      <div class="time-controls">
+        <button class="play-toggle" id="play-toggle" aria-label="Pause day-night cycle" aria-pressed="false" title="Pause time · Space"><svg><use href="#i-pause"/></svg></button>
+        <div class="timeline">
+          <div class="phase-buttons">
+            <button class="phase-button active" data-phase="0" aria-label="Go to daytime" aria-pressed="true"><svg><use href="#i-sun"/></svg><span>Day</span></button>
+            <button class="phase-button" data-phase="0.25" aria-label="Go to sunset" aria-pressed="false"><svg><use href="#i-sunset"/></svg><span>Dusk</span></button>
+            <button class="phase-button" data-phase="0.5" aria-label="Go to nighttime" aria-pressed="false"><svg><use href="#i-moon"/></svg><span>Night</span></button>
+            <button class="phase-button" data-phase="0.75" aria-label="Go to dawn" aria-pressed="false"><svg><use href="#i-dawn"/></svg><span>Dawn</span></button>
+          </div>
+          <div class="track"><div id="time-progress"></div></div>
+        </div>
+        <button class="speed-toggle" id="speed-toggle" aria-label="Cycle speed: 1 times. Click to change." title="Change time speed · F">1×</button>
+      </div>
+    </div>
+    <nav class="utility-controls" aria-label="Scene tools">
+      <button id="reset-view" class="icon-button" aria-label="Reset camera" title="Reset view · R"><svg><use href="#i-reset"/></svg></button>
+      <button id="sound-toggle" class="icon-button" aria-label="Enable ambient sound" aria-pressed="false" title="Ambient sound · M"><svg><use href="#i-muted"/></svg></button>
+      <button id="info-toggle" class="icon-button" aria-label="About this little world" title="About & controls"><svg><use href="#i-info"/></svg></button>
+    </nav>
+  </main>
+
+  <footer><span>NO. 001 <span class="footer-separator">/</span> THE FLOATING CITY</span><span>A SMALL ESCAPE, MADE OF WONDER <span class="footer-spark">✳</span></span></footer>
+  <output id="debug" hidden></output>
+  <div class="toast" id="toast" role="status"></div>
+  <dialog id="info-dialog" aria-labelledby="dialog-title">
+    <button class="icon-button close-dialog" id="close-info" aria-label="Close information"><svg><use href="#i-close"/></svg></button>
+    <span class="eyebrow">WELCOME TO YOUR LITTLE ESCAPE</span>
+    <h2 id="dialog-title">Time moves.<br><em>Wonder stays.</em></h2>
+    <p>A pocket-sized love letter to Japan. Find Tokyo Tower, Mount Fuji, a three-tier pagoda, and a torii tucked among the maples.</p>
+    <div class="dialog-instructions"><p><span>Look around</span><span>Drag · ← →</span></p><p><span>Move closer</span><span>Scroll · + −</span></p><p><span>Pause the light</span><span>Space</span></p><p><span>Speed up the day</span><span>F</span></p><p><span>Come back home</span><span>R</span></p><p><span>Ambient sound / stats</span><span>M / D</span></p></div>
+    <p class="dialog-note">One day in 15 seconds. The garden keeps breathing even when time stands still.</p>
+  </dialog>
+  <noscript><div class="noscript">This little world needs JavaScript enabled to come to life.</div></noscript>
+</body>
+</html>

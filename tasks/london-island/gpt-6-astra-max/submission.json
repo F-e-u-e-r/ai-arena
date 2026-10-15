@@ -1,0 +1,19 @@
+{
+  "$schema": "../../../schema/submission.schema.json",
+  "provider": "openai",
+  "model": "GPT-6 Astra",
+  "modelId": "gpt-6-astra",
+  "effort": "max",
+  "client": "codex",
+  "skills": "Nil",
+  "subagents": "Nil",
+  "author": "F-e-u-e-r",
+  "generatedAt": "2026-10-14T11:07:22.181Z",
+  "metrics": {
+    "durationMs": 1739329,
+    "inputTokens": 100103,
+    "outputTokens": 66770,
+    "cachedInputTokens": 1469952,
+    "totalTokens": 1636825
+  }
+}
