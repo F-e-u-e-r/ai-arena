@@ -438,3 +438,74 @@ test('I: active filter summary — removable constraints, × removes one (last�
   await page.locator('.chip-action', { hasText: '重設篩選' }).click();
   await expect(summary).toBeHidden();                         // reset clears the summary
 });
+
+// ---- J. WS4-A: selected-chip focus ring flips white→dark on the emerald fill ----
+// After the emerald recolour a white inset ring on a SELECTED chip is ~1.70:1 (WCAG 1.4.11
+// fail), so the selected .chip-toggle must switch to a dark ring (= var(--bg)); unselected
+// controls keep white. Colour-dependent by design: pins the WS4-A a11y fix from silent revert.
+test('J: selected chip focus ring is dark (var(--bg)) on emerald; unselected control stays white', async ({ page }) => {
+  await page.setViewportSize({ width: 1100, height: 900 });
+  await page.goto(TASK);
+  const chip = page.locator('.chip-toggle').first();
+  await chip.waitFor();
+
+  // select, then establish keyboard focus on it so :focus-visible actually matches
+  await chip.click();
+  await expect(chip).toHaveAttribute('aria-pressed', 'true');
+  await chip.focus();
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Tab');
+
+  const sel = await page.evaluate(() => {
+    const a = document.activeElement;
+    // resolve --bg (hex) to the rgb form getComputedStyle reports for outline-color
+    const probe = document.createElement('span');
+    probe.style.color = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+    document.body.appendChild(probe);
+    const bgRgb = getComputedStyle(probe).color;
+    probe.remove();
+    return {
+      cls: a.className,
+      pressed: a.getAttribute('aria-pressed'),
+      focusVisible: a.matches(':focus-visible'),
+      outline: getComputedStyle(a).outlineColor,
+      bgRgb,
+    };
+  });
+  expect(sel.cls).toContain('chip-toggle');
+  expect(sel.pressed).toBe('true');
+  expect(sel.focusVisible).toBe(true);                       // keyboard focus → :focus-visible really matched
+  expect(sel.outline).toBe(sel.bgRgb);                       // dark ring = var(--bg)
+  expect(sel.outline).not.toBe('rgb(255, 255, 255)');        // explicitly NOT the white ring
+
+  // control: the adjacent unselected control (chip-only) keeps the white ring on its dark bg
+  await page.keyboard.press('Tab');
+  const un = await page.evaluate(() => {
+    const a = document.activeElement;
+    return { focusVisible: a.matches(':focus-visible'), outline: getComputedStyle(a).outlineColor };
+  });
+  expect(un.focusVisible).toBe(true);
+  expect(un.outline).toBe('rgb(255, 255, 255)');
+});
+
+// ---- K. WS4-A: self-hosted JetBrains Mono loads and drives the technical chrome ----
+// Pins that the relative-URL self-hosted woff2 actually loads (a broken path/MIME → false)
+// and is applied to metrics/labels while model names deliberately stay on the native face.
+test('K: self-hosted JetBrains Mono loads and applies to metrics/labels (model names stay sans)', async ({ page }) => {
+  await page.goto(TASK);
+  await page.locator('.chip-toggle').first().waitFor();      // gallery rendered
+  const r = await page.evaluate(async () => {
+    await document.fonts.ready;
+    const famOf = (sel) => { const e = document.querySelector(sel); return e ? getComputedStyle(e).fontFamily : null; };
+    return {
+      jbmLoaded: [...document.fonts].some(f => f.family.includes('JetBrains Mono') && f.status === 'loaded'),
+      metricV: famOf('.metric-v'),
+      promptLabel: famOf('.prompt-label'),
+      model: famOf('.model'),
+    };
+  });
+  expect(r.jbmLoaded).toBe(true);                            // the self-hosted woff2 actually loaded from the relative URL
+  expect(r.metricV).toContain('JetBrains Mono');             // mono drives metric values
+  expect(r.promptLabel).toContain('JetBrains Mono');         // and micro-labels
+  expect(r.model).not.toContain('JetBrains Mono');           // model names stay on the native sans face
+});

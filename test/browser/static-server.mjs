@@ -32,6 +32,7 @@ const MIME = {
   '.wasm': 'application/wasm',
   '.glb': 'model/gltf-binary',
   '.mp4': 'video/mp4',
+  '.woff2': 'font/woff2',
 };
 
 const server = createServer(async (req, res) => {
