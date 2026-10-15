@@ -20,6 +20,7 @@ not cosmetic. WS4 never modifies the Portfolio repo.
 | `--text` | `#e8efeb` | body / primary text | Portfolio `--c-fg` |
 | `--muted` | `#9aa8a2` | muted / secondary text | Portfolio `--c-fg-muted` |
 | `--accent` | `#35e0a1` | **emerald** — interactive / selected only | Portfolio `--c-accent` |
+| `--accent-muted` | `#27a97c` | **muted emerald** — WS4-B brand mark `>_` + return-arrow glyph | Portfolio `--c-accent-muted` |
 | `--accent-2` | `#ff5ea8` | error / status pink | **Arena functional — NOT brand-recoloured** |
 
 **Emerald is reserved for interactive / selected state** (buttons, selected chip fill, hover
@@ -59,6 +60,28 @@ defines `--border-strong` `rgba(170,205,190,.40)`; Arena has no element that nee
 weight yet (the prior design used one uniform border), so it is intentionally not added here —
 introduce it only when a concrete element needs it.
 
+## Header / brand lockup (WS4-B)
+The site header carries a Portfolio-aligned brand lockup and a return link to the parent Portfolio
+site (`https://portfolio.secc.dev/`). Arena is a node in Portfolio's Build Stream, so the tie is
+real; the header echoes Portfolio's brand language without copying its full chrome.
+
+- **`.brand__mark` = `>_`** — mirrors Portfolio's `.brand__mark`: a bordered pill, mono, weight 700,
+  `color: var(--accent-muted)` (muted emerald, NOT full `--accent` — emerald stays reserved for
+  interactive/selected). It is `aria-hidden` (the `<h1>` carries the accessible name).
+- **`.brand__name` = "AI Arena"** — the single `<h1>`; stays the prominent product name (22px,
+  unchanged from the prior header).
+- **`.brand__by` = "Eric · Feuer"** — muted, mono attribution (matches Portfolio's wordmark).
+- **`.portfolio-link` = "← Portfolio"** — a real anchor to `https://portfolio.secc.dev/`. The `←`
+  is a decorative, `aria-hidden` return affordance; the accessible name is set via `aria-label`.
+  Same-tab navigation (a back/return link, not a `target="_blank"` popup). Quiet by default (muted +
+  hairline border), emerald on hover, and an emerald `:focus-visible` ring (≈11:1 on the dark header,
+  WCAG 1.4.11). Keyboard-focusable as a native anchor.
+- **No full Portfolio nav / hamburger / contact CTA.** Portfolio's header also has primary nav
+  (Case Studies / Knowledge / About), a contact `<details>`, and a mobile hamburger; Arena omits all
+  three — the only header link is `← Portfolio`.
+- **Responsive**: the bar is `flex` + `flex-wrap`; from ~390px down the `← Portfolio` link wraps to
+  its own line rather than forcing horizontal overflow. Verified 320/390/768/1280/1440px.
+
 ## Decisions (WS4-A) — rejected alternatives and why
 - **Surfaces use Arena's own `#0a0d0c/#111715/#172019`, not Portfolio's `#080b0a/#111815`.**
   Rejected exact transplant: the Owner-approved Option A pinned these slightly-distinct Arena
@@ -74,3 +97,15 @@ introduce it only when a concrete element needs it.
 - **Selected-chip focus ring flips white → dark in the same change as the emerald recolour.**
   Rejected deferring it: a white ring on the new emerald fill is ~1.70:1 (WCAG 1.4.11 fail); there
   must be no intermediate "emerald fill + old white ring" state.
+
+## Decisions (WS4-B) — rejected alternatives and why
+- **`>_` uses `--accent-muted`, not `--accent`.** Rejected full emerald for the brand mark:
+  Portfolio renders its own mark in the muted accent and reserves full accent for active/interactive
+  state; matching that keeps `--accent` meaningful as the interactive signal.
+- **`← Portfolio` navigates same-tab (no `target="_blank"`).** Rejected a new tab: `←` is a
+  return-to-parent affordance, so same-tab is correct; a new tab is for an external reference, which
+  this is not.
+- **Header stays non-sticky.** Rejected copying Portfolio's `position: sticky` header: Arena's prior
+  header was static; making it sticky changes scroll behaviour and is out of WS4-B scope.
+- **No favicon change.** `assets/favicon.svg` is still the pre-WS4 blue/pink mark; recolouring it is
+  outside WS4-B's header scope and left as a follow-up (observed, not silently bundled here).

@@ -6,11 +6,25 @@
   <title>AI Arena</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="preload" href="assets/fonts/jetbrains-mono-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="assets/style.css?v=12">
+  <link rel="stylesheet" href="assets/style.css?v=13">
 </head>
 <body>
   <header class="site-header">
-    <h1>AI&nbsp;Arena</h1>
+    <div class="site-header__bar">
+      <!-- WS4-B brand lockup — mirrors Portfolio's `>_ Eric · Feuer` brand, but AI Arena is the
+           prominent product name and "Eric · Feuer" is the attribution. `>_` is decorative (the h1
+           carries the accessible name), so it is aria-hidden. -->
+      <div class="brand">
+        <span class="brand__mark" aria-hidden="true">&gt;_</span>
+        <h1 class="brand__name">AI&nbsp;Arena</h1>
+        <span class="brand__by">Eric&nbsp;·&nbsp;Feuer</span>
+      </div>
+      <!-- Return to the parent Portfolio site (Arena is a node in its Build Stream). The `←` is a
+           back/return affordance → same-tab navigation; arrow is decorative, link name set explicitly. -->
+      <a class="portfolio-link" href="https://portfolio.secc.dev/" aria-label="回到 Portfolio（Eric · Feuer 作品集）">
+        <span class="portfolio-link__arrow" aria-hidden="true">←</span>Portfolio
+      </a>
+    </div>
     <p class="tagline">同一個 task，不同 model 與 thinking effort 的並排對比</p>
   </header>
 
