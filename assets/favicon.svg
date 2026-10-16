@@ -1,11 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="AI Arena">
-  <!-- AI Arena favicon (WS4-C): terminal-prompt ">_" mark, Portfolio-aligned.
-       Emerald #35e0a1 on Arena green-black #0a0d0c (~11.5:1) for legibility at 16px.
-       Pure vector >_ drawn as strokes (no font / no runtime dependency); generic terminal
-       glyph, NOT Portfolio's mascot/sprite. -->
-  <rect width="64" height="64" rx="12" fill="#0a0d0c"/>
-  <g fill="none" stroke="#35e0a1" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M17 20 L31 33 L17 46"/>
-    <path d="M35 46 H51"/>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- AI Arena favicon (WS4-D): reuses the canonical Portfolio/StarLedger family geometry
+       (32x32, rounded square rx=7, ">_" as a 700-weight monospace text glyph in emerald #35e0a1),
+       replacing WS4-C's hand-drawn stroke approximation, for cross-product tab-strip consistency.
+       Generic system monospace stack, no font asset, exactly as the two siblings do.
+       Background stays Arena's own green-black #0a0d0c (the page-bg token; Owner-approved;
+       ~imperceptibly distinct from Portfolio's #080b0a). The shared ">_" mark carries the family
+       tie; the near-black is Arena's. See docs/brand-tokens.md "Decisions (WS4-D)". -->
+  <title>AI Arena</title>
+  <rect width="32" height="32" rx="7" fill="#0a0d0c"/>
+  <text x="16" y="22" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="700" fill="#35e0a1" text-anchor="middle">&gt;_</text>
 </svg>

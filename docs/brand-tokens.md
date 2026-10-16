@@ -111,6 +111,11 @@ real; the header echoes Portfolio's brand language without copying its full chro
   recolouring it was outside WS4-B's header scope and deferred as a follow-up. **Done in WS4-C below.**
 
 ## Decisions (WS4-C) — favicon
+> **Geometry superseded by WS4-D below.** The stroke-drawn `>_` was realigned to the canonical
+> Portfolio/StarLedger monospace-glyph geometry. The full-`--accent`, rounded-square, and
+> relative-href `?v=N` cache-bust decisions here still stand; only the hand-drawn stroke geometry
+> (and the 64×64 canvas) changed.
+
 - **`assets/favicon.svg` is now the Portfolio-aligned `>_` mark** — emerald `>_` on Arena green-black,
   replacing the pre-WS4 blue/pink "AI" glyph. Self-contained SVG file (two stroked paths: a `>` chevron
   + an `_` underscore) on a rounded near-black square. No font and no runtime dependency; the `>_` is a
@@ -127,3 +132,32 @@ real; the header echoes Portfolio's brand language without copying its full chro
 - **Cache-bust via `?v=2` on the `<link rel="icon">`** (matching the repo's `?v=N` convention for
   `style.css` / `app.js`), so browsers holding the old favicon re-fetch. The href stays **relative**
   (`assets/favicon.svg?v=2`) to resolve under the `/ai-arena/` Pages subpath.
+
+## Decisions (WS4-D) — favicon family alignment
+Owner flagged that the browser-tab favicon still read as inconsistent with the two sibling sites.
+A first-hand inspection of all three live sources confirmed it:
+
+- **Portfolio and StarLedger share one family favicon template** — a 32×32 rounded square (`rx=7`),
+  near-black fill, and `>_` rendered as a **700-weight monospace `<text>` glyph** in emerald `#35e0a1`
+  (`text-anchor="middle"`, `x=16 y=22`). The two files are identical on every artwork coordinate; they
+  differ only trivially (StarLedger adds a `<title>`, a longer mono fallback stack, and `font-size` 16
+  vs 15). **Portfolio is the canonical reference** (the hub Arena links back to); StarLedger is an
+  already-aligned sibling that proves the template is the shared family mark.
+- **WS4-C's favicon diverged from that template**: it hand-drew `>_` as two stroked paths on a 64×64
+  canvas (`stroke-width` 8, round caps). Same letters, visibly different mark — heavier, rounder, off
+  the family grid. That stroke geometry is what read as inconsistent.
+- **Fix = reuse the canonical geometry, do not redraw.** `assets/favicon.svg` now uses the
+  Portfolio/StarLedger template for the mark: `viewBox="0 0 32 32"`, `rect rx=7`, `>_` as a 700-weight
+  monospace `<text>` glyph in `#35e0a1` at `x=16 y=22`, plus a `<title>AI Arena</title>` (StarLedger's
+  per-product precedent). A generic system monospace stack is used (no self-hosted JetBrains Mono) — a
+  favicon renders before/without page CSS, and both siblings rely on the system mono for this reason.
+- **Retained from WS4-C** (unchanged, still correct): full `--accent` `#35e0a1` (the family also uses
+  full emerald, so this never conflicted), the rounded square, and the relative-href `?v=N` cache-bust.
+- **Background stays Arena green-black `#0a0d0c`** (the `--bg` token), *not* Portfolio's `#080b0a`.
+  This honours the standing WS4-A/WS4-C Owner-approved decision that "Arena uses its own near-black,
+  not Portfolio's". The two values differ by ≤2/255 per channel — imperceptible at 16–32px — so the
+  shared `>_` mark carries the family tie while the near-black stays Arena's. This is the **sole
+  remaining family difference**; adopting Portfolio's exact `#080b0a` would reverse a recorded
+  decision, so it is left as an Owner call, not changed unilaterally.
+- **Cache-bust bumped `?v=2` → `?v=3`** on `<link rel="icon">` (the favicon bytes changed), so browsers
+  and the Pages CDN holding the WS4-C favicon re-fetch. The href stays relative for `/ai-arena/`.
