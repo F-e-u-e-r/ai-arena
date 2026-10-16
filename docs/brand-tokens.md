@@ -112,8 +112,8 @@ real; the header echoes Portfolio's brand language without copying its full chro
 
 ## Decisions (WS4-C) — favicon
 - **`assets/favicon.svg` is now the Portfolio-aligned `>_` mark** — emerald `>_` on Arena green-black,
-  replacing the pre-WS4 blue/pink "AI" glyph. Pure inline SVG (two stroked paths: a `>` chevron + an
-  `_` underscore) on a rounded near-black square. No font and no runtime dependency; the `>_` is a
+  replacing the pre-WS4 blue/pink "AI" glyph. Self-contained SVG file (two stroked paths: a `>` chevron
+  + an `_` underscore) on a rounded near-black square. No font and no runtime dependency; the `>_` is a
   generic terminal-prompt glyph drawn here as strokes — **not** a copy of Portfolio's AGPL mascot/sprite.
 - **The favicon `>_` uses full `--accent` `#35e0a1`, NOT `--accent-muted`** (which the in-page
   `.brand__mark` uses). Rejected matching the muted in-page mark: the "emerald = interactive, muted =
