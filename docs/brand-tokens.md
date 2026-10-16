@@ -107,5 +107,23 @@ real; the header echoes Portfolio's brand language without copying its full chro
   this is not.
 - **Header stays non-sticky.** Rejected copying Portfolio's `position: sticky` header: Arena's prior
   header was static; making it sticky changes scroll behaviour and is out of WS4-B scope.
-- **No favicon change.** `assets/favicon.svg` is still the pre-WS4 blue/pink mark; recolouring it is
-  outside WS4-B's header scope and left as a follow-up (observed, not silently bundled here).
+- **No favicon change *in WS4-B*.** `assets/favicon.svg` was left as the pre-WS4 blue/pink mark —
+  recolouring it was outside WS4-B's header scope and deferred as a follow-up. **Done in WS4-C below.**
+
+## Decisions (WS4-C) — favicon
+- **`assets/favicon.svg` is now the Portfolio-aligned `>_` mark** — emerald `>_` on Arena green-black,
+  replacing the pre-WS4 blue/pink "AI" glyph. Pure inline SVG (two stroked paths: a `>` chevron + an
+  `_` underscore) on a rounded near-black square. No font and no runtime dependency; the `>_` is a
+  generic terminal-prompt glyph drawn here as strokes — **not** a copy of Portfolio's AGPL mascot/sprite.
+- **The favicon `>_` uses full `--accent` `#35e0a1`, NOT `--accent-muted`** (which the in-page
+  `.brand__mark` uses). Rejected matching the muted in-page mark: the "emerald = interactive, muted =
+  brand mark" split is an *in-page* semantic (emerald must stand out as the clickable/selected signal
+  next to other UI). A browser-tab favicon has no adjacent interactive UI, so that reservation does not
+  apply; there, legibility at 16px wins. Full emerald on `#0a0d0c` is ≈11.5:1 vs ≈6.6:1 for muted — the
+  higher contrast is what carries the mark at 16–32px (the old blue mark was ≈6.0:1).
+- **Background is Arena green-black `#0a0d0c`** (the `--bg` token), not the old favicon's blue-black
+  `#0b0d12`, so the mark sits on the real brand surface. The rounded square is kept so the icon reads on
+  any tab-bar background (light or dark).
+- **Cache-bust via `?v=2` on the `<link rel="icon">`** (matching the repo's `?v=N` convention for
+  `style.css` / `app.js`), so browsers holding the old favicon re-fetch. The href stays **relative**
+  (`assets/favicon.svg?v=2`) to resolve under the `/ai-arena/` Pages subpath.
