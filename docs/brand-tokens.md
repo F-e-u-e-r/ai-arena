@@ -157,7 +157,9 @@ A first-hand inspection of all three live sources confirmed it:
   This honours the standing WS4-A/WS4-C Owner-approved decision that "Arena uses its own near-black,
   not Portfolio's". The two values differ by ≤2/255 per channel — imperceptible at 16–32px — so the
   shared `>_` mark carries the family tie while the near-black stays Arena's. This is the **sole
-  remaining family difference**; adopting Portfolio's exact `#080b0a` would reverse a recorded
-  decision, so it is left as an Owner call, not changed unilaterally.
+  remaining family difference**, and the Owner reviewed it as an explicit choice and **selected
+  Option A — retain Arena's own `#0a0d0c`**. Option B (adopt Portfolio's exact `#080b0a`) was
+  rejected because it would reverse the recorded WS4-A/WS4-C decision. The near-black therefore
+  stays Arena's by settled Owner decision; this is no longer an open question.
 - **Cache-bust bumped `?v=2` → `?v=3`** on `<link rel="icon">` (the favicon bytes changed), so browsers
   and the Pages CDN holding the WS4-C favicon re-fetch. The href stays relative for `/ai-arena/`.
