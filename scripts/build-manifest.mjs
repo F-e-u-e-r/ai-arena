@@ -1,21 +1,23 @@
-import { readdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { readdir, readFile, stat, lstat, writeFile } from 'node:fs/promises';
+import { realpathSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validate } from './lib/validate-json-schema.mjs';
 import { normalizePricing } from './lib/pricing.mjs';
+import { isOsCruft, isSafeSegment } from './lib/publication-policy.mjs';
 
-const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+// ARENA_ROOT：測試 seam —— 覆寫 repo root，讓 test/publication.test.mjs 能在隔離 fixture 樹上
+// 跑「真實」的 oracle（N-1/N-3 這類 loop 層整合行為，必須測真實 script 而非副本）。未設時行為
+// 完全不變（預設為本 script 的 repo root）。僅 build-manifest 讀此 env；assembler 不讀（其 rootDir
+// 由函式參數傳入），故此 seam 的影響面僅限於 oracle 的整合測試。
+const rootDir = process.env.ARENA_ROOT
+  ? path.resolve(process.env.ARENA_ROOT)
+  : path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const tasksDir = path.join(rootDir, 'tasks');
 const pricingPath = path.join(rootDir, 'data', 'pricing.json');
-const outputArg = process.argv.indexOf('--output');
-if (outputArg !== -1 && !process.argv[outputArg + 1]) {
-  throw new Error('--output requires a file path');
-}
-const outputPath = outputArg === -1
-  ? path.join(rootDir, 'tasks.json')
-  : path.resolve(process.cwd(), process.argv[outputArg + 1]);
 const schemaDir = path.join(rootDir, 'schema');
-const strict = process.argv.includes('--strict');
+// --output / --strict 於 main() 內解析（見檔尾 main-guard）。本檔被測試 import 時不解析 argv、
+// 不執行 build，使 assertNoSymlinks / classifyTreeEntry 等 guard 可在各自函式邊界被單元測試。
 
 // 已知 client 只用來提醒可能的 typo；未知值仍可正常顯示（比照 effort 的自由字串設計）。
 const knownClients = new Set(['claude-code', 'codex', 'opencode', 'kiro', 'cursor', 'grok', 'api', 'other']);
@@ -51,11 +53,10 @@ async function loadPricing() {
   return normalizePricing(models);
 }
 
-async function directories(parent) {
-  return (await readdir(parent, { withFileTypes: true }))
-    .filter(entry => entry.isDirectory())
-    .map(entry => entry.name)
-    .sort();
+// 以名稱做決定性排序（沿用舊 directories() 的預設字串排序，讓枚舉順序與錯誤訊息決定性；
+// 最終 tasks.json 另由 order/id 再排序，故迭代順序不影響輸出位元）。
+function byName(a, b) {
+  return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
 }
 
 function webPath(absolutePath, trailingSlash = false) {
@@ -78,7 +79,7 @@ function isInsideDir(parentDir, targetPath) {
 // 只允許英數字與 . _ -，並排除 . 與 ..，避免像 %2e%2e、..\other 這種名稱被瀏覽器
 // URL 正規化成路徑穿越、逃出預期的資料夾。所有現有資料夾名稱都符合這個規則。
 function assertSafeName(name, kind) {
-  if (name === '.' || name === '..' || !/^[A-Za-z0-9._-]+$/.test(name)) {
+  if (!isSafeSegment(name)) {
     fail(`unsafe ${kind} 資料夾名稱 "${name}"：只允許英數字與 . _ -（且不可是 . 或 ..）`);
   }
 }
@@ -87,16 +88,57 @@ function assertSafeName(name, kind) {
 // （task.json / submission.json / index.html / main.js / 巢狀檔）若是 symlink，
 // 都可能把資料夾外、未經 PR 審查的內容偷渡進 gallery。在讀取任何 metadata 前先
 // 掃過整棵 tasks/ 一律擋掉，最簡單也最安全，且不影響任何正常 submission。
-async function assertNoSymlinks(dir) {
+// Guard A（A-12/A-15）：對 tasks/ 整棵樹遞迴預掃，任何 symlink 一律 fail。於讀取任何 metadata
+// 前先跑（main() 內 L~),是 symlink 的「主防線」。export 以便 N-5a 在「本函式自身邊界」單元測試：
+// 真實版對含 symlink 的目錄丟出；測試內的 known-bad（移除 isSymbolicLink 檢查的本地變體）則不丟。
+// 與 guard B / 組裝器 guard 各自獨立 —— 停用本防護不需、也不得弱化其他任何防護（A-12 獨立性）。
+export async function assertNoSymlinks(dir) {
+  // MF2（跨家族審查）：先擋「根目錄本身是 symlink」—— readdir 會跟隨 symlinked 目錄，使樹外內容
+  // 被當成 tasks/ 子樹處理。遞迴子目錄已由父層確認非 symlink，故此 lstat 對根生效、對子層冗餘但無害。
+  const dst = await lstat(dir);
+  if (dst.isSymbolicLink()) {
+    fail(`tasks/ 目錄不允許為 symlink：${webPath(dir)}`);
+  }
   for (const entry of await readdir(dir, { withFileTypes: true })) {
+    if (isOsCruft(entry.name)) continue; // A-7：忽略本機 gitignored OS cruft
     const full = path.join(dir, entry.name);
     if (entry.isSymbolicLink()) {
       fail(`tasks/ 內不允許 symlink：${webPath(full)}`);
     }
     if (entry.isDirectory()) {
       await assertNoSymlinks(full);
+      continue;
+    }
+    // MF4（契約 §5.1「全樹非一般檔以 lstat 拒絕」）：非目錄、非一般檔（FIFO/socket/device）→ fail。
+    // 補足 classifyTreeEntry 只擋「直接子項」的缺口，使巢狀 submission.json/index.html 等若為非一般檔亦被擋。
+    // 明確排除 symlink：symlink 屬「上方 symlink 防護」的職責（非一般檔防護只針對 FIFO/socket/device）。
+    // 兩防護因此可各自獨立停用、互不遮蔽（A-15 獨立性：N-5a 停用 symlink 防護即可放行 symlink；
+    // N-6 停用本防護即可放行 FIFO）。
+    if (!entry.isFile() && !entry.isSymbolicLink()) {
+      fail(`tasks/ 內不允許非一般檔（FIFO/socket/device）：${webPath(full)}`);
     }
   }
+}
+
+// Guard B（A-15：驗證器層的 no-follow 型別防護，與 guard A assertNoSymlinks 獨立）。判定 tasks/
+// 樹某個「直接子項」是否為允許項目，對雜散檔 / 非一般檔（FIFO/socket/device）/ symlink fail-closed。
+// entry 是 readdir({withFileTypes:true}) 的 Dirent —— 其型別取自目錄項本身（lstat 語義、不跟隨
+// symlink）。level==='submission' 時額外允許名為 task.json 的一般檔（task 自身 metadata 與
+// submission 資料夾並列）。回傳 'dir' | 'task-json'；其餘一律丟出。
+// known-bad（N-5a-ii）：改以 stat（跟隨）判型，symlink→目標會被當成一般目錄而被接受——本函式
+// 刻意只用 Dirent 的 no-follow 型別，故「停用此 no-follow」只牽涉本函式、不碰 guard A（A-12 獨立性）。
+export function classifyTreeEntry(entry, level) {
+  const name = entry.name;
+  if (entry.isSymbolicLink()) {
+    throw new Error(`tasks/ 內不允許 symlink：${name}`);
+  }
+  if (level === 'submission' && name === 'task.json' && entry.isFile()) {
+    return 'task-json';
+  }
+  if (entry.isDirectory()) {
+    return 'dir';
+  }
+  throw new Error(`tasks/ 內不允許雜散檔或非一般檔（${level} 層）：${name}`);
 }
 
 // 所有 media 一律指向 submission 資料夾內的檔案：不接受任何 URL scheme、
@@ -243,12 +285,18 @@ async function buildTask(taskId) {
 
   const submissions = [];
   const submissionIds = new Set();
-  for (const submissionId of await directories(taskDir)) {
+  const entries = (await readdir(taskDir, { withFileTypes: true })).sort(byName);
+  for (const entry of entries) {
+    if (isOsCruft(entry.name)) continue;                 // A-7：忽略本機 gitignored OS cruft（.DS_Store 等）
+    const kind = classifyTreeEntry(entry, 'submission'); // guard B：雜散/非一般/symlink → fail（N-2/N-5/N-6）
+    if (kind === 'task-json') continue;                  // task 自身 metadata，不是 submission
+    const submissionId = entry.name;
     const submissionMetadata = path.join(taskDir, submissionId, 'submission.json');
     try {
       await stat(submissionMetadata);
     } catch {
-      continue;
+      // 原本是 continue（靜默略過無 metadata 的目錄）；改 fail-closed（N-3）。
+      fail(`${webPath(path.join(taskDir, submissionId))}: submission 目錄缺少 submission.json（不接受無 metadata 的目錄）`);
     }
     const submission = await buildSubmission(metadata, taskId, submissionId);
     if (submissionIds.has(submission.id)) {
@@ -266,6 +314,18 @@ async function buildTask(taskId) {
   return { ...projectFields(metadata, taskSchema), id, submissions };
 }
 
+// 原本是檔案頂層直接執行的 try 區塊；改包進 main()，並以檔尾 main-guard 控制「只有被當 script
+// 直接執行時才跑 build」。本體邏輯不變（僅上方兩個枚舉迴圈已改 fail-closed），為最小 diff 保留原縮排。
+async function main() {
+  const outputArg = process.argv.indexOf('--output');
+  if (outputArg !== -1 && !process.argv[outputArg + 1]) {
+    throw new Error('--output requires a file path');
+  }
+  const outputPath = outputArg === -1
+    ? path.join(rootDir, 'tasks.json')
+    : path.resolve(process.cwd(), process.argv[outputArg + 1]);
+  const strict = process.argv.includes('--strict');
+
 try {
   pricing = await loadPricing();
   submissionSchema = await readJson(path.join(schemaDir, 'submission.schema.json'));
@@ -275,12 +335,17 @@ try {
   const tasks = [];
   const ids = new Set();
 
-  for (const taskId of await directories(tasksDir)) {
+  const taskEntries = (await readdir(tasksDir, { withFileTypes: true })).sort(byName);
+  for (const entry of taskEntries) {
+    if (isOsCruft(entry.name)) continue;  // A-7：忽略本機 gitignored OS cruft
+    classifyTreeEntry(entry, 'task');     // guard B：tasks/ 直接子項只能是目錄；雜散/非一般/symlink → fail（N-2/N-5/N-6）
+    const taskId = entry.name;
     const metadataPath = path.join(tasksDir, taskId, 'task.json');
     try {
       await stat(metadataPath);
     } catch {
-      continue;
+      // 原本是 continue（靜默略過無 metadata 的目錄）；改 fail-closed（N-1）。
+      fail(`tasks/${taskId}: task 目錄缺少 task.json（不接受無 metadata 的目錄）`);
     }
 
     const task = await buildTask(taskId);
@@ -315,4 +380,20 @@ try {
 } catch (error) {
   console.error(`Manifest build failed: ${error.message}`);
   process.exitCode = 1;
+}
+}
+
+// main-guard：只有被當 script 直接執行（node scripts/build-manifest.mjs …）時才跑 build；
+// 被測試 import 時不執行，使 assertNoSymlinks / classifyTreeEntry 等 guard 可在自身邊界被測試。
+// MF3（跨家族審查）：以 realpath 比對兩側 —— 否則 symlinked 調用路徑（如 macOS /tmp→/private/tmp）
+// 會使 import.meta.url ≠ argv[1]，main() 被靜默跳過、process 以 0 結束而「什麼都沒做」。
+function invokedDirectly() {
+  try {
+    return realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1] || '');
+  } catch {
+    return false;
+  }
+}
+if (invokedDirectly()) {
+  await main();
 }

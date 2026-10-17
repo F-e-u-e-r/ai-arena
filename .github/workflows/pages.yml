@@ -42,12 +42,23 @@ jobs:
       - name: Scan submissions for secrets
         run: node scripts/scan-secrets.mjs
 
-      # Pure Any/Explicit-Subset filter + sort logic (assets/filter-core.mjs).
-      # Node 22 built-in runner, zero deps, no package.json. A directory arg
-      # (`node --test test/`) is not searched by the runner here, so the test
-      # files are passed explicitly via the glob.
-      - name: Run filter-core logic tests
+      # Zero-dep node:test over every test/*.test.mjs: Any/Explicit-Subset filter + sort logic
+      # (filter-core), the Model Family registry (model-registry), AND the closed-world
+      # publication regression suite (publication — P-1a/1b, P-2..P-5, N-1..N-12). The glob
+      # test/*.test.mjs covers publication.test.mjs (first-hand confirmed); a directory arg
+      # (`node --test test/`) is NOT searched by the runner here, so the glob is required.
+      - name: Run unit tests (filter-core, model-registry, publication)
         run: node --test test/*.test.mjs
+
+      # WS5-A Packet A: fail-closed closed-world publication gate at the PR layer. Assembles to a
+      # temp dir WITHOUT deploying. The assembler's OWN fail-closed enumeration + assets-closed-set
+      # reject extra assets, folder-external strays, symlinks (including a symlinked tasks/ or assets/
+      # root) and non-regular files on the PR itself (not merged-then-broken-deploy); the post-assembly
+      # set comparison ADDITIONALLY verifies assembler fidelity (output == expected), NOT source
+      # cleanliness (A-13). `build-manifest.mjs --strict` (above) is the first fail-closed source gate.
+      # Deploy runs the same assembler for real (below).
+      - name: Verify closed-world publication set (assemble-site --check)
+        run: node scripts/assemble-site.mjs --check
 
   # Browser-only regression contracts that DOM-free unit tests cannot honestly prove:
   # 320px responsive overflow, placeholder :focus-visible clipping, rendered filter /
@@ -101,10 +112,13 @@ jobs:
       - name: Generate task manifest
         run: node scripts/build-manifest.mjs --strict
 
-      - name: Build static site
-        run: |
-          mkdir -p _site
-          cp -R index.html assets tasks tasks.json _site/
+      # Closed-world assembler (WS5-A Packet A) replaces the prior `cp -R index.html assets tasks
+      # tasks.json _site/`. Publishes exactly the 407-file set derived from the PHYSICAL validated tree
+      # (folder names, never manifest ids) plus the chrome list (byte-identical to the old cp -R on a
+      # clean checkout; P-1a/P-1b); fails closed on strays/symlinks/non-regular/traversal, and aborts
+      # the deploy (non-zero) before upload if the set does not verify.
+      - name: Build static site (closed-world assembler)
+        run: node scripts/assemble-site.mjs
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5

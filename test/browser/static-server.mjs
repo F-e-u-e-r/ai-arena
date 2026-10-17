@@ -9,9 +9,13 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { existsSync, statSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { join, normalize, extname, sep } from 'node:path';
+import { join, normalize, extname, sep, resolve } from 'node:path';
 
-const ROOT = fileURLToPath(new URL('../../', import.meta.url)); // repo root (test/browser → ../../)
+// 預設服務 repo root（既有 browser-smoke 行為不變）。ARENA_SITE_ROOT 可覆寫成組裝後的 _site，
+// 供 P-6（assembled-site.spec.mjs）直接由組裝產物起 server 做渲染 smoke。
+const ROOT = (process.env.ARENA_SITE_ROOT
+  ? resolve(process.env.ARENA_SITE_ROOT)
+  : fileURLToPath(new URL('../../', import.meta.url))).replace(/[\\/]$/, '') + sep; // trailing sep for prefix test
 const ROOT_REAL = realpathSync(ROOT).replace(/[\\/]$/, '') + sep; // real root, trailing sep for prefix test
 const PORT = Number(process.env.PORT || 8188);
 
