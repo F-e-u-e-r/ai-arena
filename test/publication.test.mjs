@@ -341,9 +341,13 @@ test('N-7: folder-external stray → detected by the oracle AND the assembler en
     'assembler 自身的 fail-closed 枚舉亦擋夾外雜散（不倚賴集合比對）');
   // (c) A-13：擋它的是枚舉（oracle + assembler），不是「雙向集合比對」—— 比對只驗忠實度（輸出==預期）。
   // 夾外雜散不在預期集、也不會被複製；若只靠集合比對，它同時排除於兩側而不可見。
-  // 註（round-2 審查）：封包原 A-13 說「oracle 為唯一偵測者」是 MF1 之前的描述；MF1 後 assembler 以實體
-  // 枚舉獨立 fail-close，成為**第二**來源側偵測者（縱深強化）。A-13 的實質——「集合比對只驗忠實度、對夾外
-  // 雜散無鑑別力」——不變且在上面 (b) 已以實跑證成。
+  // 註（round-2/3 審查對帳）：封包原 A-13「oracle 為唯一偵測者」是 MF1 之前的描述。MF1 後 assembler 以
+  // 實體枚舉獨立 fail-close，成為**第二**來源側偵測者（縱深強化；此為刻意強化，**非**回歸成 oracle-only）。
+  // A-13 的實質——「diffSets 的雙向集合比對只驗 assembler 忠實度（_site==預期），對同時排除於兩集合的
+  // 夾外雜散無鑑別力」——是 diffSets 的**設計性質（by construction）**：本測試**不**把雜散「路由穿過比對」
+  // 去「演示盲性」（兩道來源閘會先擋，見 (a)(b)）；該性質由構造論證、並反映在 pages.yml 註解歸功於枚舉而
+  // 非比對。Codex round-3 以 rubric 的「oracle-only」字面視此為矛盾，但該字面已被 MF1 取代，照其方向回歸
+  // oracle-only 將重開 assembler 盲信 manifest 的洞（round-1 要求關閉者）；Grok 已獨立確認本歸因正確。
 });
 
 // N-8（rev.2 文件化殘餘，A-14 歸類）：合法 submission 夾「內」未參照檔仍被發佈（記錄界線，非偽稱關閉）
@@ -451,4 +455,18 @@ test('N-12: task.json / submission.json must be a regular file (a directory is r
   rmSync(path.join(root2, 'tasks', 'spinning-cube', 'task.json')); mkdirSync(path.join(root2, 'tasks', 'spinning-cube', 'task.json'));
   cpSync(path.join(clean, 'tasks.json'), path.join(root2, 'tasks.json'));
   await assert.rejects(assembleSite({ rootDir: root2, outDir: mktmp('n12t-') }), /缺少 task\.json（或其非一般檔）/);
+  // submission.json 為 symlink（指向他處一般檔）→ 亦拒（lstat isFile 對 symlink 為假；round-3 Grok NIT）
+  const root3 = makeFixture(['spinning-cube']);
+  const sub3 = path.join(root3, 'tasks', 'spinning-cube', 'opus-4.8-high', 'submission.json');
+  const decoy = path.join(mktmp('n12-decoy-'), 'x.json'); writeFileSync(decoy, '{}');
+  rmSync(sub3); symlinkSync(decoy, sub3);
+  cpSync(path.join(clean, 'tasks.json'), path.join(root3, 'tasks.json'));
+  await assert.rejects(assembleSite({ rootDir: root3, outDir: mktmp('n12sl-') }), /缺少 submission\.json（或其非一般檔）/);
+  // submission.json 為 FIFO → 亦拒（非一般檔）
+  const root4 = makeFixture(['spinning-cube']);
+  const sub4 = path.join(root4, 'tasks', 'spinning-cube', 'opus-4.8-high', 'submission.json');
+  rmSync(sub4);
+  try { execFileSync('mkfifo', [sub4]); } catch { return; } // 無 mkfifo 環境略過 FIFO 分支
+  cpSync(path.join(clean, 'tasks.json'), path.join(root4, 'tasks.json'));
+  await assert.rejects(assembleSite({ rootDir: root4, outDir: mktmp('n12f-') }), /缺少 submission\.json（或其非一般檔）/);
 });

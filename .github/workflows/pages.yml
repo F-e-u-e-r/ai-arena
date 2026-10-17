@@ -44,7 +44,7 @@ jobs:
 
       # Zero-dep node:test over every test/*.test.mjs: Any/Explicit-Subset filter + sort logic
       # (filter-core), the Model Family registry (model-registry), AND the closed-world
-      # publication regression suite (publication — P-1a/1b, P-2..P-5, N-1..N-8). The glob
+      # publication regression suite (publication — P-1a/1b, P-2..P-5, N-1..N-12). The glob
       # test/*.test.mjs covers publication.test.mjs (first-hand confirmed); a directory arg
       # (`node --test test/`) is NOT searched by the runner here, so the glob is required.
       - name: Run unit tests (filter-core, model-registry, publication)
