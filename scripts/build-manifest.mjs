@@ -1,6 +1,7 @@
-import { readdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { readdir, readFile, stat, lstat, writeFile } from 'node:fs/promises';
+import { realpathSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import { validate } from './lib/validate-json-schema.mjs';
 import { normalizePricing } from './lib/pricing.mjs';
 import { isOsCruft, isSafeSegment } from './lib/publication-policy.mjs';
@@ -92,13 +93,29 @@ function assertSafeName(name, kind) {
 // 真實版對含 symlink 的目錄丟出；測試內的 known-bad（移除 isSymbolicLink 檢查的本地變體）則不丟。
 // 與 guard B / 組裝器 guard 各自獨立 —— 停用本防護不需、也不得弱化其他任何防護（A-12 獨立性）。
 export async function assertNoSymlinks(dir) {
+  // MF2（跨家族審查）：先擋「根目錄本身是 symlink」—— readdir 會跟隨 symlinked 目錄，使樹外內容
+  // 被當成 tasks/ 子樹處理。遞迴子目錄已由父層確認非 symlink，故此 lstat 對根生效、對子層冗餘但無害。
+  const dst = await lstat(dir);
+  if (dst.isSymbolicLink()) {
+    fail(`tasks/ 目錄不允許為 symlink：${webPath(dir)}`);
+  }
   for (const entry of await readdir(dir, { withFileTypes: true })) {
+    if (isOsCruft(entry.name)) continue; // A-7：忽略本機 gitignored OS cruft
     const full = path.join(dir, entry.name);
     if (entry.isSymbolicLink()) {
       fail(`tasks/ 內不允許 symlink：${webPath(full)}`);
     }
     if (entry.isDirectory()) {
       await assertNoSymlinks(full);
+      continue;
+    }
+    // MF4（契約 §5.1「全樹非一般檔以 lstat 拒絕」）：非目錄、非一般檔（FIFO/socket/device）→ fail。
+    // 補足 classifyTreeEntry 只擋「直接子項」的缺口，使巢狀 submission.json/index.html 等若為非一般檔亦被擋。
+    // 明確排除 symlink：symlink 屬「上方 symlink 防護」的職責（非一般檔防護只針對 FIFO/socket/device）。
+    // 兩防護因此可各自獨立停用、互不遮蔽（A-15 獨立性：N-5a 停用 symlink 防護即可放行 symlink；
+    // N-6 停用本防護即可放行 FIFO）。
+    if (!entry.isFile() && !entry.isSymbolicLink()) {
+      fail(`tasks/ 內不允許非一般檔（FIFO/socket/device）：${webPath(full)}`);
     }
   }
 }
@@ -368,7 +385,15 @@ try {
 
 // main-guard：只有被當 script 直接執行（node scripts/build-manifest.mjs …）時才跑 build；
 // 被測試 import 時不執行，使 assertNoSymlinks / classifyTreeEntry 等 guard 可在自身邊界被測試。
-const invokedDirectly = import.meta.url === pathToFileURL(path.resolve(process.argv[1] || '')).href;
-if (invokedDirectly) {
+// MF3（跨家族審查）：以 realpath 比對兩側 —— 否則 symlinked 調用路徑（如 macOS /tmp→/private/tmp）
+// 會使 import.meta.url ≠ argv[1]，main() 被靜默跳過、process 以 0 結束而「什麼都沒做」。
+function invokedDirectly() {
+  try {
+    return realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1] || '');
+  } catch {
+    return false;
+  }
+}
+if (invokedDirectly()) {
   await main();
 }

@@ -51,9 +51,12 @@ jobs:
         run: node --test test/*.test.mjs
 
       # WS5-A Packet A: fail-closed closed-world publication gate at the PR layer. Assembles to a
-      # temp dir and runs the bidirectional set comparison WITHOUT deploying, so assets/ or
-      # folder-external non-manifest files + symlinks/non-regular fail on the PR itself
-      # (not merged-then-broken-deploy). Deploy runs the same assembler for real (below).
+      # temp dir WITHOUT deploying. The assembler's OWN fail-closed enumeration + assets-closed-set
+      # reject extra assets, folder-external strays, symlinks (including a symlinked tasks/ or assets/
+      # root) and non-regular files on the PR itself (not merged-then-broken-deploy); the post-assembly
+      # set comparison ADDITIONALLY verifies assembler fidelity (output == expected), NOT source
+      # cleanliness (A-13). `build-manifest.mjs --strict` (above) is the first fail-closed source gate.
+      # Deploy runs the same assembler for real (below).
       - name: Verify closed-world publication set (assemble-site --check)
         run: node scripts/assemble-site.mjs --check
 
