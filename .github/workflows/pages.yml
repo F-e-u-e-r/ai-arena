@@ -113,9 +113,10 @@ jobs:
         run: node scripts/build-manifest.mjs --strict
 
       # Closed-world assembler (WS5-A Packet A) replaces the prior `cp -R index.html assets tasks
-      # tasks.json _site/`. Publishes exactly the manifest+chrome-derived 407-file set (byte-identical
-      # to the old cp -R on a clean checkout; P-1a/P-1b), fails closed on strays/symlinks/non-regular,
-      # and aborts the deploy (non-zero) before upload if the set does not verify.
+      # tasks.json _site/`. Publishes exactly the 407-file set derived from the PHYSICAL validated tree
+      # (folder names, never manifest ids) plus the chrome list (byte-identical to the old cp -R on a
+      # clean checkout; P-1a/P-1b); fails closed on strays/symlinks/non-regular/traversal, and aborts
+      # the deploy (non-zero) before upload if the set does not verify.
       - name: Build static site (closed-world assembler)
         run: node scripts/assemble-site.mjs
 

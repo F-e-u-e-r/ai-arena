@@ -241,22 +241,28 @@ test('N-5a-ii: classifyTreeEntry (guard B no-follow) rejects a symlink; stat-fol
   assert.equal(await followMutant(dir, 'linkdir', 'task'), 'dir');
 });
 
-// N-5b（A-16：guard C lstat no-follow，以夾內 symlink 測、containment 不遮蔽）
-test('N-5b: copyPublicationFile (guard C lstat no-follow) rejects an in-folder symlink; stat mutant follows', async () => {
+// N-5b（A-16：guard C lstat no-follow，以夾內 symlink 測）。round-2 審查修正：guard C 的隔離改為「直接
+// 測 assertRegularFileNoFollow」—— 因 copyPublicationFile 另有 O_NOFOLLOW backstop（對 symlink 丟 ELOOP），
+// 若測 copyPublicationFile 則 lstat→stat 變異會被 O_NOFOLLOW 遮蔽、無法乾淨隔離 guard C（Codex round-2）。
+test('N-5b: assertRegularFileNoFollow (guard C lstat no-follow) rejects an in-folder symlink; stat mutant follows; copy rejects end-to-end', async () => {
   const folder = mktmp('n5b-folder-'); const outDir = mktmp('n5b-out-');
   writeFileSync(path.join(folder, 'real.txt'), 'payload');
-  symlinkSync('real.txt', path.join(folder, 'link.txt'));
-  await assert.rejects(copyPublicationFile(path.join(folder, 'link.txt'), path.join(outDir, 'link.txt')),
-    /symlink \(no-follow\)/);
-  await copyPublicationFile(path.join(folder, 'real.txt'), path.join(outDir, 'real.txt'));
-  assert.equal(readFileSync(path.join(outDir, 'real.txt'), 'utf8'), 'payload');
-  const copyFollowMutant = async (src, dest) => {
-    const st = await stat(src); // follow!
-    if (!st.isFile()) throw new Error('not a file');
-    copyFileSync(src, dest);
+  symlinkSync('real.txt', path.join(folder, 'link.txt')); // 夾內目標
+  // guard C 自身邊界（不經 copyPublicationFile 的 O_NOFOLLOW backstop）
+  await assert.rejects(assertRegularFileNoFollow(path.join(folder, 'link.txt')), /symlink \(no-follow\)/);
+  await assertRegularFileNoFollow(path.join(folder, 'real.txt')); // 一般檔 → 不丟（正向對照）
+  // known-bad：lstat→stat（跟隨）→ symlink 目標為一般檔 → 接受（證明 lstat no-follow 為載重點）。
+  const statMutant = async (p) => {
+    const st = await stat(p); // follow!
+    if (st.isSymbolicLink()) throw new Error('symlink');
+    if (!st.isFile()) throw new Error('non-regular');
   };
-  await copyFollowMutant(path.join(folder, 'link.txt'), path.join(outDir, 'followed.txt'));
-  assert.equal(readFileSync(path.join(outDir, 'followed.txt'), 'utf8'), 'payload');
+  await statMutant(path.join(folder, 'link.txt')); // 不丟 → guard C 的 lstat 是載重點
+  // 端到端：copyPublicationFile（guard C lstat + O_NOFOLLOW backstop）對 symlink fail-closed、不複製目標。
+  await assert.rejects(copyPublicationFile(path.join(folder, 'link.txt'), path.join(outDir, 'link.txt')),
+    /symlink \(no-follow\)|ELOOP/);
+  await copyPublicationFile(path.join(folder, 'real.txt'), path.join(outDir, 'real.txt'));
+  assert.equal(readFileSync(path.join(outDir, 'real.txt'), 'utf8'), 'payload'); // 一般檔照常位元複製
 });
 
 // N-5b-ii（A-16：guard D containment，以夾外目標測；MF5：faithful mutant，非空函式）
@@ -335,6 +341,9 @@ test('N-7: folder-external stray → detected by the oracle AND the assembler en
     'assembler 自身的 fail-closed 枚舉亦擋夾外雜散（不倚賴集合比對）');
   // (c) A-13：擋它的是枚舉（oracle + assembler），不是「雙向集合比對」—— 比對只驗忠實度（輸出==預期）。
   // 夾外雜散不在預期集、也不會被複製；若只靠集合比對，它同時排除於兩側而不可見。
+  // 註（round-2 審查）：封包原 A-13 說「oracle 為唯一偵測者」是 MF1 之前的描述；MF1 後 assembler 以實體
+  // 枚舉獨立 fail-close，成為**第二**來源側偵測者（縱深強化）。A-13 的實質——「集合比對只驗忠實度、對夾外
+  // 雜散無鑑別力」——不變且在上面 (b) 已以實跑證成。
 });
 
 // N-8（rev.2 文件化殘餘，A-14 歸類）：合法 submission 夾「內」未參照檔仍被發佈（記錄界線，非偽稱關閉）
@@ -354,20 +363,29 @@ test('N-8: folder-INTERNAL unreferenced file IS still published — documented r
 // N-9（round-2 MF1，兩家族收斂＋重現）：惡意 manifest id 不造成路徑穿越（改由實體資料夾名推導）
 test('N-9: a malicious submission/task id does NOT traverse — paths derive from physical folders, never metadata.id (MF1)', async () => {
   const root = makeFixture(['spinning-cube']);
-  // 注入惡意 id（schema 無 pattern、assertSafeName 不套用於 metadata.id → oracle 會接受並寫進 manifest）
+  // 注入惡意 id 於 submission 與 task 兩者（schema 無 pattern、assertSafeName 不套用於 metadata.id →
+  // oracle 會接受並寫進 manifest）。
   const subMeta = path.join(root, 'tasks', 'spinning-cube', 'opus-4.8-high', 'submission.json');
-  const j = JSON.parse(readFileSync(subMeta, 'utf8')); j.id = '../../../../data'; writeFileSync(subMeta, JSON.stringify(j, null, 2));
+  const sj = JSON.parse(readFileSync(subMeta, 'utf8')); sj.id = '../../../../data'; writeFileSync(subMeta, JSON.stringify(sj, null, 2));
+  const taskMeta = path.join(root, 'tasks', 'spinning-cube', 'task.json');
+  const tj = JSON.parse(readFileSync(taskMeta, 'utf8')); tj.id = '../../../../etc'; writeFileSync(taskMeta, JSON.stringify(tj, null, 2));
   assert.equal(runOracle(root).status, 0, 'oracle 仍接受（id 非它的路徑）');
   const manifest = JSON.parse(readFileSync(path.join(root, 'tasks.json'), 'utf8'));
-  assert.ok(manifest[0].submissions.some((s) => s.id === '../../../../data'), '前提：manifest 的確帶惡意 id');
+  assert.ok(manifest.some((t) => t.id === '../../../../etc'), '前提：manifest 的確帶惡意 task id');
+  assert.ok(manifest.some((t) => (t.submissions || []).some((s) => s.id === '../../../../data')), '前提：manifest 的確帶惡意 submission id');
   // 真正關鍵：assembler 忽略 manifest id，只用實體資料夾名 → 無穿越。
   const siteDir = mktmp('n9-site-');
   const { expected } = await assembleSite({ rootDir: root, outDir: siteDir });
+  // (a) expected（= dest 相對路徑）無穿越/絕對 → dest=path.join(outDir,rel) 不可能逸出 siteDir（Codex round-2）。
+  for (const rel of expected) {
+    assert.ok(!rel.includes('..') && !path.isAbsolute(rel), `expected 路徑不得穿越/絕對：${rel}`);
+  }
+  // (b) 實際 _site 內容只在 chrome 或 tasks/ 底下，絕無樹外 data/ 或 etc/。
   for (const p of listFiles(siteDir)) {
     assert.ok(!p.includes('..'), `不得有穿越路徑：${p}`);
     assert.ok(p === 'index.html' || p === 'tasks.json' || p.startsWith('assets/') || p.startsWith('tasks/'),
       `只允許 chrome 或 tasks/ 底下：${p}`);
-    assert.ok(!p.startsWith('data/'), `絕不得發佈樹外 data/：${p}`);
+    assert.ok(!p.startsWith('data/') && !p.startsWith('etc/'), `絕不得發佈樹外路徑：${p}`);
   }
   assert.ok(expected.includes('tasks/spinning-cube/opus-4.8-high/submission.json'), '實體 submission 夾照常發佈');
 });
@@ -381,6 +399,13 @@ test('N-10: a symlinked tasks/ or assets/ root is rejected (MF2 assertEnumerable
   symlinkSync(path.join(ROOT, 'assets'), path.join(root, 'assets')); // symlink → 外部真實 assets（內容合法）
   await assert.rejects(assembleSite({ rootDir: root, outDir: mktmp('n10-') }), /symlinked directory/,
     'symlinked assets/ 根即使內容合法也 fail-closed（guard E）');
+  // symlinked tasks/ 根經 assembleSite 亦擋（enumeratePublishedTree 的 assertEnumerableDir(tasksDir)；Codex round-2）
+  const rootT = makeFixture(['spinning-cube']);
+  assert.equal(runOracle(rootT).status, 0);
+  rmSync(path.join(rootT, 'tasks'), { recursive: true, force: true });
+  symlinkSync(path.join(ROOT, 'tasks'), path.join(rootT, 'tasks'));
+  await assert.rejects(assembleSite({ rootDir: rootT, outDir: mktmp('n10t-') }), /symlinked directory/,
+    'symlinked tasks/ 根在 assembler 側亦 fail-closed');
   // guard E 自身邊界
   const d = mktmp('n10e-'); const t = mktmp('n10e-t-'); symlinkSync(t, path.join(d, 'link'));
   await assert.rejects(assertEnumerableDir(path.join(d, 'link')), /symlinked directory/);
@@ -405,4 +430,25 @@ test('N-11: invoking the scripts through a symlinked path still runs main() (MF3
   const o = execFileSync('node', [linkBm, '--output', path.join(d, 'out.json')], { cwd: ROOT, encoding: 'utf8' });
   assert.match(o, /5 tasks, 75 submissions/);
   assert.ok(existsSync(path.join(d, 'out.json')), 'symlinked 調用下 build 仍實際執行並寫出檔案');
+});
+
+// N-12（round-2 Codex MAJOR，作者重現）：task.json / submission.json 必須是「一般檔」——目錄（或 symlink）
+// 被拒（舊 existsSync 會把目錄當成「存在」而放行其巢狀內容；isRegularFileSync 以 lstat isFile 擋）。
+test('N-12: task.json / submission.json must be a regular file (a directory is rejected, not treated as present)', async () => {
+  const clean = makeFixture(['spinning-cube']); assert.equal(runOracle(clean).status, 0);
+  // submission.json 為「目錄」（含巢狀內容）→ assembler 拒（不發佈 submission.json/ 內容）
+  const root = makeFixture(['spinning-cube']);
+  const sub = path.join(root, 'tasks', 'spinning-cube', 'opus-4.8-high');
+  rmSync(path.join(sub, 'submission.json')); mkdirSync(path.join(sub, 'submission.json'));
+  writeFileSync(path.join(sub, 'submission.json', 'inner.txt'), 'leak');
+  cpSync(path.join(clean, 'tasks.json'), path.join(root, 'tasks.json')); // 乾淨 manifest，模擬 assembler 獨立驗證
+  await assert.rejects(assembleSite({ rootDir: root, outDir: mktmp('n12s-') }), /缺少 submission\.json（或其非一般檔）/);
+  // 隔離反證：舊 existsSync 對目錄為真（會放行巢狀 inner.txt）；isRegularFileSync（lstat isFile）擋。
+  assert.equal(existsSync(path.join(sub, 'submission.json')), true, 'existsSync 對目錄為真（舊 bug 會放行）');
+  assert.equal(lstatSync(path.join(sub, 'submission.json')).isFile(), false, 'lstat isFile 對目錄為假（本修正據此擋）');
+  // task.json 為「目錄」→ 亦拒
+  const root2 = makeFixture(['spinning-cube']);
+  rmSync(path.join(root2, 'tasks', 'spinning-cube', 'task.json')); mkdirSync(path.join(root2, 'tasks', 'spinning-cube', 'task.json'));
+  cpSync(path.join(clean, 'tasks.json'), path.join(root2, 'tasks.json'));
+  await assert.rejects(assembleSite({ rootDir: root2, outDir: mktmp('n12t-') }), /缺少 task\.json（或其非一般檔）/);
 });

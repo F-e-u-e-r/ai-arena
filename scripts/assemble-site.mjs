@@ -34,11 +34,12 @@
 // 這屬獨立的 publication-content-policy / origin-isolation 議題，非 provenance；SHA-256 provenance
 // 本身不驗證內容安全（A-14）。本封包僅如實文件化，不實作 submission file-manifest、不碰 WS5-B。
 
-import { readdir, readFile, lstat, realpath, mkdir, rm, mkdtemp, open, writeFile } from 'node:fs/promises';
-import { existsSync, realpathSync, constants } from 'node:fs';
+import { readdir, readFile, lstat, realpath, mkdir, rm, mkdtemp, open } from 'node:fs/promises';
+import { realpathSync, lstatSync, createWriteStream, constants } from 'node:fs';
+import { pipeline } from 'node:stream/promises';
 import path from 'node:path';
 import os from 'node:os';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import {
   CHROME_FILES, ASSET_FILES, ASSET_FILE_SET, isOsCruft, assertSafeSegment,
 } from './lib/publication-policy.mjs';
@@ -50,6 +51,12 @@ function relForward(baseDir, absPath) {
 }
 function byName(a, b) {
   return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
+}
+
+// task.json / submission.json 必須是「一般檔」—— 以 lstat（不跟隨 symlink）判定，拒目錄/symlink/非一般檔。
+// round-2 審查（Codex MAJOR）：existsSync 會把「submission.json 是一個目錄」當成「存在」而放行其巢狀內容。
+function isRegularFileSync(p) {
+  try { return lstatSync(p).isFile(); } catch { return false; }
 }
 
 // Guard E（MF2）：確認「要被 readdir 枚舉的根目錄本身」是真正的目錄、不是 symlink。tasks/、assets/、
@@ -94,18 +101,18 @@ export async function assertInsideFolder(folderAbs, targetAbs) {
 // （最後一段若在兩次呼叫間被換成 symlink，O_NOFOLLOW 開檔會 ELOOP 失敗）→ 以 fd 做位元複製（支撐 P-1b）。
 export async function copyPublicationFile(srcAbs, destAbs) {
   await assertRegularFileNoFollow(srcAbs);
-  let fh;
+  const fh = await open(srcAbs, constants.O_RDONLY | constants.O_NOFOLLOW);
   try {
-    fh = await open(srcAbs, constants.O_RDONLY | constants.O_NOFOLLOW);
     const st = await fh.stat();
     if (!st.isFile()) {
       throw new Error(`refusing to publish non-regular file (fstat): ${srcAbs}`);
     }
-    const buf = await fh.readFile();
     await mkdir(path.dirname(destAbs), { recursive: true });
-    await writeFile(destAbs, buf);
+    // 串流複製（不整檔緩衝 → 大檔不致耗盡記憶體；round-2 審查 Codex MAJOR）。來源 fd 以 O_NOFOLLOW
+    // 開啟 → 不跟隨 symlink（autoClose:false：fd 由下方 finally 單一關閉，避免重複關閉）。位元複製，保 P-1b。
+    await pipeline(fh.createReadStream({ autoClose: false }), createWriteStream(destAbs));
   } finally {
-    if (fh) await fh.close();
+    await fh.close();
   }
 }
 
@@ -162,8 +169,8 @@ export async function enumeratePublishedTree(rootDir) {
     if (!entry.isDirectory()) throw new Error(`tasks/ 內不允許雜散檔或非一般檔（task 層）：${entry.name}`);
     assertSafeSegment(entry.name, 'task 資料夾');
     const taskFolder = entry.name;
-    if (!existsSync(path.join(tasksDir, taskFolder, 'task.json'))) {
-      throw new Error(`tasks/${taskFolder}: task 資料夾缺少 task.json`);
+    if (!isRegularFileSync(path.join(tasksDir, taskFolder, 'task.json'))) {
+      throw new Error(`tasks/${taskFolder}: task 資料夾缺少 task.json（或其非一般檔）`);
     }
     taskFolders.push(taskFolder);
     const taskDir = path.join(tasksDir, taskFolder);
@@ -174,8 +181,8 @@ export async function enumeratePublishedTree(rootDir) {
       if (se.isSymbolicLink()) throw new Error(`tasks/${taskFolder} 內不允許 symlink：${se.name}`);
       if (!se.isDirectory()) throw new Error(`tasks/${taskFolder} 內不允許雜散檔或非一般檔（submission 層）：${se.name}`);
       assertSafeSegment(se.name, 'submission 資料夾');
-      if (!existsSync(path.join(taskDir, se.name, 'submission.json'))) {
-        throw new Error(`tasks/${taskFolder}/${se.name}: submission 資料夾缺少 submission.json`);
+      if (!isRegularFileSync(path.join(taskDir, se.name, 'submission.json'))) {
+        throw new Error(`tasks/${taskFolder}/${se.name}: submission 資料夾缺少 submission.json（或其非一般檔）`);
       }
       submissionFolders.push({ taskFolder, subFolder: se.name });
     }
@@ -188,8 +195,16 @@ export async function enumeratePublishedTree(rootDir) {
 export async function expectedPublicationPaths(rootDir, manifest) {
   const { taskFolders, submissionFolders } = await enumeratePublishedTree(rootDir);
   // 計數對帳：實體樹 vs 已驗證 manifest（抓 stale manifest / oracle-assembler 不一致）。
+  // round-2 審查（Codex/Grok）：以 Array.isArray 守衛 shape，否則 `submissions` 若為字串/{length:N}
+  // 其 .length 會被當成計數（雖 CI 的 build-manifest --strict 會先重建 tasks.json，這裡做縱深驗證）。
+  if (!Array.isArray(manifest)) throw new Error('manifest 必須是陣列');
   const manTasks = manifest.length;
-  const manSubs = manifest.reduce((n, t) => n + (t.submissions?.length ?? 0), 0);
+  const manSubs = manifest.reduce((n, t) => {
+    if (t && t.submissions !== undefined && !Array.isArray(t.submissions)) {
+      throw new Error(`manifest task "${t.id}" 的 submissions 欄位必須是陣列`);
+    }
+    return n + (Array.isArray(t?.submissions) ? t.submissions.length : 0);
+  }, 0);
   if (taskFolders.length !== manTasks) {
     throw new Error(`task 計數不符：實體樹 ${taskFolders.length} vs manifest ${manTasks}`);
   }
