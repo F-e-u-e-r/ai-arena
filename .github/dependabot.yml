@@ -1,0 +1,18 @@
+# Keeps the two dependency surfaces current (Owner-approved security-maintenance scope, 2026-10):
+#   - github-actions: bumps the full-length SHA pins in .github/workflows (the trailing
+#     `# vX.Y.Z` comment is updated alongside the SHA)
+#   - npm: test-only tooling (@playwright/test). The published site has no npm runtime
+#     dependency; its one browser-side CDN dependency (@google/model-viewer, assets/app.js)
+#     is version-pinned + SRI-guarded and is NOT managed here.
+# Dependabot *alerts* / security updates are a repository Setting (Owner-only); this file
+# only configures version-update PRs.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"

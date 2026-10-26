@@ -71,6 +71,9 @@ const server = createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
+// Loopback only: this server exposes the WHOLE repo root (including untracked local files), so it
+// must never be reachable from the LAN during a local test run. Playwright's baseURL/webServer URL
+// use `localhost`; Node's autoSelectFamily falls back to 127.0.0.1 when ::1 refuses.
+server.listen(PORT, '127.0.0.1', () => {
   console.log(`static-server: serving ${ROOT} at http://localhost:${PORT}`);
 });
