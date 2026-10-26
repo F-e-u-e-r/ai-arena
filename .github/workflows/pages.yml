@@ -29,9 +29,11 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # Node is pinned to an exact patch (Owner decision 2026-10-27, after the Node.js 2026-10-21
-      # security release): the hosted toolcache lags new patches, and `check-latest` would let the
-      # same commit run a different Node without a repo diff. The same pin is used in all three jobs.
-      # Dependabot does NOT bump `node-version` — bump all three by hand on each Node security release.
+      # security release). With a major-only range (`"22"`) the hosted toolcache lags new patches, and
+      # `check-latest` would let the same commit run a different Node patch without a repo diff; with an
+      # exact pin `check-latest` can only re-resolve the same version (one redundant manifest lookup), so
+      # it stays at its default. The same pin is used in all three jobs. Dependabot does NOT bump
+      # `node-version` — bump all three by hand on each Node security release.
       - name: Set up Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
