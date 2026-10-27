@@ -6,6 +6,11 @@
 // 大小寫（Actions 的 `with:` 輸入名不分大小寫）、尾註解（`exfil: # note`）都是合法且會被 GitHub 接受的寫法——
 // 只匹配裸鍵的正則會被它們繞過。另外 CI-5b 以「正規化後的 canonical form 等式」釘住 node-pin-check.yml 的整體結構
 // （只允許 action SHA / 版本註解 / cron 變動），使任何語義稽核沒想到的新步驟 / 鍵都 RED（縱深）。
+// 行級稽核的根本限制（Grok R4 F2）：YAML 還有 `? key` 明示鍵、帶跳脫的引號鍵（`"mirror"`）、tag、文件標記……正則永遠
+// 追不完。因此 CI-0 auditYamlSubset() 反過來只「接受」一個極小、行級可判定的 YAML 子集，任何不在子集內的行 → RED
+// （fail closed）；兩個 workflow 檔都必須落在子集內，之後的語義檢查才建立在可判定的輸入上。
+//   CI-0 兩個 workflow 檔都落在保守 YAML 子集內（裸鍵、無明示/引號鍵、無 tab、無文件標記、值不以 & * ! % @ ` 起始、
+//        同一映射無重複鍵、區塊純量依縮排略過）。
 //   CI-1 .node-version 為精確 X.Y.Z 且主版本 == APPROVED_MAJOR（22）。刻意升主版本線必須有意識地改這個常數。
 //   CI-2 pages.yml：每個 job 各恰有一個 setup-node 且以 node-version-file: .node-version 取用；全檔無任何 node-version 鍵。
 //   CI-3 pages.yml + node-pin-check.yml：每個 runs-on 都是明確的 ubuntu-26.04。
@@ -13,7 +18,8 @@
 //   CI-5 node-pin-check.yml 隔離：只有 schedule + workflow_dispatch；恰一個頂層 permissions = contents: read；無任何 write；
 //        無 secrets/GITHUB_TOKEN；無 Pages/deploy/environment；單一 job；uses 白名單 {checkout, setup-node}；
 //        run 白名單 {node scripts/check-node-pin.mjs}；無 shell/env/container/services；timeout-minutes。
-//   CI-5b node-pin-check.yml canonical form（正規化後、SHA/cron 以 placeholder 取代）== 內嵌模板。
+//   CI-5b node-pin-check.yml canonical form（正規化後、SHA/cron 以 placeholder 取代）== 內嵌模板；cron 本身必須是會觸發的
+//        每週 "M H * * D"（Grok R4 F3：`0 0 31 2 *` 永不觸發卻能通過 placeholder 等式）。
 //   CI-6 known-bad 臂。
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -56,11 +62,12 @@ export function auditNodeVersionFile(text) {
   return problems;
 }
 
-// 以「`- uses:` / `- name:` 開頭的行」切出步驟區塊（含其後更深縮排的行）。
+// 以「`- <key>:` 開頭的行」切出序列項區塊（含其後更深縮排的行）。任何鍵都可起始一個步驟（`- id:` / `- if:` / `- run:` 也合法），
+// 不只 name/uses；`on:` 下的 `- cron:` 也會成為一個區塊，但後續過濾只看 `uses: actions/setup-node@`，無害。
 export function stepBlocks(text) {
   const ls = lines(normalizeYaml(text)); const blocks = []; let cur = null;
   for (const l of ls) {
-    if (/^\s*- (name|uses):/.test(l)) { if (cur) blocks.push(cur); cur = { indent: indentOf(l), text: [l] }; continue; }
+    if (/^\s*- [a-z_][a-z0-9_-]*:/.test(l)) { if (cur) blocks.push(cur); cur = { indent: indentOf(l), text: [l] }; continue; }
     if (cur && (l.trim() === '' || indentOf(l) > cur.indent || isComment(l))) { cur.text.push(l); continue; }
     if (cur) { blocks.push(cur); cur = null; }
   }
@@ -98,12 +105,17 @@ const SETUP_NODE_ALLOWED_WITH = ['node-version-file', 'cache'];
 
 // setup-node 步驟的 `with:` 區塊（Codex confirmation F1）：node-version-file 必須出現在 **with: 區塊內**（不是 env: 或步驟
 // 其他位置）；`with:` 本身必須是裸鍵（`with: {…}` flow-style → fail closed）；區塊內每個鍵都受白名單約束。
+// 區塊內任何不是「裸鍵: 值」的行（`? key` 明示鍵、帶跳脫的引號鍵、續行……）→ 不猜測、直接 RED（Grok R4 F2）；
+// 同一步驟出現多個 `with:` → RED（解析器 first/last-wins 不一致，稽核不得只看第一個）。
 function withBlockOf(stepText) {
   const ls = stepText.split('\n');
+  const problems = [];
+  const withLines = ls.filter((l) => /^\s*with:/.test(stripTrailingComment(l)));
+  if (withLines.length > 1) problems.push(`setup-node step has more than one with: block (${withLines.length}) — fail closed`);
   const idx = ls.findIndex((l) => /^\s*with:/.test(stripTrailingComment(l)));
-  if (idx < 0) return { present: false, flow: false, keys: [] };
+  if (idx < 0) return { present: false, flow: false, keys: [], problems };
   const header = stripTrailingComment(ls[idx]);
-  if (!/^\s*with:\s*$/.test(header)) return { present: true, flow: true, keys: [] }; // `with: {…}` 或其他非區塊寫法
+  if (!/^\s*with:\s*$/.test(header)) return { present: true, flow: true, keys: [], problems }; // `with: {…}` 或其他非區塊寫法
   const indent = indentOf(ls[idx]);
   const keys = [];
   for (const l of ls.slice(idx + 1)) {
@@ -111,8 +123,9 @@ function withBlockOf(stepText) {
     if (indentOf(l) <= indent) break;
     const m = stripTrailingComment(l).match(/^\s+([a-z][a-z0-9_-]*):\s*(.*)$/);
     if (m) keys.push({ key: m[1], value: m[2] });
+    else problems.push(`unrecognised line inside setup-node with: block (explicit/quoted key, continuation or other YAML the audit cannot follow) — fail closed: "${l.trim().slice(0, 60)}"`);
   }
-  return { present: true, flow: false, keys };
+  return { present: true, flow: false, keys, problems };
 }
 
 export function auditSetupNode(text, { expectedSteps }) {
@@ -122,6 +135,7 @@ export function auditSetupNode(text, { expectedSteps }) {
   if (steps.length !== expectedSteps) problems.push(`expected ${expectedSteps} setup-node steps, found ${steps.length}`);
   for (const s of steps) {
     const w = withBlockOf(s);
+    problems.push(...w.problems);
     if (!w.present) problems.push('setup-node step has no with: block (node-version-file must be passed under with:)');
     else if (w.flow) problems.push('setup-node with: must be a block mapping, not flow-style (audit cannot follow `with: {…}`) — fail closed');
     else {
@@ -139,10 +153,51 @@ export function auditSetupNode(text, { expectedSteps }) {
   return problems;
 }
 
-// YAML 構造 fail-closed（Grok R3 F1）：anchor（`key: &a`）、alias（`*a`）、merge key（`<<:`）與 flow-style 映射/序列作為
-// job/step 定義都是 GitHub 會接受、而行級稽核看不透的寫法 → 一律 RED，不嘗試解讀。
-export function auditYamlConstructs(text) {
+// CI-0 — YAML 保守子集（Grok R4 F2：`? node-version` 明示鍵、`"mirror"` 帶跳脫的引號鍵都是合法 YAML，GitHub 的解析器
+// 會把它們變成真正的輸入，而任何行級正則都看不到）。不嘗試解讀全部 YAML；只接受一個極小、行級可判定的子集，其餘一律 RED。
+//   接受：`key:` / `key: value` / `- key:` / `- key: value`（鍵 = 裸 [A-Za-z_][A-Za-z0-9_-]*、不加引號、鍵與冒號間無空白、
+//        冒號後必須是行尾或空白）、註解、空行、以 `|`/`>` 起始之區塊純量的內容（縮排 > 鍵欄位的行，依縮排追蹤）。
+//   拒絕：`? ` 明示鍵、引號鍵、`<<:`、tab 縮排、文件標記 `---`/`...`、`%` 指令、值以 & * ! % @ ` 起始（anchor/alias/tag/保留）、
+//        純量序列項、續行、同一映射內重複的鍵（含大小寫不同的同名 with 輸入：GitHub 視為同一輸入；解析器 first/last-wins 不一致）。
+//   以「原始文字」稽核（不先 normalizeYaml）：引號鍵在子集外，整體拒絕，而非只處理 normalizeYaml 看得懂的那些。
+export function auditYamlSubset(text) {
   const problems = [];
+  const frames = []; // 重複鍵偵測：{ indent, keys } 堆疊，indent = 鍵所在欄位
+  let scalar = null; // 正在略過的區塊純量：內容 = 縮排 > scalar.indent 的行
+  const ls = lines(text);
+  for (let i = 0; i < ls.length; i++) {
+    const raw = ls[i];
+    const where = `line ${i + 1}: "${raw.trim().slice(0, 60)}"`;
+    if (raw.trim() === '') continue;
+    if (scalar) { if (indentOf(raw) > scalar.indent) continue; scalar = null; }
+    if (isComment(raw)) continue;
+    if (/^ *\t/.test(raw)) { problems.push(`tab indentation is outside the accepted YAML subset — fail closed: ${where}`); continue; }
+    const m = raw.match(/^( *)(- )?([A-Za-z_][A-Za-z0-9_-]*):(?: (.*))?$/);
+    if (!m) { problems.push(`YAML line outside the accepted subset (explicit "? key", quoted key, plain sequence item, continuation, document marker, …) — fail closed: ${where}`); continue; }
+    const indent = m[1].length; const dash = Boolean(m[2]); const key = m[3].toLowerCase(); const value = (m[4] ?? '').trim();
+    if (/^[&*!%@`]/.test(value)) problems.push(`YAML value starts with a reserved indicator (anchor/alias/tag/directive) — fail closed: ${where}`);
+    const keyCol = dash ? indent + 2 : indent;
+    if (dash) {
+      while (frames.length && frames.at(-1).indent >= keyCol) frames.pop();
+      frames.push({ indent: keyCol, keys: new Set([key]) });
+    } else {
+      while (frames.length && frames.at(-1).indent > keyCol) frames.pop();
+      const top = frames.at(-1);
+      if (top && top.indent === keyCol) {
+        if (top.keys.has(key)) problems.push(`duplicate key "${key}" in the same mapping (parsers disagree on first/last-wins) — fail closed: ${where}`);
+        top.keys.add(key);
+      } else frames.push({ indent: keyCol, keys: new Set([key]) });
+    }
+    if (/^[|>](?:[1-9]?[-+]?|[-+]?[1-9]?)\s*(?:#.*)?$/.test(value)) scalar = { indent: keyCol };
+  }
+  return problems;
+}
+
+// YAML 構造 fail-closed（Grok R3 F1）：anchor（`key: &a`）、alias（`*a`）、merge key（`<<:`）與 flow-style 映射/序列作為
+// job/step 定義都是 GitHub 會接受、而行級稽核看不透的寫法 → 一律 RED，不嘗試解讀。先跑 CI-0 子集稽核（原始文字），再跑
+// 正規化文字上的構造檢查。
+export function auditYamlConstructs(text) {
+  const problems = [...auditYamlSubset(text)];
   for (const l of lines(normalizeYaml(text))) {
     if (isComment(l)) continue;
     const s = stripTrailingComment(l);
@@ -235,6 +290,14 @@ export function auditPinCheckWorkflow(text) {
   const withKeys = nl.filter((l) => /^\s{10}[a-z-]+:/.test(l)).map((l) => stripTrailingComment(l).trim().split(':')[0]);
   for (const k of withKeys) if (k !== 'node-version-file') problems.push(`pin-check setup-node may only pass node-version-file, found with-key "${k}"`);
   if (jobNames(text).length !== 1) problems.push(`pin-check must have exactly one job, found ${jobNames(text).length}`);
+  // cron 必須真的會觸發（Grok R4 F3：`0 0 31 2 *` 通過 CI-5b 的 placeholder 等式卻永不執行）：只接受每週 "M H * * D"
+  // （分 0-59、時 0-23、週 0-6；不接受名稱、清單、步進、@weekly、日/月欄位）。
+  const crons = nl.map((l) => stripTrailingComment(l).match(/^\s*-\s*cron:\s*(.*)$/)).filter(Boolean).map((m) => m[1].trim().replace(/^["']|["']$/g, ''));
+  if (crons.length !== 1) problems.push(`pin-check must declare exactly one cron, found ${crons.length}`);
+  for (const c of crons) {
+    const f = c.match(/^(\d{1,2}) (\d{1,2}) \* \* ([0-6])$/);
+    if (!f || Number(f[1]) > 59 || Number(f[2]) > 23) problems.push(`pin-check cron must be a weekly "M H * * D" expression that actually fires (minute 0-59, hour 0-23, day-of-week 0-6), got: "${c}"`);
+  }
   return problems;
 }
 
@@ -323,14 +386,43 @@ test('CI-6: known-bad arms — each audit rule can actually fail, including quot
   }
   assert.deepEqual(auditSetupNode(PAGES, { expectedSteps: 3 }), [], 'the real cache: "npm" key stays allowed');
   // (b′) Codex confirmation F1: node-version-file smuggled under env: while with: is a flow mapping carrying node-version → RED
-  const envSmuggle = mutate(PAGES, /        with:\n          node-version-file: "\.node-version"\n          cache: "npm"\n/, '        env:\n          node-version-file: ".node-version"\n        with: { node-version: "24" }\n');
+  const WITH_BS = /        with:\n          node-version-file: "\.node-version"\n          cache: "npm"\n/; // browser-smoke 的 with: 區塊
+  const envSmuggle = mutate(PAGES, WITH_BS, '        env:\n          node-version-file: ".node-version"\n        with: { node-version: "24" }\n');
   const es = auditSetupNode(envSmuggle, { expectedSteps: 3 });
   assert.ok(es.some((p) => /must be a block mapping, not flow-style/.test(p)) && es.some((p) => /must not carry an env: block/.test(p)), 'env-smuggle + flow with must be rejected');
   assert.ok(auditYamlConstructs(envSmuggle).some((p) => /flow-style value not allowed for structural key/.test(p)));
-  const envOnly = mutate(PAGES, /        with:\n          node-version-file: "\.node-version"\n          cache: "npm"\n/, '        env:\n          node-version-file: ".node-version"\n');
+  const envOnly = mutate(PAGES, WITH_BS, '        env:\n          node-version-file: ".node-version"\n');
   assert.ok(auditSetupNode(envOnly, { expectedSteps: 3 }).some((p) => /has no with: block/.test(p)));
-  const nvfOutside = mutate(PAGES, /        with:\n          node-version-file: "\.node-version"\n          cache: "npm"\n/, '        with:\n          cache: "npm"\n        env:\n          node-version-file: ".node-version"\n');
+  const nvfOutside = mutate(PAGES, WITH_BS, '        with:\n          cache: "npm"\n        env:\n          node-version-file: ".node-version"\n');
   assert.ok(auditSetupNode(nvfOutside, { expectedSteps: 3 }).some((p) => /with: block does not consume node-version-file/.test(p)));
+  // (b″) Grok R4 F1: `with: # comment` header + mirror → still RED (withBlockOf strips the comment; allowlist applies)
+  const withComment = mutate(PAGES, WITH_BS, '        with: # x\n          node-version-file: ".node-version"\n          cache: "npm"\n          mirror: https://example.invalid\n');
+  assert.ok(auditSetupNode(withComment, { expectedSteps: 3 }).some((p) => /not allowlisted.*"mirror"/.test(p)), 'with: # comment must not skip the allowlist');
+  // (b‴) Grok R4 F2: YAML explicit keys (`? node-version` / `: "24"`) and escape-bearing quoted keys (`"mi\u0072ror"`) are valid YAML that a
+  //      real parser resolves to the inputs node-version / mirror while line regexes see nothing → BOTH the with-block audit and the
+  //      CI-0 subset lexer reject them outright (fail closed), never interpret them
+  const explicitKey = mutate(PAGES, WITH_BS, '        with:\n          node-version-file: ".node-version"\n          cache: "npm"\n          ? node-version\n          : "24.22.1"\n');
+  assert.ok(auditSetupNode(explicitKey, { expectedSteps: 3 }).some((p) => /unrecognised line inside setup-node with/.test(p)), 'explicit ?-key must be rejected by the with-block audit');
+  assert.ok(auditYamlConstructs(explicitKey).some((p) => /outside the accepted subset/.test(p)), 'explicit ?-key must be rejected by the subset lexer');
+  const escapedKey = mutate(PAGES, WITH_BS, '        with:\n          node-version-file: ".node-version"\n          cache: "npm"\n          "mi\\u0072ror": https://example.invalid\n');
+  assert.ok(auditSetupNode(escapedKey, { expectedSteps: 3 }).some((p) => /unrecognised line inside setup-node with/.test(p)), 'escaped quoted key must be rejected by the with-block audit');
+  assert.ok(auditYamlConstructs(escapedKey).some((p) => /outside the accepted subset/.test(p)), 'escaped quoted key must be rejected by the subset lexer');
+  // duplicate mappings (two with: blocks in one step; Cache/cache twice) → RED; a step that starts with `- id:` is still inventoried
+  const dupWith = mutate(PAGES, WITH_BS, '        with:\n          node-version-file: ".node-version"\n          cache: "npm"\n        with:\n          node-version: "24"\n');
+  assert.ok(auditYamlConstructs(dupWith).some((p) => /duplicate key "with"/.test(p)));
+  assert.ok(auditSetupNode(dupWith, { expectedSteps: 3 }).some((p) => /more than one with: block/.test(p)));
+  assert.ok(auditYamlSubset(mutate(PAGES, WITH_BS, '        with:\n          node-version-file: ".node-version"\n          cache: "npm"\n          Cache: "npm"\n')).some((p) => /duplicate key "cache"/.test(p)));
+  const idFirst = mutate(PAGES, /      - name: Set up Node\.js\n        uses: actions\/setup-node@([0-9a-f]{40}) # v7\.1\.0\n        with:\n          node-version-file: "\.node-version"\n          cache: "npm"\n/, '      - id: n\n        uses: actions/setup-node@$1 # v7.1.0\n        with:\n          node-version-file: ".node-version"\n          mirror: https://example.invalid\n');
+  assert.ok(auditSetupNode(idFirst, { expectedSteps: 3 }).some((p) => /not allowlisted.*"mirror"/.test(p)), 'a step starting with `- id:` must still be inventoried');
+  // subset lexer unit arms: tab indentation, document marker, anchor/alias/tag values, quoted key, plain sequence item; real files pass (incl. the run: | block scalar)
+  assert.ok(auditYamlSubset('jobs:\n\tx: 1\n').some((p) => /tab indentation/.test(p)));
+  assert.ok(auditYamlSubset('---\njobs:\n').some((p) => /outside the accepted subset/.test(p)));
+  for (const v of ['a: &x', 'a: *x', 'a: !!str x', 'a: %x']) assert.ok(auditYamlSubset(`${v}\n`).some((p) => /reserved indicator/.test(p)), `value not rejected: ${v}`);
+  assert.ok(auditYamlSubset("'on':\n  push:\n").some((p) => /outside the accepted subset/.test(p)));
+  assert.ok(auditYamlSubset('steps:\n  - echo\n').some((p) => /outside the accepted subset/.test(p)));
+  assert.deepEqual(auditYamlSubset('a:\n  run: |\n    x: y\n    ? z\n  b: 1\n'), [], 'block-scalar content is skipped by indentation');
+  assert.deepEqual(auditYamlSubset(PAGES), []);
+  assert.deepEqual(auditYamlSubset(PIN_CHECK), []);
   // (c) a job dropped its setup-node → count + per-job RED
   const fewer = mutate(PAGES, /      - name: Set up Node\.js\n        uses: actions\/setup-node@[0-9a-f]{40} # v\d+\.\d+\.\d+\n        with:\n          node-version-file: "\.node-version"\n\n      - name: Configure Pages/, '      - name: Configure Pages');
   const fewerP = auditPagesWorkflow(fewer);
@@ -383,6 +475,12 @@ test('CI-6: known-bad arms — each audit rule can actually fail, including quot
     assert.ok(auditPinCheckWorkflow(t).some((p) => expect.test(p)), `arm not caught: ${String(from).slice(0, 40)} → ${to.slice(0, 40)}`);
     assert.notEqual(canonicalPinCheck(t), PIN_CHECK_CANONICAL, 'canonical-form gate (CI-5b) must also go RED');
   }
+  // (g′) Grok R4 F3: a cron that never fires (31 Feb) passes the CI-5b placeholder equality → the semantic cron check must go RED;
+  //      out-of-range fields, day-of-week 7, names, @weekly and non-weekly shapes are rejected; the real cron and arm (i)'s edit pass
+  for (const bad of ['0 0 31 2 *', '60 6 * * 1', '17 24 * * 1', '17 6 * * 7', '17 6 1 * *', '@weekly', '17 6 * * MON', '*/5 * * * *']) {
+    assert.ok(auditPinCheckWorkflow(mutate(PIN_CHECK, /cron: "17 6 \* \* 1"/, `cron: "${bad}"`)).some((p) => /cron must be a weekly/.test(p)), `cron not caught: ${bad}`);
+  }
+  assert.ok(auditPinCheckWorkflow(mutate(PIN_CHECK, /    - cron: "17 6 \* \* 1" # Mondays 06:17 UTC\n/, '    - cron: "17 6 * * 1"\n    - cron: "0 0 31 2 *"\n')).some((p) => /exactly one cron/.test(p)));
   // (h) .node-version real predicate against known-bad values (not constant comparison)
   assert.deepEqual(auditNodeVersionFile('22.23.4\n'), []);
   assert.ok(auditNodeVersionFile('24.22.1\n').some((p) => /major 24 != approved 22/.test(p)));
