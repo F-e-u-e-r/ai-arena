@@ -34,12 +34,16 @@ async function syntheticManifest(route) {
   return real;
 }
 
+// cdnRequests 記錄「對 CDN URL 的請求」（不論是否得到回應），cdnStatuses 記錄其回應狀態：
+// T-lazy 斷言零請求（不是只看 DOM），T3/T4/T-live 斷言恰好一次 GET。
 function probes(page) {
   const consoleErrors = [];
+  const cdnRequests = [];
   const cdnStatuses = [];
   page.on('console', (m) => { if (m.type() === 'error') consoleErrors.push(m.text()); });
+  page.on('request', (r) => { if (r.url() === SRC) cdnRequests.push(r.method()); });
   page.on('response', (r) => { if (r.url() === SRC) cdnStatuses.push(r.status()); });
-  return { consoleErrors, cdnStatuses };
+  return { consoleErrors, cdnRequests, cdnStatuses };
 }
 
 // 以 capture 階段的 window 'error' 監聽器記錄資源載入錯誤（<script> 的 error 事件不會冒泡）。
@@ -96,19 +100,21 @@ test.beforeAll(() => {
   expect(SRC).toBe(PROV.production_url);
 });
 
-test('T-lazy: with the real manifest (no model-viewer submission) model-viewer is never loaded', async ({ page }) => {
-  const { consoleErrors } = probes(page);
+test('T-lazy: with the real manifest (no model-viewer submission) model-viewer is never requested nor loaded', async ({ page }) => {
+  const { consoleErrors, cdnRequests, cdnStatuses } = probes(page);
   await page.goto(`/#${TASK}`);
   await expect(page.locator('main h2')).toBeVisible();
   await expect(page.locator('main .placeholder')).toHaveCount(2); // 真實 2 張 iframe 卡（lazy placeholder）
   expect(await page.evaluate(loaderScriptInfo)).toEqual([]);
   expect(await page.evaluate(() => !!customElements.get('model-viewer'))).toBe(false);
+  expect(cdnRequests).toEqual([]); // 零請求：不是「請求了再拿掉」
+  expect(cdnStatuses).toEqual([]);
   expect(consoleErrors.filter((e) => /integrity|digest/i.test(e))).toEqual([]);
 });
 
 test('T3 (positive): the real loader path with the corrected SRI executes model-viewer (fixture bytes, offline)', async ({ page }) => {
   await installResourceErrorProbe(page);
-  const { consoleErrors, cdnStatuses } = probes(page);
+  const { consoleErrors, cdnRequests, cdnStatuses } = probes(page);
   await routeManifestAndGlb(page);
   await routeCdnWithFixture(page);
 
@@ -123,6 +129,7 @@ test('T3 (positive): the real loader path with the corrected SRI executes model-
 
   const scripts = await page.evaluate(loaderScriptInfo);
   expect(scripts).toEqual([{ src: SRC, integrity: SRI, crossorigin: 'anonymous', type: 'module' }]); // 恰好一個（mvLoaded guard）
+  expect(cdnRequests).toEqual(['GET']); // 兩張卡只發一次請求
   expect(cdnStatuses).toEqual([200]);
   expect(consoleErrors.filter((e) => /integrity|digest/i.test(e))).toEqual([]);
   expect(await page.evaluate(() => window.__resourceErrors.filter((e) => /model-viewer/.test(e.src)))).toEqual([]);
@@ -130,7 +137,7 @@ test('T3 (positive): the real loader path with the corrected SRI executes model-
 
 test('T4 (negative): the pre-fix digest is rejected by the browser as an integrity failure, not a network failure', async ({ page }) => {
   await installResourceErrorProbe(page);
-  const { consoleErrors, cdnStatuses } = probes(page);
+  const { consoleErrors, cdnRequests, cdnStatuses } = probes(page);
   await routeManifestAndGlb(page);
   await routeCdnWithFixture(page);
   await routeAppJsWithWrongDigest(page);
@@ -144,7 +151,8 @@ test('T4 (negative): the pre-fix digest is rejected by the browser as an integri
   expect(msg).toContain(SRC);
   expect(msg).toContain(FIXTURE_SRI.replace(/^sha384-/, '')); // 瀏覽器回報的「實際」sha384 = fixture 位元組的 sha384
 
-  // 排除網路失敗：CDN 回應是 200（位元組送達），拒載發生在 integrity 比對
+  // 排除網路失敗：恰好一次請求且 CDN 回應是 200（位元組送達），拒載發生在 integrity 比對
+  expect(cdnRequests).toEqual(['GET']);
   expect(cdnStatuses).toEqual([200]);
   // 被拒的 script 收到 error 事件；custom element 從未註冊
   await expect.poll(() => page.evaluate(() => window.__resourceErrors.filter((e) => /model-viewer/.test(e.src)).length), { timeout: 10_000 }).toBe(1);
@@ -156,10 +164,11 @@ test('T4 (negative): the pre-fix digest is rejected by the browser as an integri
 test('T-live [network-dependent, opt-in MODEL_VIEWER_LIVE=1]: the real CDN response satisfies the corrected SRI', async ({ page }) => {
   test.skip(!process.env.MODEL_VIEWER_LIVE, 'network-dependent evidence; run with MODEL_VIEWER_LIVE=1');
   await installResourceErrorProbe(page);
-  const { consoleErrors, cdnStatuses } = probes(page);
+  const { consoleErrors, cdnRequests, cdnStatuses } = probes(page);
   await routeManifestAndGlb(page); // 不攔 unpkg：真網路
   await page.goto(`/#${TASK}`);
   await page.waitForFunction(() => !!customElements.get('model-viewer'), null, { timeout: 30_000 });
+  expect(cdnRequests).toEqual(['GET']);
   expect(cdnStatuses).toEqual([200]);
   expect(consoleErrors.filter((e) => /integrity|digest/i.test(e))).toEqual([]);
   expect(await page.evaluate(loaderScriptInfo)).toEqual([{ src: SRC, integrity: SRI, crossorigin: 'anonymous', type: 'module' }]);

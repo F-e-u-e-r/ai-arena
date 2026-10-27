@@ -118,3 +118,23 @@ test('SRI-5: the superseded (4.0.0-derived) digest never comes back', () => {
   assert.notEqual(sri384(FIXTURE), PROV.superseded_digest.value);
   assert.doesNotMatch(APP_JS, /sr9b4Ux0WhAUGclJ0ym0FSY2zSOMmNSn0bP\/SA0e6bNCrpn\/5W3QL8mm\+LdlQMKw/);
 });
+
+// SRI-6（網路相依、opt-in）：provenance 不只是「寫在檔案裡的宣稱」——以 MODEL_VIEWER_LIVE=1 執行時，從
+// 生產 URL（unpkg）與獨立分發路徑（jsDelivr）下載，逐位元組（大小 + sha256）比對 fixture，並確認
+// 200 / 無轉址 / JavaScript Content-Type，且其 sha384 等於 app.js 的常數。預設 skip（不當 PASS）：
+// 離線單元測試不得發外部請求（Owner 契約）。tarball 本身的 sha512 需要整包 tarball，不在離線範圍。
+test('SRI-6 [network-dependent, opt-in MODEL_VIEWER_LIVE=1]: live unpkg + jsDelivr bytes == fixture bytes',
+  { skip: !process.env.MODEL_VIEWER_LIVE && 'network-dependent evidence; run with MODEL_VIEWER_LIVE=1' },
+  async () => {
+    const { sri } = extractModelViewerLoader(APP_JS);
+    for (const url of [PROV.verified_sources.unpkg, PROV.verified_sources.jsdelivr]) {
+      const res = await fetch(url, { redirect: 'manual', cache: 'no-store' });
+      assert.equal(res.status, 200, `${url}: expected 200 with no redirect`);
+      assert.match(res.headers.get('content-type') || '', /javascript/i, `${url}: Content-Type`);
+      const bytes = Buffer.from(await res.arrayBuffer());
+      assert.equal(bytes.length, FIXTURE.length, `${url}: size`);
+      assert.equal(createHash('sha256').update(bytes).digest('hex'), PROV.sha256, `${url}: sha256 == fixture/provenance`);
+      assert.equal(sri384(bytes), sri, `${url}: sha384 == MODEL_VIEWER_SRI`);
+    }
+    assert.equal(PROV.verified_sources.unpkg, EXPECTED_SRC, 'the live-checked unpkg URL is the production URL');
+  });
