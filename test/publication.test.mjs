@@ -83,7 +83,9 @@ function listFiles(dir) {
 const HOST_METADATA_NAMES = Object.freeze(new Set(['.DS_Store', 'Thumbs.db']));
 function isHostMetadata(name) { return HOST_METADATA_NAMES.has(name); }
 // 只對測試 temp 樹呼叫（絕不對 ROOT）。遞迴只進真實目錄（Dirent 型別 = lstat 語義，不跟隨 symlink）；
-// 只刪「名稱命中且為一般檔」者。名為 .DS_Store 的目錄或 symlink 不是主機中繼資料 → 保留，讓比對看見（HM-4）。
+// 只刪「名稱命中且為一般檔」者。名為 .DS_Store 的目錄或 symlink 不是主機中繼資料 → 一律保留（不刪、不跟隨）：
+// 目錄的內容會進入 listFiles 而被比對看見（HM-4 → DROPPED）；symlink 不是一般檔、不進 listFiles → 對比對不可見
+// （見上方邊界；HM-4 端到端明示）。
 function stripHostMetadata(dir) {
   for (const e of readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, e.name);
