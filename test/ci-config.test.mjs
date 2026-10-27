@@ -96,22 +96,44 @@ export function auditRunsOn(text) {
 // 的任何布林寫法（"true"/True）、`registry-url`、`token`、`architecture` 都不在本 repo 契約內——未列名即 RED，要新增須有意識地改這裡。
 const SETUP_NODE_ALLOWED_WITH = ['node-version-file', 'cache'];
 
+// setup-node 步驟的 `with:` 區塊（Codex confirmation F1）：node-version-file 必須出現在 **with: 區塊內**（不是 env: 或步驟
+// 其他位置）；`with:` 本身必須是裸鍵（`with: {…}` flow-style → fail closed）；區塊內每個鍵都受白名單約束。
+function withBlockOf(stepText) {
+  const ls = stepText.split('\n');
+  const idx = ls.findIndex((l) => /^\s*with:/.test(stripTrailingComment(l)));
+  if (idx < 0) return { present: false, flow: false, keys: [] };
+  const header = stripTrailingComment(ls[idx]);
+  if (!/^\s*with:\s*$/.test(header)) return { present: true, flow: true, keys: [] }; // `with: {…}` 或其他非區塊寫法
+  const indent = indentOf(ls[idx]);
+  const keys = [];
+  for (const l of ls.slice(idx + 1)) {
+    if (l.trim() === '' || isComment(l)) continue;
+    if (indentOf(l) <= indent) break;
+    const m = stripTrailingComment(l).match(/^\s+([a-z][a-z0-9_-]*):\s*(.*)$/);
+    if (m) keys.push({ key: m[1], value: m[2] });
+  }
+  return { present: true, flow: false, keys };
+}
+
 export function auditSetupNode(text, { expectedSteps }) {
   const problems = [];
   const norm = normalizeYaml(text);
   const steps = stepBlocks(text).filter((b) => /uses:\s*actions\/setup-node@/.test(b));
   if (steps.length !== expectedSteps) problems.push(`expected ${expectedSteps} setup-node steps, found ${steps.length}`);
   for (const s of steps) {
-    if (!/^\s*node-version-file:\s*["']?\.node-version["']?\s*(#.*)?$/m.test(s)) problems.push('setup-node step does not consume node-version-file: .node-version');
-    if (/^\s*node-version:/m.test(s)) problems.push('setup-node step still carries a node-version key (second source of truth; setup-node prefers it over the file)');
-    if (/^\s*check-latest:/m.test(s)) problems.push('setup-node step sets check-latest (any value; the reproducibility contract forbids the key)');
-    const withIdx = s.split('\n').findIndex((l) => /^\s*with:\s*$/.test(l));
-    if (withIdx >= 0) {
-      for (const l of s.split('\n').slice(withIdx + 1)) {
-        const k = stripTrailingComment(l).match(/^\s+([a-z][a-z0-9_-]*):/);
-        if (k && !SETUP_NODE_ALLOWED_WITH.includes(k[1])) problems.push(`setup-node with-key not allowlisted (${SETUP_NODE_ALLOWED_WITH.join(', ')}): "${k[1]}"`);
+    const w = withBlockOf(s);
+    if (!w.present) problems.push('setup-node step has no with: block (node-version-file must be passed under with:)');
+    else if (w.flow) problems.push('setup-node with: must be a block mapping, not flow-style (audit cannot follow `with: {…}`) — fail closed');
+    else {
+      const nvf = w.keys.find((k) => k.key === 'node-version-file');
+      if (!nvf || !/^["']?\.node-version["']?$/.test(nvf.value.trim())) problems.push('setup-node with: block does not consume node-version-file: .node-version');
+      for (const k of w.keys) {
+        if (k.key === 'node-version') problems.push('setup-node with: still carries a node-version key (second source of truth; setup-node prefers it over the file)');
+        else if (k.key === 'check-latest') problems.push('setup-node with: sets check-latest (any value; the reproducibility contract forbids the key)');
+        else if (!SETUP_NODE_ALLOWED_WITH.includes(k.key)) problems.push(`setup-node with-key not allowlisted (${SETUP_NODE_ALLOWED_WITH.join(', ')}): "${k.key}"`);
       }
     }
+    if (/^\s*env:/m.test(s)) problems.push('setup-node step must not carry an env: block (inputs belong under with:)');
   }
   if (/^\s*node-version:/m.test(norm)) problems.push('workflow contains a node-version key somewhere');
   return problems;
@@ -127,6 +149,8 @@ export function auditYamlConstructs(text) {
     if (/:\s*[&*][A-Za-z0-9_-]+\s*$/.test(s) || /^\s*-\s*[&*][A-Za-z0-9_-]+/.test(s)) problems.push(`YAML anchor/alias not allowed (audit cannot follow it): "${s.trim()}"`);
     if (/^\s*<<\s*:/.test(s)) problems.push(`YAML merge key not allowed: "${s.trim()}"`);
     if (/^  [a-z_][a-z0-9_-]*:\s*[{[]/.test(s) || /^\s*-\s*[{[]/.test(s)) problems.push(`flow-style mapping/sequence not allowed for jobs/steps: "${s.trim()}"`);
+    // 結構鍵（with / permissions / env / steps / jobs / on）不得用 flow-style 寫法（`branches: ["main"]` 這類純量序列不在此列）
+    if (/^\s*(?:- )?(with|permissions|env|steps|jobs|on):\s*[{[]/.test(s)) problems.push(`flow-style value not allowed for structural key: "${s.trim()}"`);
   }
   return problems;
 }
@@ -298,6 +322,15 @@ test('CI-6: known-bad arms — each audit rule can actually fail, including quot
     assert.ok(auditSetupNode(t, { expectedSteps: 3 }).some((p) => /check-latest|not allowlisted/.test(p)), `with-key variant not caught: ${variant}`);
   }
   assert.deepEqual(auditSetupNode(PAGES, { expectedSteps: 3 }), [], 'the real cache: "npm" key stays allowed');
+  // (b′) Codex confirmation F1: node-version-file smuggled under env: while with: is a flow mapping carrying node-version → RED
+  const envSmuggle = mutate(PAGES, /        with:\n          node-version-file: "\.node-version"\n          cache: "npm"\n/, '        env:\n          node-version-file: ".node-version"\n        with: { node-version: "24" }\n');
+  const es = auditSetupNode(envSmuggle, { expectedSteps: 3 });
+  assert.ok(es.some((p) => /must be a block mapping, not flow-style/.test(p)) && es.some((p) => /must not carry an env: block/.test(p)), 'env-smuggle + flow with must be rejected');
+  assert.ok(auditYamlConstructs(envSmuggle).some((p) => /flow-style value not allowed for structural key/.test(p)));
+  const envOnly = mutate(PAGES, /        with:\n          node-version-file: "\.node-version"\n          cache: "npm"\n/, '        env:\n          node-version-file: ".node-version"\n');
+  assert.ok(auditSetupNode(envOnly, { expectedSteps: 3 }).some((p) => /has no with: block/.test(p)));
+  const nvfOutside = mutate(PAGES, /        with:\n          node-version-file: "\.node-version"\n          cache: "npm"\n/, '        with:\n          cache: "npm"\n        env:\n          node-version-file: ".node-version"\n');
+  assert.ok(auditSetupNode(nvfOutside, { expectedSteps: 3 }).some((p) => /with: block does not consume node-version-file/.test(p)));
   // (c) a job dropped its setup-node → count + per-job RED
   const fewer = mutate(PAGES, /      - name: Set up Node\.js\n        uses: actions\/setup-node@[0-9a-f]{40} # v\d+\.\d+\.\d+\n        with:\n          node-version-file: "\.node-version"\n\n      - name: Configure Pages/, '      - name: Configure Pages');
   const fewerP = auditPagesWorkflow(fewer);

@@ -6,8 +6,10 @@
 //
 // 資料來源只用官方：
 //   - https://nodejs.org/dist/index.json                          （所有釋出：version / date / security / lts）
-//   - https://raw.githubusercontent.com/nodejs/Release/main/schedule.json （nodejs/Release WG 的 LTS 時程：maintenance / end）
-// 任一來源不可用、回應非 200、或釘住值不在官方清單 → 丟錯（fail closed；不會「查不到就當成最新」）。
+//   - https://raw.githubusercontent.com/nodejs/Release/main/schedule.json （nodejs/Release WG 的 LTS 時程：start / maintenance / end）
+//   - https://nodejs.org/dist/latest-v<major>.x/SHASUMS256.txt       （該線「最新」目錄；交叉驗證 index.json 的 latest）
+// 任一來源不可用、回應非 200、釘住值不在官方清單、索引過期（最新釋出 > 75 天前）、三來源不一致 → 丟錯（fail closed；
+// 不會「查不到就當成最新」）。
 //
 // 分類（classifyPin，純函式、可離線單元測試；test/node-pin-check.test.mjs 含 known-bad 臂）：
 //   current               釘住值 == 同主版本線的最新釋出                       → exit 0
@@ -22,7 +24,11 @@ import { fileURLToPath } from 'node:url';
 
 export const RELEASE_INDEX_URL = 'https://nodejs.org/dist/index.json';
 export const SCHEDULE_URL = 'https://raw.githubusercontent.com/nodejs/Release/main/schedule.json';
+// 第三個官方來源（Codex confirmation F2：過期/截斷但合法的 index.json 會讓 latest == pin）：nodejs.org 釋出流程維護的
+// `dist/latest-v<major>.x/SHASUMS256.txt`，其檔名含該線「最新」版本號；必須與 index.json 推得的 latest 一致，否則 fail closed。
+export const latestDirUrl = (major) => `https://nodejs.org/dist/latest-v${major}.x/SHASUMS256.txt`;
 export const EOL_WARN_DAYS = 90;
+export const INDEX_MAX_AGE_DAYS = 75; // 整個 index.json 的最新釋出日距今超過此天數 → 視為過期快照（fail closed）
 const FETCH_TIMEOUT_MS = 20_000;
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -60,11 +66,25 @@ function dayDiff(later, earlier) {
   return Math.round((later - earlier) / 86_400_000);
 }
 
-// index：nodejs.org/dist/index.json 的陣列；schedule：schedule.json 物件；today：'YYYY-MM-DD'（可注入以便測試）。
-export function classifyPin({ pinned, index, schedule, today }) {
+// 從 SHASUMS256.txt 文字擷取版本（所有檔名的 node-vX.Y.Z 必須一致，否則丟錯）
+export function parseLatestFromShasums(text) {
+  const versions = new Set((String(text).match(/node-v(\d+\.\d+\.\d+)/g) || []).map((m) => m.slice('node-v'.length)));
+  if (versions.size !== 1) throw new Error(`latest-v*.x/SHASUMS256.txt 無法解析出唯一版本（得到 ${versions.size} 個；來源異常，fail closed）`);
+  return [...versions][0];
+}
+
+// index：nodejs.org/dist/index.json 的陣列；schedule：schedule.json 物件；today：'YYYY-MM-DD'（可注入以便測試）；
+// latestFromDist：由 dist/latest-v<major>.x 推得的最新版本（活體必填；離線測試可省略）；indexMaxAgeDays：索引新鮮度界限
+// （預設 INDEX_MAX_AGE_DAYS；只有「時間旅行」的離線測試會以 Infinity 關閉，活體 main() 永遠用預設）。
+export function classifyPin({ pinned, index, schedule, today, latestFromDist, indexMaxAgeDays = INDEX_MAX_AGE_DAYS }) {
   if (!Array.isArray(index) || !index.length) throw new Error('釋出索引不是非空陣列（來源異常，fail closed）');
   if (!schedule || typeof schedule !== 'object') throw new Error('時程資料不是物件（來源異常，fail closed）');
   const t = parseIsoDate(today, 'today');
+  // 索引新鮮度（Codex confirmation F2）：整份 index.json 最新的一筆釋出日距今不得超過 INDEX_MAX_AGE_DAYS（Node 各線合計至少每月有釋出）。
+  const allDates = index.map((r) => r.date).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(String(d))).sort();
+  if (!allDates.length) throw new Error('釋出索引缺日期（來源異常，fail closed）');
+  const newest = parseIsoDate(allDates[allDates.length - 1], 'index newest release date');
+  if (dayDiff(t, newest) > indexMaxAgeDays) throw new Error(`釋出索引最新一筆 ${allDates[allDates.length - 1]} 距今超過 ${indexMaxAgeDays} 天（過期快照，fail closed）`);
   const major = Number(pinned.split('.')[0]);
   // 奇數主版本（Current-only，無 LTS）不在本 repo 的釘住政策內 → 直接拒絕（fail closed；下方的政策 EOL 公式只對偶數 LTS 線成立）。
   if (major % 2 !== 0) throw new Error(`v${major} 是奇數（非 LTS）主版本線，不在釘住政策內（fail closed）`);
@@ -105,6 +125,12 @@ export function classifyPin({ pinned, index, schedule, today }) {
   const maint = sched.maintenance === undefined || sched.maintenance === null
     ? null : parseIsoDate(sched.maintenance, `schedule v${major}.maintenance`);
   const latest = line[0].version;
+  // 第三來源交叉驗證（Codex confirmation F2）：dist/latest-v<major>.x 的版本必須等於 index.json 推得的 latest；
+  // 不等（index 過期/截斷、或 latest 目錄異常）→ fail closed，不得讓「截斷到只剩 pin」的索引回報 current。
+  if (latestFromDist !== undefined) {
+    if (!/^\d+\.\d+\.\d+$/.test(String(latestFromDist))) throw new Error(`latest-v${major}.x 版本格式異常（"${latestFromDist}"；fail closed）`);
+    if (latestFromDist !== latest) throw new Error(`index.json 的 v${major}.x 最新 ${latest} 與 dist/latest-v${major}.x 的 ${latestFromDist} 不一致（索引過期/截斷或來源異常，fail closed）`);
+  }
   const newer = line.filter((r) => cmpSemver(r.version, pinned) > 0);
   const daysToEol = dayDiff(end, t);
   const base = {
@@ -145,17 +171,20 @@ export function formatReport(r) {
   return lines.join('\n');
 }
 
-async function fetchJson(url) {
+async function fetchOk(url) {
   const res = await fetch(url, { redirect: 'manual', cache: 'no-store', signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
   if (res.status !== 200) throw new Error(`${url} 回應 ${res.status}（預期 200，不跟隨轉址；fail closed）`);
-  return res.json();
+  return res;
 }
+const fetchJson = async (url) => (await fetchOk(url)).json();
+const fetchText = async (url) => (await fetchOk(url)).text();
 
 async function main() {
   const pinned = parsePinned(readFileSync(path.join(rootDir, '.node-version'), 'utf8'));
-  const [index, schedule] = await Promise.all([fetchJson(RELEASE_INDEX_URL), fetchJson(SCHEDULE_URL)]);
+  const major = Number(pinned.split('.')[0]);
+  const [index, schedule, shasums] = await Promise.all([fetchJson(RELEASE_INDEX_URL), fetchJson(SCHEDULE_URL), fetchText(latestDirUrl(major))]);
   const today = new Date().toISOString().slice(0, 10);
-  const result = classifyPin({ pinned, index, schedule, today });
+  const result = classifyPin({ pinned, index, schedule, today, latestFromDist: parseLatestFromShasums(shasums) });
   console.log(formatReport(result));
   process.exitCode = result.exit;
 }
