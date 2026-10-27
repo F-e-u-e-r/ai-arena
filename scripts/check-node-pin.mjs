@@ -77,13 +77,22 @@ export function classifyPin({ pinned, index, schedule, today }) {
   const sched = schedule[`v${major}`];
   if (!sched || sched.end === undefined) throw new Error(`時程資料缺 v${major}.end（來源異常，fail closed）`);
   const end = parseIsoDate(sched.end, `schedule v${major}.end`);
-  // 合理性界限（審查 Grok F7：schedule.json 取自可變分支、無 digest）：Node 釋出政策下每條主版本線自 start 至 end
-  // 約 36 個月；超出 [600, 1300] 天即視為來源異常（被竄改/格式變更）→ 丟錯（fail closed），不讓「無限延後的 end」
-  // 靜默壓掉 major-line-migration 訊號。index.json（patch-drift 訊號來源）不受此影響。
-  if (sched.start !== undefined) {
-    const span = dayDiff(end, parseIsoDate(sched.start, `schedule v${major}.start`));
-    if (span < 600 || span > 1300) throw new Error(`schedule v${major} start→end 跨度 ${span} 天不合理（來源異常，fail closed）`);
+  // 合理性界限（審查 Grok F7 → R2 F4：schedule.json 取自可變分支、無 digest；且不得因缺 start 就跳過）：
+  //   (1) start 必須存在（缺少 → fail closed）；
+  //   (2) start 必須與「官方釋出索引中該主版本線最早一筆釋出的日期」相符（±14 天）—— 兩個官方來源交叉驗證，
+  //       單獨竄改 schedule.json（把 start/end 一起往後搬）會被 index.json 拆穿；
+  //   (3) start→end 跨度須在 [600, 1300] 天內（Node 釋出政策下每條主版本線約 36 個月）。
+  // 三者任一不成立 → 丟錯（fail closed），不讓「無限延後的 end」靜默壓掉 major-line-migration 訊號。
+  if (sched.start === undefined) throw new Error(`時程資料缺 v${major}.start（來源異常，fail closed）`);
+  const start = parseIsoDate(sched.start, `schedule v${major}.start`);
+  const lineDates = line.map((r) => r.date).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(String(d))).sort();
+  if (!lineDates.length) throw new Error(`官方釋出索引內 v${major}.x 釋出缺日期（來源異常，fail closed）`);
+  const lineStart = parseIsoDate(lineDates[0], `index v${major}.x earliest release date`);
+  if (Math.abs(dayDiff(start, lineStart)) > 14) {
+    throw new Error(`schedule v${major}.start=${sched.start} 與官方釋出索引最早釋出日 ${lineDates[0]} 不符（來源不一致，fail closed）`);
   }
+  const span = dayDiff(end, start);
+  if (span < 600 || span > 1300) throw new Error(`schedule v${major} start→end 跨度 ${span} 天不合理（來源異常，fail closed）`);
   const maint = sched.maintenance === undefined || sched.maintenance === null
     ? null : parseIsoDate(sched.maintenance, `schedule v${major}.maintenance`);
   const latest = line[0].version;

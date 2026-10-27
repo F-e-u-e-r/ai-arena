@@ -14,12 +14,15 @@ import { parsePinned, classifyPin, formatReport, cmpSemver, parseIsoDate, EOL_WA
 
 const INDEX = [
   { version: 'v26.12.1', date: '2026-10-21', security: true, lts: false },
+  { version: 'v26.0.0', date: '2026-05-05', security: false, lts: false },
   { version: 'v24.22.1', date: '2026-10-20', security: true, lts: 'Krypton' },
   { version: 'v24.22.0', date: '2026-10-14', security: false, lts: 'Krypton' },
+  { version: 'v24.0.0', date: '2025-05-06', security: false, lts: false },
   { version: 'v22.23.4', date: '2026-10-20', security: true, lts: 'Jod' },
   { version: 'v22.23.3', date: '2026-09-23', security: false, lts: 'Jod' },
   { version: 'v22.23.2', date: '2026-07-28', security: true, lts: 'Jod' },
   { version: 'v22.9.0', date: '2024-09-17', security: false, lts: false }, // 排序測試：9 < 23（數值而非字串）
+  { version: 'v22.0.0', date: '2024-04-24', security: false, lts: false }, // 線的最早釋出 = schedule.start（交叉驗證）
 ];
 const SCHEDULE = {
   v22: { start: '2024-04-24', lts: '2024-10-29', maintenance: '2025-10-21', end: '2027-04-30', codename: 'Jod' },
@@ -111,10 +114,16 @@ test('NP-6: fail closed — unknown pin, empty index, missing schedule line, bad
   assert.throws(() => classifyPin({ pinned: '22.23.4', index: INDEX, schedule: { ...SCHEDULE, v22: { ...SCHEDULE.v22, end: '2027-13-01' } }, today: TODAY }), /v22\.end 不是有效日期/);
   assert.throws(() => classifyPin({ pinned: '22.23.4', index: INDEX, schedule: { ...SCHEDULE, v22: { ...SCHEDULE.v22, maintenance: 'soon' } }, today: TODAY }), /v22\.maintenance 必須是 YYYY-MM-DD/);
   assert.throws(() => classifyPin({ pinned: '22.23.4', index: INDEX, schedule: SCHEDULE, today: '2026-02-30' }), /today 不是有效日期/);
-  // 合理性界限（Grok F7）：end 被改成遙遠未來（壓掉 migration 訊號）或早於 start → 丟錯（fail closed）
+  // 合理性界限（Grok F7 → R2 F4）：end 被改成遙遠未來（壓掉 migration 訊號）或早於 start → 丟錯（fail closed）
   assert.throws(() => classifyPin({ pinned: '22.23.4', index: INDEX, schedule: { ...SCHEDULE, v22: { ...SCHEDULE.v22, end: '2099-01-01' } }, today: TODAY }), /跨度 .* 天不合理/);
   assert.throws(() => classifyPin({ pinned: '22.23.4', index: INDEX, schedule: { ...SCHEDULE, v22: { ...SCHEDULE.v22, end: '2024-12-01' } }, today: '2024-11-01' }), /跨度 .* 天不合理/);
-  // 真實 v22 時程（2024-04-24 → 2027-04-30 = 1101 天）在界限內
+  // 缺 start 不得跳過（R2 F4）→ 丟錯；start/end 一起往後搬（2096→2099，跨度合規）→ 與 index 最早釋出日不符 → 丟錯
+  assert.throws(() => classifyPin({ pinned: '22.23.4', index: INDEX, schedule: { ...SCHEDULE, v22: { lts: '2024-10-29', maintenance: '2025-10-21', end: '2027-04-30' } }, today: TODAY }), /缺 v22\.start/);
+  assert.throws(() => classifyPin({ pinned: '22.23.4', index: INDEX, schedule: { ...SCHEDULE, v22: { ...SCHEDULE.v22, start: '2096-04-07', end: '2099-01-01' } }, today: '2028-01-01' }), /與官方釋出索引最早釋出日 .* 不符/);
+  // 索引缺少該線最早釋出（截斷的索引）→ start 與可見最早日不符 → 丟錯（fail closed，不靜默當 current）
+  const truncated = INDEX.filter((r) => r.version !== 'v22.0.0' && r.version !== 'v22.9.0');
+  assert.throws(() => classifyPin({ pinned: '22.23.4', index: truncated, schedule: SCHEDULE, today: TODAY }), /不符/);
+  // 真實 v22 時程（2024-04-24 → 2027-04-30 = 1101 天；start == v22.0.0 釋出日）在界限內
   assert.equal(classifyPin({ pinned: '22.23.4', index: INDEX, schedule: SCHEDULE, today: TODAY }).category, 'current');
   // known-bad 臂（F1 機制）：忠實複製 EOL 判定、只拿掉日期驗證 → 無效 end 使比較全為假 → 落到 current（fail-open）。
   const naiveEol = (today, end) => {
