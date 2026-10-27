@@ -624,9 +624,10 @@ function lazyIframe(body, src) {
 // 計算：`openssl dgst -sha384 -binary dist/model-viewer.min.js | openssl base64 -A`），並更新
 // test/fixtures/model-viewer-<ver>.* ；test/model-viewer-sri.test.mjs 會用 fixture 位元組重算
 // 雜湊比對這個常數，瀏覽器測試 test/browser/model-viewer-sri.spec.mjs 則驗證真的載得進來。
-// 歷史：2026-07-08 的常數取自 4.0.0 的檔案而 URL 釘 4.3.1，瀏覽器一律拒載；2026-10-27 修正。
-const MODEL_VIEWER_SRC = 'https://unpkg.com/@google/model-viewer@4.3.1/dist/model-viewer.min.js';
-const MODEL_VIEWER_SRI = 'sha384-cprcVQt7wbUl0xngF3PGP6yBB7n4/t+4AoAMG9biiMCGFiWOdzUH10Ie2COTqFNW';
+// 歷史：2026-07-08 的常數取自 4.0.0 的檔案而 URL 釘 4.3.1，瀏覽器一律拒載；2026-10-27 修正（PR #47）並同日
+// 升級至 4.4.0（digest 由 npm tarball / unpkg / jsDelivr 三路位元相同的 dist/model-viewer.min.js 重算；見 fixture provenance）。
+const MODEL_VIEWER_SRC = 'https://unpkg.com/@google/model-viewer@4.4.0/dist/model-viewer.min.js';
+const MODEL_VIEWER_SRI = 'sha384-wjsPzEO+lXOf7d9csIDfAQpPt2OKuUU3m0K9qsdKIuzX4N8czSF6hdh23eAbZa3p';
 let mvLoaded = false;
 function ensureModelViewer() {
   if (mvLoaded) return;

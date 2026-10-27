@@ -1,12 +1,12 @@
 // T3 / T4 — model-viewer SRI：真的走 assets/app.js 的 ensureModelViewer() 動態載入路徑（不是另寫一個
 // loader 來測）。以 page.route 把 tasks.json 換成「含 model-viewer 型 submission」的合成 manifest（記憶體
-// 內，不碰 repo、不新增 production submission），並把 unpkg 的 4.3.1 URL 以 fixture 位元組回應（離線、
-// 確定性；位元組 provenance：test/fixtures/model-viewer-4.3.1.provenance.json）。瀏覽器自己對回應位元
+// 內，不碰 repo、不新增 production submission），並把 unpkg 的 4.4.0 URL 以 fixture 位元組回應（離線、
+// 確定性；位元組 provenance：test/fixtures/model-viewer-4.4.0.provenance.json）。瀏覽器自己對回應位元
 // 組算 SRI，所以：
 //   T3 正向：app.js 常數正確 → script 執行、customElements 註冊 'model-viewer'、無 integrity 錯誤、
 //            只載一次（mvLoaded guard）、<model-viewer loading="lazy" reveal="interaction"> 保留。
-//   T4 負向：把 app.js 回應裡的常數換成舊的錯誤 digest（4.0.0 的雜湊，= 修正前的生產狀態）→ CDN 回應
-//            仍是 200（排除網路失敗）、但瀏覽器以 integrity 錯誤拒載：element 不註冊、script 收到 error
+//   T4 負向：把 app.js 回應裡的常數換成被取代的 4.3.1 digest（= URL 升到 4.4.0 但忘了更新 digest 的狀態）→ CDN
+//            回應仍是 200（排除網路失敗）、但瀏覽器以 integrity 錯誤拒載：element 不註冊、script 收到 error
 //            事件、console 錯誤訊息含 'integrity' 與實際位元組的 sha384。
 //   T-lazy ：真實 manifest 沒有 model-viewer 型 submission → 永遠不載 model-viewer（lazy 契約）。
 //   T-live ：opt-in（MODEL_VIEWER_LIVE=1）不攔 unpkg、走真網路——網路相依證據，預設 skip，不當 PASS。
@@ -16,13 +16,13 @@ import { gunzipSync } from 'node:zlib';
 import { createHash } from 'node:crypto';
 
 const ROOT = new URL('../../', import.meta.url);
-const FIXTURE = gunzipSync(readFileSync(new URL('test/fixtures/model-viewer-4.3.1.min.js.gz', ROOT)));
-const PROV = JSON.parse(readFileSync(new URL('test/fixtures/model-viewer-4.3.1.provenance.json', ROOT), 'utf8'));
+const FIXTURE = gunzipSync(readFileSync(new URL('test/fixtures/model-viewer-4.4.0.min.js.gz', ROOT)));
+const PROV = JSON.parse(readFileSync(new URL('test/fixtures/model-viewer-4.4.0.provenance.json', ROOT), 'utf8'));
 const APP_JS = readFileSync(new URL('assets/app.js', ROOT), 'utf8');
 const SRI = APP_JS.match(/^const MODEL_VIEWER_SRI = '([^']+)';$/m)[1];
 const SRC = APP_JS.match(/^const MODEL_VIEWER_SRC = '([^']+)';$/m)[1];
 const FIXTURE_SRI = 'sha384-' + createHash('sha384').update(FIXTURE).digest('base64');
-const WRONG_SRI = PROV.superseded_digest.value; // 修正前的生產常數（4.0.0 的雜湊）
+const WRONG_SRI = PROV.superseded_digest.value; // 被取代的 4.3.1 digest（URL 已升 4.4.0 但 digest 未更新 → 瀏覽器必須拒載）
 const TASK = 'spinning-cube'; // 2 submissions → 兩張 model-viewer 卡，驗證只載一次
 
 // 合成 manifest：取真實 manifest，把目標 task 的每個 submission 改為 model-viewer 型（src 指向 submission

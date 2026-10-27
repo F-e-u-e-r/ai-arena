@@ -1,0 +1,37 @@
+{
+  "$comment": "Provenance of test/fixtures/model-viewer-4.4.0.min.js.gz — the exact production resource that assets/app.js loads with Subresource Integrity (model-viewer-sri.test.mjs / model-viewer-sri.spec.mjs). Verified first-hand on 2026-10-27 across three independent distribution paths, byte-for-byte identical. The .gz is `gzip -9 -n` (reproducible, no name/timestamp) of dist/model-viewer.min.js from the npm tarball. Test-only: never published (outside the closed-world publication set).",
+  "package": "@google/model-viewer",
+  "version": "4.4.0",
+  "published": "2026-10-09T20:10:31.667Z",
+  "file": "dist/model-viewer.min.js",
+  "license": "Apache-2.0 (see model-viewer-4.4.0.LICENSE.txt; byte-identical to the 4.3.1 LICENSE)",
+  "production_url": "https://unpkg.com/@google/model-viewer@4.4.0/dist/model-viewer.min.js",
+  "verified_sources": {
+    "npm_tarball": "https://registry.npmjs.org/@google/model-viewer/-/model-viewer-4.4.0.tgz",
+    "npm_tarball_dist_integrity": "sha512-8z1SB5sPlzKoak5mdx/D31brBakPYm3Qi31EfAucHAUrtrHHCbabypkKvSwReYhUpPaxyJ46oT47uWE/hrs1Zw==",
+    "npm_tarball_shasum": "236f6562880e78c05afba68f1196b5b1a9673522",
+    "unpkg": "https://unpkg.com/@google/model-viewer@4.4.0/dist/model-viewer.min.js",
+    "jsdelivr": "https://cdn.jsdelivr.net/npm/@google/model-viewer@4.4.0/dist/model-viewer.min.js",
+    "http": "unpkg 200 (0 redirects, text/javascript; charset=utf-8, x-content-type-options: nosniff); jsDelivr 200 (0 redirects, application/javascript; charset=utf-8, nosniff)"
+  },
+  "size_bytes": 1069272,
+  "sha256": "18b2e711035aa4705ee281530a55dc2338ff05eed3d70ae16d54105282a75ed5",
+  "sri_sha384": "sha384-wjsPzEO+lXOf7d9csIDfAQpPt2OKuUU3m0K9qsdKIuzX4N8czSF6hdh23eAbZa3p",
+  "sri_sha512": "sha512-sqFFZexm5fGN74m4exdj9LnS8kwJf+MQDSIUOF2GLXaWRcKFg0t0OEjojfuSgzQ10wqLXRgnFiJk9C77r60UMg==",
+  "superseded_digest": {
+    "value": "sha384-cprcVQt7wbUl0xngF3PGP6yBB7n4/t+4AoAMG9biiMCGFiWOdzUH10Ie2COTqFNW",
+    "actually_matches": "@google/model-viewer@4.3.1 dist/model-viewer.min.js (1,068,903 B, sha256 283b0672384614b4847636c306fc93fe4b1fcadc76d668b4e47f0ca76bcf033b)",
+    "introduced_in": "1830f835 (PR #47, 2026-10-27) — correct for 4.3.1, superseded by the 4.4.0 bump. Used as the known-bad digest: a URL bump without a matching digest bump must be rejected by the browser (T4) and caught by SRI-2/SRI-4/SRI-5."
+  },
+  "historical_digests_never_to_return": [
+    {
+      "value": "sha384-sr9b4Ux0WhAUGclJ0ym0FSY2zSOMmNSn0bP/SA0e6bNCrpn/5W3QL8mm+LdlQMKw",
+      "note": "843a866 (2026-07-08): digest of the 4.0.0 file while the URL pinned 4.3.1 — the browser rejected the script from day one; fixed in PR #47."
+    },
+    {
+      "value": "sha384-cprcVQt7wbUl0xngF3PGP6yBB7n4/t+4AoAMG9biiMCGFiWOdzUH10Ie2COTqFNW",
+      "note": "4.3.1 digest (PR #47) — superseded by 4.4.0 on 2026-10-27."
+    }
+  ],
+  "recompute": "openssl dgst -sha384 -binary dist/model-viewer.min.js | openssl base64 -A   (prefix with 'sha384-')"
+}

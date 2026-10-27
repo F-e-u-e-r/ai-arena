@@ -27,7 +27,8 @@ Security & data-integrity hardening (from the Fable code review):
 - **iframe `src` bypass closed.** `build-manifest.mjs` rejects any iframe
   submission that sets `src`; `app.js` `renderMedia` prefers `path`. The build
   (and therefore CI) now guarantees PR-visible == gallery-loaded.
-- **model-viewer pinned + SRI.** `@4.3.1` with an integrity hash and
+- **model-viewer pinned + SRI.** `@4.4.0` (bumped from `@4.3.1` on 2026-10-27 with a
+  recomputed, three-source-verified digest) with an integrity hash and
   `crossorigin=anonymous`, replacing a floating unpkg version.
 - **Declarative submission/task schema.** `schema/submission.schema.json` and
   `schema/task.schema.json` (JSON Schema draft-07) are the single source of
