@@ -22,7 +22,10 @@
 //   CI-2 pages.yml 語義：根鍵 / 觸發 / 權限 / concurrency / jobs 的封閉形狀；validate、browser-smoke、deploy 三個 job（順序固定）；
 //        每個 job 恰一個 setup-node（步驟鍵 ⊆ {name, uses, with}；with 鍵 ⊆ {node-version-file, cache}；node-version-file 的
 //        **解析後字串** 必須恰等於 `.node-version`），且在該 job 第一個 run 步驟之前；全檔無 node-version / check-latest 鍵；
-//        部署 action 只能出現在 deploy job；deploy 的 if / needs / permissions / environment 固定；workflow 權限 contents: read。
+//        部署 action 只能出現在 deploy job；deploy 的 if / needs / permissions / environment 固定；workflow 權限 contents: read；
+//        封閉 action 集合；canonical 前奏 checkout（只有 name+uses）→ setup-node；checkout 只能是第 1 步（較後的 checkout 可換掉工作區）；
+//        deploy 的步驟序列（action / run 指令 / upload path）== DEPLOY_SHAPE（發佈路徑凍結）。
+//   任何稽核內部例外 → `[audit internal error — fail closed]` problem（guarded()），不讓測試程序崩潰但仍 RED。
 //   CI-3 每個 runs-on 都是明確的 ubuntu-26.04；任何解析後字串都不得含 ubuntu-latest。
 //   CI-4 每個 uses 都是 GitHub-owned、40-hex SHA 釘住、並帶 `# vX.Y.Z` 釋出註解（註解由解析器提供：Scalar.comment）。
 //   CI-5 node-pin-check.yml 隔離：只有 schedule + workflow_dispatch；permissions 恰為 contents: read 且無 job 層 permissions；
@@ -56,6 +59,19 @@ const SETUP_NODE_ALLOWED_STEP_KEYS = ['name', 'uses', 'with'];   // Grok r7 F2�
 const SETUP_NODE_ALLOWED_WITH = ['node-version-file', 'cache'];  // Grok R3 F2/F4：mirror / mirror-token / registry-url / check-latest 不在契約內
 const STEP_KEYS = ['name', 'id', 'if', 'uses', 'with', 'run', 'continue-on-error'];
 const JOB_KEYS = { validate: ['runs-on', 'steps'], 'browser-smoke': ['runs-on', 'steps'], deploy: ['if', 'needs', 'runs-on', 'permissions', 'environment', 'steps'] };
+// deploy job 的 canonical 步驟序列（發佈路徑；Codex head-9 F2 之後釘死）：每一步要麼是指定的 action、要麼是指定的 run 指令，順序固定。
+// 改動發佈路徑（新增步驤、換 action、改組裝指令）是有意識的契約變更——必須同時改這裡。
+const DEPLOY_SHAPE = [
+  { uses: 'actions/checkout' },
+  { uses: 'actions/setup-node' },
+  { uses: 'actions/configure-pages' },
+  { run: 'node scripts/build-manifest.mjs --strict' },
+  { run: 'node scripts/assemble-site.mjs' },
+  { uses: 'actions/upload-pages-artifact', with: { path: '_site' } },
+  { uses: 'actions/deploy-pages' },
+  { run: 'sleep 30' },
+  { uses: 'actions/deploy-pages' },
+];
 const PIN_CHECK_FORBIDDEN_KEYS = ['shell', 'env', 'container', 'services', 'environment', 'defaults', 'strategy', 'outputs', 'secrets', 'concurrency', 'needs'];
 
 // ── 解析（唯一的 YAML 語義來源）────────────────────────────────────────────
@@ -93,9 +109,11 @@ function auditNodeStyle(doc, lc, text) {
   const bad = (node, what) => problems.push(`${what} (${lineOf(lc, node)}) — ${POLICY}`);
   if (!isMap(doc.contents)) { problems.push(`root is not a block mapping — ${POLICY}`); return problems; }
   visit(doc, (_, node) => {
+    if (node === null || node === undefined) return; // `? key` 無值的 pair 其 value 為 null（Codex head-9 F1：先前在此對 null 取屬性而崩潰）
     if (isAlias(node)) { bad(node, `alias "*${node.source}"`); return; }
     if (isPair(node)) {
       if ((node.srcToken?.start ?? []).some((t) => t.type === 'explicit-key-ind')) bad(node, 'explicit key ("? key")');
+      if (node.value === null || node.value === undefined) bad(node, 'mapping entry without a value node');
       const k = node.key;
       if (!isScalar(k)) bad(node, 'non-scalar mapping key');
       else if (k.type !== 'PLAIN') bad(node, `quoted key ${JSON.stringify(String(k.value))}`);
@@ -117,8 +135,16 @@ function auditNodeStyle(doc, lc, text) {
   return problems;
 }
 
+// 任何稽核內部的例外都轉成 problem（fail closed 且可讀），而不是讓測試程序崩潰（Codex head-9 F1 / R11）。
+// 崩潰與回報都讓 CI 變紅；差別在於 known-bad 臂與操作者能看到「哪一條規則」而非一個 TypeError。
+function guarded(fn) {
+  return (text) => {
+    try { return fn(text); } catch (e) { return [`[audit internal error — fail closed] ${e?.constructor?.name ?? 'Error'}: ${firstLine(e?.message ?? e)}`]; }
+  };
+}
+
 // CI-0：解析 + 形狀政策（不含語義）。
-export function auditWorkflowYaml(text) { return parseWorkflow(text).problems; }
+export const auditWorkflowYaml = guarded((text) => parseWorkflow(text).problems);
 
 // ── AST 存取（防禦式：任何型別不符都回 undefined，由呼叫端轉成 problem）────────
 const keyOf = (pair) => (isScalar(pair.key) ? String(pair.key.value) : undefined);
@@ -207,6 +233,9 @@ function auditSteps(problems, steps, job, lc, { allowDeployActions, allowedActio
   const [first, second] = steps.items;
   if (!isMap(first) || actionName(usesOf(first) ?? '') !== 'actions/checkout' || keysOf(first).some((k) => !['name', 'uses'].includes(k))) problems.push(`job "${job}" step #1 must be the plain repository checkout (actions/checkout with only name + uses; no with:/repository/ref override) — ${POLICY}`);
   if (!isMap(second) || !isSetupNodeStep(second)) problems.push(`job "${job}" step #2 must be the setup-node step (canonical prologue checkout → setup-node before any other action or run step) — ${POLICY}`);
+  // checkout 只能出現一次、且只能是第 1 步（Codex head-9 F2）：任何較後的 checkout（可帶 `repository:`/`ref:`）會換掉工作區——validate
+  // 的閘會對另一棵樹跑、deploy 的組裝器會發佈另一棵樹。
+  steps.items.forEach((s, i) => { if (i > 0 && isMap(s) && actionName(usesOf(s) ?? '') === 'actions/checkout') problems.push(`job "${job}" step #${i + 1}: actions/checkout may only appear as step #1 (a later checkout can replace the workspace that the gates / the assembler operate on) — ${POLICY}`); });
   steps.items.forEach((step, i) => {
     const where = `job "${job}" step #${i + 1}`;
     if (!isMap(step)) { problems.push(`${where} must be a block mapping, got ${show(step)}`); return; }
@@ -216,7 +245,7 @@ function auditSteps(problems, steps, job, lc, { allowDeployActions, allowedActio
     if (getIn(step, 'name') !== undefined) expectString(problems, getIn(step, 'name'), `${where} name`);
     if (getIn(step, 'id') !== undefined && !KEY_RE.test(strOf(getIn(step, 'id')) ?? '')) problems.push(`${where} id must be a lowercase identifier string`);
     if (getIn(step, 'if') !== undefined) expectString(problems, getIn(step, 'if'), `${where} if (must be an expression string, never a bare boolean)`);
-    if (getIn(step, 'continue-on-error') !== undefined && typeof getIn(step, 'continue-on-error').value !== 'boolean') problems.push(`${where} continue-on-error must be a boolean`);
+    if (getIn(step, 'continue-on-error') !== undefined && typeof getIn(step, 'continue-on-error')?.value !== 'boolean') problems.push(`${where} continue-on-error must be a boolean`);
     if (hasRun) { expectString(problems, getIn(step, 'run'), `${where} run`); if (firstRun < 0) firstRun = i; }
     const w = getIn(step, 'with');
     if (w !== undefined) {
@@ -262,8 +291,27 @@ function auditGlobalKeys(problems, doc, lc) {
 
 export function jobNames(text) { const { doc } = parseWorkflow(text); return doc ? keysOf(getIn(doc.contents, 'jobs')) : []; }
 
+// deploy job：步驟序列必須與 DEPLOY_SHAPE 逐步相等（action 名 / run 指令 / 指定的 with 值）。
+function auditDeployShape(problems, steps) {
+  if (!isSeq(steps) || steps.flow) return; // 已由 auditSteps 回報
+  const describe = (s) => (!isMap(s) ? '?' : usesOf(s) ? `uses:${actionName(usesOf(s))}` : `run:${JSON.stringify(strOf(getIn(s, 'run')) ?? null)}`);
+  const expected = DEPLOY_SHAPE.map((e) => (e.uses ? `uses:${e.uses}` : `run:${JSON.stringify(e.run)}`));
+  const actual = steps.items.map(describe);
+  if (actual.length !== expected.length || actual.some((a, i) => a !== expected[i])) {
+    problems.push(`job "deploy" steps must be exactly the canonical publication sequence [${expected.join(' → ')}], got [${actual.join(' → ')}] — ${POLICY}`);
+    return;
+  }
+  DEPLOY_SHAPE.forEach((e, i) => {
+    for (const [k, v] of Object.entries(e.with ?? {})) {
+      const got = strOf(getIn(getIn(steps.items[i], 'with'), k));
+      if (got !== v) problems.push(`job "deploy" step #${i + 1} (${e.uses}) with.${k} must be exactly ${JSON.stringify(v)}, got ${JSON.stringify(got)} — ${POLICY}`);
+    }
+  });
+}
+
 // ── pages.yml ──────────────────────────────────────────────────────────────
-export function auditPagesWorkflow(text) {
+export const auditPagesWorkflow = guarded(auditPagesWorkflowUnguarded);
+function auditPagesWorkflowUnguarded(text) {
   const { doc, lineCounter: lc, problems } = parseWorkflow(text);
   if (!doc) return problems;
   const root = doc.contents;
@@ -303,6 +351,7 @@ export function auditPagesWorkflow(text) {
         }
       }
       auditSteps(problems, getIn(j, 'steps'), job, lc, { allowDeployActions: job === 'deploy', allowedActions: PAGES_ALLOWED_ACTIONS });
+      if (job === 'deploy') auditDeployShape(problems, getIn(j, 'steps'));
     }
   } else if (isMap(jobs)) {
     for (const p of jobs.items) if (isMap(p.value)) auditSteps(problems, getIn(p.value, 'steps'), keyOf(p), lc, { allowDeployActions: false, allowedActions: PAGES_ALLOWED_ACTIONS });
@@ -315,7 +364,8 @@ export function auditPagesWorkflow(text) {
 const WEEKLY_CRON_RE = /^(\d{1,2}) (\d{1,2}) \* \* ([0-6])$/;
 const isFiringWeeklyCron = (c) => { const f = typeof c === 'string' && c.match(WEEKLY_CRON_RE); return Boolean(f) && Number(f[1]) <= 59 && Number(f[2]) <= 23; };
 
-export function auditPinCheckWorkflow(text) {
+export const auditPinCheckWorkflow = guarded(auditPinCheckWorkflowUnguarded);
+function auditPinCheckWorkflowUnguarded(text) {
   const { doc, lineCounter: lc, problems } = parseWorkflow(text);
   if (!doc) return problems;
   const root = doc.contents;
@@ -710,6 +760,39 @@ test('CI-6e: pin-check isolation arms — every rule RED and the canonical-form 
   assert.equal(canonicalPinCheck(bumped), PIN_CHECK_CANONICAL);
   assert.deepEqual(auditPinCheckWorkflow(bumped), []);
   assert.equal(canonicalPinCheck('not: [valid'), null, 'unparseable input never equals the template');
+});
+
+test('CI-6g (Codex head-9 F1/F2): no audit crashes — explicit keys without values are REPORTED, not thrown; checkout only as step #1; deploy publication sequence frozen', () => {
+  // F1: `? node-version: 1` (compact-mapping key, no value node) used to throw a TypeError inside the visitor; now reported as policy + fail closed
+  for (const t of ['? node-version: 1\n', '? k\n', `${PAGES}? junk\n`, 'a:\n  ? b\n']) {
+    const p = auditWorkflowYaml(t);
+    assert.ok(Array.isArray(p) && p.length > 0, `must report, not throw: ${JSON.stringify(t.slice(-30))}`);
+    assert.ok(has(p, /explicit key \("\? key"\)/) || has(p, /without a value node|non-scalar mapping key/), p.join(' | '));
+    assert.ok(!has(p, /audit internal error/), `no internal error for ${JSON.stringify(t.slice(-30))}: ${p.join(' | ')}`);
+  }
+  assert.doesNotThrow(() => auditPagesWorkflow(`${PAGES}? junk\n`));
+  assert.ok(has(auditPagesWorkflow('jobs:\n  validate:\n    steps:\n      - ? continue-on-error\n        uses: x\n'), /explicit key/));
+  // the guard itself is load-bearing: an audit that throws is converted into a fail-closed problem (never a silent pass)
+  assert.deepEqual(guarded(() => { throw new TypeError('boom'); })('x'), ['[audit internal error — fail closed] TypeError: boom']);
+  // F2: a later actions/checkout (with repository:/ref: override) anywhere in a job → RED; replacing the retry step keeps 10 uses but breaks the deploy shape
+  const GEN_DEPLOY = /      - name: Generate task manifest\n        run: node scripts\/build-manifest\.mjs --strict\n\n      # Closed-world assembler/;
+  const laterCheckout = mutate(PAGES, GEN_DEPLOY, '      - name: Generate task manifest\n        run: node scripts/build-manifest.mjs --strict\n\n      - name: Replace the workspace\n        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1\n        with:\n          repository: attacker/site\n\n      # Closed-world assembler');
+  const lc1 = auditPagesWorkflow(laterCheckout);
+  assert.ok(has(lc1, /job "deploy" step #5: actions\/checkout may only appear as step #1/) && has(lc1, /canonical publication sequence/), lc1.join(' | '));
+  const RETRY = /      - name: Retry GitHub Pages deployment\n        id: deployment_retry\n        if: steps\.deployment\.outcome == 'failure'\n        uses: actions\/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5\.0\.1\n        with:\n          artifact_name: github-pages-\$\{\{ github\.run_attempt \}\}\n          timeout: 600000\n/;
+  const swapped = mutate(mutate(PAGES, RETRY, ''), GEN_DEPLOY, '      - name: Generate task manifest\n        run: node scripts/build-manifest.mjs --strict\n\n      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1\n        with:\n          repository: attacker/site\n\n      # Closed-world assembler');
+  assert.equal((swapped.match(/^\s*(?:- )?uses:/gm) || []).length, 10, 'the mutation keeps the uses count at 10');
+  const sw = auditPagesWorkflow(swapped);
+  assert.ok(has(sw, /actions\/checkout may only appear as step #1/) && has(sw, /canonical publication sequence/), sw.join(' | '));
+  const validateCheckout = mutate(PAGES, /      - name: Scan submissions for secrets\n/, '      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1\n        with:\n          repository: attacker/site\n      - name: Scan submissions for secrets\n');
+  assert.ok(has(auditPagesWorkflow(validateCheckout), /job "validate" step #5: actions\/checkout may only appear as step #1/));
+  assert.ok(has(auditPagesWorkflow(mutate(PAGES, /      - name: Install Chromium only\n/, '      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1\n      - name: Install Chromium only\n')), /job "browser-smoke" step #\d+: actions\/checkout may only appear as step #1/));
+  // deploy canonical sequence: reorder build/assemble, change the upload path, drop the retry, add a step, change a run command → RED; real file GREEN
+  assert.ok(has(auditPagesWorkflow(mutate(PAGES, /      - name: Build static site \(closed-world assembler\)\n        run: node scripts\/assemble-site\.mjs\n/, '      - name: Build static site (closed-world assembler)\n        run: node scripts/assemble-site.mjs --allow-strays\n')), /canonical publication sequence/));
+  assert.ok(has(auditPagesWorkflow(mutate(PAGES, /          path: _site\n/, '          path: .\n')), /with\.path must be exactly "_site"/));
+  assert.ok(has(auditPagesWorkflow(mutate(PAGES, RETRY, '')), /canonical publication sequence/));
+  assert.ok(has(auditPagesWorkflow(mutate(PAGES, /      - name: Configure Pages\n/, '      - run: echo pre\n      - name: Configure Pages\n')), /canonical publication sequence/));
+  assert.deepEqual(auditPagesWorkflow(PAGES), []);
 });
 
 test('CI-6f: .node-version real predicate against known-bad values (not constant comparison)', () => {
