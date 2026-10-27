@@ -77,6 +77,13 @@ export function classifyPin({ pinned, index, schedule, today }) {
   const sched = schedule[`v${major}`];
   if (!sched || sched.end === undefined) throw new Error(`時程資料缺 v${major}.end（來源異常，fail closed）`);
   const end = parseIsoDate(sched.end, `schedule v${major}.end`);
+  // 合理性界限（審查 Grok F7：schedule.json 取自可變分支、無 digest）：Node 釋出政策下每條主版本線自 start 至 end
+  // 約 36 個月；超出 [600, 1300] 天即視為來源異常（被竄改/格式變更）→ 丟錯（fail closed），不讓「無限延後的 end」
+  // 靜默壓掉 major-line-migration 訊號。index.json（patch-drift 訊號來源）不受此影響。
+  if (sched.start !== undefined) {
+    const span = dayDiff(end, parseIsoDate(sched.start, `schedule v${major}.start`));
+    if (span < 600 || span > 1300) throw new Error(`schedule v${major} start→end 跨度 ${span} 天不合理（來源異常，fail closed）`);
+  }
   const maint = sched.maintenance === undefined || sched.maintenance === null
     ? null : parseIsoDate(sched.maintenance, `schedule v${major}.maintenance`);
   const latest = line[0].version;

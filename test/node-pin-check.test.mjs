@@ -111,6 +111,11 @@ test('NP-6: fail closed — unknown pin, empty index, missing schedule line, bad
   assert.throws(() => classifyPin({ pinned: '22.23.4', index: INDEX, schedule: { ...SCHEDULE, v22: { ...SCHEDULE.v22, end: '2027-13-01' } }, today: TODAY }), /v22\.end 不是有效日期/);
   assert.throws(() => classifyPin({ pinned: '22.23.4', index: INDEX, schedule: { ...SCHEDULE, v22: { ...SCHEDULE.v22, maintenance: 'soon' } }, today: TODAY }), /v22\.maintenance 必須是 YYYY-MM-DD/);
   assert.throws(() => classifyPin({ pinned: '22.23.4', index: INDEX, schedule: SCHEDULE, today: '2026-02-30' }), /today 不是有效日期/);
+  // 合理性界限（Grok F7）：end 被改成遙遠未來（壓掉 migration 訊號）或早於 start → 丟錯（fail closed）
+  assert.throws(() => classifyPin({ pinned: '22.23.4', index: INDEX, schedule: { ...SCHEDULE, v22: { ...SCHEDULE.v22, end: '2099-01-01' } }, today: TODAY }), /跨度 .* 天不合理/);
+  assert.throws(() => classifyPin({ pinned: '22.23.4', index: INDEX, schedule: { ...SCHEDULE, v22: { ...SCHEDULE.v22, end: '2024-12-01' } }, today: '2024-11-01' }), /跨度 .* 天不合理/);
+  // 真實 v22 時程（2024-04-24 → 2027-04-30 = 1101 天）在界限內
+  assert.equal(classifyPin({ pinned: '22.23.4', index: INDEX, schedule: SCHEDULE, today: TODAY }).category, 'current');
   // known-bad 臂（F1 機制）：忠實複製 EOL 判定、只拿掉日期驗證 → 無效 end 使比較全為假 → 落到 current（fail-open）。
   const naiveEol = (today, end) => {
     const days = Math.floor((new Date(`${end}T00:00:00Z`) - new Date(`${today}T00:00:00Z`)) / 86_400_000); // 無驗證
