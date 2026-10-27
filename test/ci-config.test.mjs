@@ -10,7 +10,8 @@
 // 追不完。因此 CI-0 auditYamlSubset() 反過來只「接受」一個極小、行級可判定的 YAML 子集，任何不在子集內的行 → RED
 // （fail closed）；兩個 workflow 檔都必須落在子集內，之後的語義檢查才建立在可判定的輸入上。
 //   CI-0 兩個 workflow 檔都落在保守 YAML 子集內（裸鍵、無明示/引號鍵、無 tab、無文件標記、值不以 & * ! % @ ` 起始、
-//        同一映射無重複鍵、區塊純量依縮排略過）。
+//        引號純量/flow 集合同行開合、同一映射無重複鍵、區塊純量依縮排略過）；且區塊純量內容對所有語義稽核不可見
+//        （stripBlockScalars() 先於 normalizeYaml()；Codex r7 F1：否則 `- name: |` 內的假 setup-node 文字可冒充真步驟）。
 //   CI-1 .node-version 為精確 X.Y.Z 且主版本 == APPROVED_MAJOR（22）。刻意升主版本線必須有意識地改這個常數。
 //   CI-2 pages.yml：每個 job 各恰有一個 setup-node 且以 node-version-file: .node-version 取用；全檔無任何 node-version 鍵。
 //   CI-3 pages.yml + node-pin-check.yml：每個 runs-on 都是明確的 ubuntu-26.04。
@@ -40,9 +41,28 @@ function lines(text) { return text.split('\n'); }
 function indentOf(l) { return l.match(/^ */)[0].length; }
 function isComment(l) { return /^\s*#/.test(l); }
 
-// 每一非註解行：鍵去引號、鍵小寫、去「鍵與冒號間空白」。值與尾註解保留（uses 的 `# vX.Y.Z` 需要）。
+// 區塊純量（`key: |` / `key: >`）的內容行以空行取代（保留行數）。Codex r7 F1：lexer 會略過區塊純量內容，但若其後的行級語義
+// 稽核（stepBlocks / withBlockOf / jobBlocks / uses 釘住）仍掃到那些內容，`- name: |` 內的假 `uses: actions/setup-node@…` 就能
+// 冒充真步驟。因此「結構」只有一個來源 —— lexer 的判定：所有語義稽核都先經 stripBlockScalars()，純量內容對它們一律不可見。
+export const BLOCK_SCALAR_HEADER = /^[|>](?:[1-9]?[-+]?|[-+]?[1-9]?)\s*(?:#.*)?$/;
+export function stripBlockScalars(text) {
+  const out = []; let scalar = null;
+  for (const raw of lines(text)) {
+    if (scalar) {
+      if (raw.trim() === '' || indentOf(raw) > scalar.indent) { out.push(''); continue; }
+      scalar = null;
+    }
+    out.push(raw);
+    if (isComment(raw)) continue;
+    const m = raw.match(/^( *)(- )?([A-Za-z_][A-Za-z0-9_-]*):(?: (.*))?$/);
+    if (m && BLOCK_SCALAR_HEADER.test((m[4] ?? '').trim())) scalar = { indent: m[1].length + (m[2] ? 2 : 0) };
+  }
+  return out.join('\n');
+}
+
+// 每一非註解行：鍵去引號、鍵小寫、去「鍵與冒號間空白」。值與尾註解保留（uses 的 `# vX.Y.Z` 需要）。先 stripBlockScalars()。
 export function normalizeYaml(text) {
-  return lines(text).map((l) => {
+  return lines(stripBlockScalars(text)).map((l) => {
     if (isComment(l)) return l;
     const m = l.match(/^(\s*(?:- )?)(["']?)([A-Za-z0-9_.-]+)\2\s*:(.*)$/);
     if (!m) return l;
@@ -102,6 +122,34 @@ export function auditRunsOn(text) {
 // setup-node 的 with 鍵白名單（Grok R3 F2/F4）：`mirror`/`mirror-token` 可把 Node 下載來源換成非官方主機、`check-latest`
 // 的任何布林寫法（"true"/True）、`registry-url`、`token`、`architecture` 都不在本 repo 契約內——未列名即 RED，要新增須有意識地改這裡。
 const SETUP_NODE_ALLOWED_WITH = ['node-version-file', 'cache'];
+// setup-node 步驟本身的鍵白名單（Grok r7 F2）：`if: false` 讓 GitHub 跳過步驟、`continue-on-error: true` 讓失敗被忽略、
+// `env:`/`timeout-minutes:` 等都能讓釘住的 Node 實際上沒被安裝（job 落回 runner 映像自帶的 Node）→ 只允許 name / uses / with。
+const SETUP_NODE_ALLOWED_STEP_KEYS = ['name', 'uses', 'with'];
+
+// 步驟映射的直接子鍵：`- key:` 的 key 加上其後同一欄位的鍵（去尾註解）。
+export function stepKeys(stepText) {
+  const ls = stepText.split('\n');
+  const m = ls[0].match(/^( *)- ([a-z_][a-z0-9_-]*):/);
+  if (!m) return [];
+  const col = m[1].length + 2; const keys = [m[2]];
+  for (const l of ls.slice(1)) {
+    if (l.trim() === '' || isComment(l) || indentOf(l) !== col) continue;
+    const k = stripTrailingComment(l).match(/^ *([a-z_][a-z0-9_-]*):/);
+    if (k) keys.push(k[1]);
+  }
+  return keys;
+}
+// 步驟使用的 action：只看 `uses:` **鍵**（去尾註解、鍵錨定）。name 值或註解裡出現 `uses: actions/setup-node@…` 字樣不算
+// （Grok r7 F1：先前以子字串比對整個步驟文字，把 checkout 步驟改名成那個字串就能冒充 setup-node）。
+export function usesRefOf(stepText) {
+  for (const l of stepText.split('\n')) {
+    if (isComment(l)) continue;
+    const m = stripTrailingComment(l).match(/^ *(?:- )?uses: *(\S+) *$/);
+    if (m) return m[1];
+  }
+  return null;
+}
+export const isSetupNodeStep = (stepText) => /^actions\/setup-node@/.test(usesRefOf(stepText) || '');
 
 // setup-node 步驟的 `with:` 區塊（Codex confirmation F1）：node-version-file 必須出現在 **with: 區塊內**（不是 env: 或步驟
 // 其他位置）；`with:` 本身必須是裸鍵（`with: {…}` flow-style → fail closed）；區塊內每個鍵都受白名單約束。
@@ -131,9 +179,11 @@ function withBlockOf(stepText) {
 export function auditSetupNode(text, { expectedSteps }) {
   const problems = [];
   const norm = normalizeYaml(text);
-  const steps = stepBlocks(text).filter((b) => /uses:\s*actions\/setup-node@/.test(b));
+  const steps = stepBlocks(text).filter(isSetupNodeStep);
   if (steps.length !== expectedSteps) problems.push(`expected ${expectedSteps} setup-node steps, found ${steps.length}`);
   for (const s of steps) {
+    const extra = stepKeys(s).filter((k) => !SETUP_NODE_ALLOWED_STEP_KEYS.includes(k));
+    if (extra.length) problems.push(`setup-node step carries keys outside {${SETUP_NODE_ALLOWED_STEP_KEYS.join(', ')}} (if / continue-on-error / env / … can skip or neuter the pin): ${extra.join(', ')}`);
     const w = withBlockOf(s);
     problems.push(...w.problems);
     if (!w.present) problems.push('setup-node step has no with: block (node-version-file must be passed under with:)');
@@ -147,7 +197,6 @@ export function auditSetupNode(text, { expectedSteps }) {
         else if (!SETUP_NODE_ALLOWED_WITH.includes(k.key)) problems.push(`setup-node with-key not allowlisted (${SETUP_NODE_ALLOWED_WITH.join(', ')}): "${k.key}"`);
       }
     }
-    if (/^\s*env:/m.test(s)) problems.push('setup-node step must not carry an env: block (inputs belong under with:)');
   }
   if (/^\s*node-version:/m.test(norm)) problems.push('workflow contains a node-version key somewhere');
   return problems;
@@ -176,6 +225,14 @@ export function auditYamlSubset(text) {
     if (!m) { problems.push(`YAML line outside the accepted subset (explicit "? key", quoted key, plain sequence item, continuation, document marker, …) — fail closed: ${where}`); continue; }
     const indent = m[1].length; const dash = Boolean(m[2]); const key = m[3].toLowerCase(); const value = (m[4] ?? '').trim();
     if (/^[&*!%@`]/.test(value)) problems.push(`YAML value starts with a reserved indicator (anchor/alias/tag/directive) — fail closed: ${where}`);
+    // 引號純量與 flow 集合必須在同一行開合：跨行的 `"…` / `'…` / `[…` / `{…` 可把看起來像 `key: value` 的行藏進一個純量裡
+    // （真實解析器視為純量內容，行級稽核卻當成結構）→ 一律 RED（Codex r7 F1 的同類延伸）。
+    if (/^"/.test(value) && !/^"(?:[^"\\]|\\.)*"\s*(?:#.*)?$/.test(value)) problems.push(`double-quoted value must open and close on the same line (a multi-line quoted scalar can hide "key:" lines from the audits) — fail closed: ${where}`);
+    if (/^'/.test(value) && !/^'(?:[^']|'')*'\s*(?:#.*)?$/.test(value)) problems.push(`single-quoted value must open and close on the same line — fail closed: ${where}`);
+    if (/^\[/.test(value) && !/^\[[^\]]*\]\s*(?:#.*)?$/.test(value)) problems.push(`flow sequence must close on the same line — fail closed: ${where}`);
+    if (/^\{/.test(value) && !/^\{[^}]*\}\s*(?:#.*)?$/.test(value)) problems.push(`flow mapping must close on the same line — fail closed: ${where}`);
+    // 純量值（非引號/flow/區塊純量）不得含 `: `：YAML 本身禁止（`a: b: c` 是解析錯誤），真實解析器會拒絕的輸入稽核也不得接受
+    if (/^[^"'[{|>]/.test(value) && /: /.test(stripTrailingComment(` ${value}`))) problems.push(`plain scalar value contains ": " (invalid YAML — a real parser rejects it) — fail closed: ${where}`);
     const keyCol = dash ? indent + 2 : indent;
     if (dash) {
       while (frames.length && frames.at(-1).indent >= keyCol) frames.pop();
@@ -188,7 +245,7 @@ export function auditYamlSubset(text) {
         top.keys.add(key);
       } else frames.push({ indent: keyCol, keys: new Set([key]) });
     }
-    if (/^[|>](?:[1-9]?[-+]?|[-+]?[1-9]?)\s*(?:#.*)?$/.test(value)) scalar = { indent: keyCol };
+    if (BLOCK_SCALAR_HEADER.test(value)) scalar = { indent: keyCol };
   }
   return problems;
 }
@@ -250,8 +307,14 @@ export function auditPagesWorkflow(text) {
     ...(names.length === 3 ? [] : [`expected 3 jobs (validate, browser-smoke, deploy), found ${names.length}: ${names.join(', ')}`]),
   ];
   for (const [job, block] of Object.entries(jobBlocks(text))) {
-    const n = (block.match(/uses:\s*actions\/setup-node@/g) || []).length;
+    const blocks = stepBlocks(block);
+    const n = blocks.filter(isSetupNodeStep).length;
     if (n !== 1) problems.push(`job "${job}" must have exactly one setup-node step consuming .node-version, found ${n}`);
+    // 順序：setup-node 必須在該 job 第一個 `run:` 步驟之前，否則該 run 以 runner 映像自帶的 Node 執行（與 Grok r7 F2 同類：釘住的 Node 實際未生效）
+    const iSetup = blocks.findIndex(isSetupNodeStep); const iRun = blocks.findIndex((b) => stepKeys(b).includes('run'));
+    if (iSetup >= 0 && iRun >= 0 && iRun < iSetup) problems.push(`job "${job}": a run: step precedes the setup-node step (it would execute on the image's default Node, not .node-version)`);
+    // job 層不得以 container / services 換掉執行環境（runner OS 是可重現性輸入；CI-3 的意圖）
+    for (const k of (block.match(/^    (container|services) *:/gm) || [])) problems.push(`job "${job}" must not use "${k.trim()}" (the runner image label is the reproducibility input)`);
   }
   return problems;
 }
@@ -365,7 +428,7 @@ test('CI-4: every uses: in both workflows is a GitHub-owned action pinned to a 4
 
 test('CI-5: node-pin-check.yml is isolated — schedule/dispatch only, contents: read only, no write/secrets/shell/env, allowlisted uses+run, one job, timeout', () => {
   assert.deepEqual(auditPinCheckWorkflow(PIN_CHECK), []);
-  const sha = (t) => t.match(/actions\/setup-node@([0-9a-f]{40})/)[1];
+  const sha = (t) => t.match(/^\s*uses:\s*actions\/setup-node@([0-9a-f]{40})/m)[1];
   assert.equal(sha(PIN_CHECK), sha(PAGES));
 });
 
@@ -389,7 +452,7 @@ test('CI-6: known-bad arms — each audit rule can actually fail, including quot
   const WITH_BS = /        with:\n          node-version-file: "\.node-version"\n          cache: "npm"\n/; // browser-smoke 的 with: 區塊
   const envSmuggle = mutate(PAGES, WITH_BS, '        env:\n          node-version-file: ".node-version"\n        with: { node-version: "24" }\n');
   const es = auditSetupNode(envSmuggle, { expectedSteps: 3 });
-  assert.ok(es.some((p) => /must be a block mapping, not flow-style/.test(p)) && es.some((p) => /must not carry an env: block/.test(p)), 'env-smuggle + flow with must be rejected');
+  assert.ok(es.some((p) => /must be a block mapping, not flow-style/.test(p)) && es.some((p) => /keys outside \{name, uses, with\}.*env/.test(p)), 'env-smuggle + flow with must be rejected');
   assert.ok(auditYamlConstructs(envSmuggle).some((p) => /flow-style value not allowed for structural key/.test(p)));
   const envOnly = mutate(PAGES, WITH_BS, '        env:\n          node-version-file: ".node-version"\n');
   assert.ok(auditSetupNode(envOnly, { expectedSteps: 3 }).some((p) => /has no with: block/.test(p)));
@@ -423,6 +486,49 @@ test('CI-6: known-bad arms — each audit rule can actually fail, including quot
   assert.deepEqual(auditYamlSubset('a:\n  run: |\n    x: y\n    ? z\n  b: 1\n'), [], 'block-scalar content is skipped by indentation');
   assert.deepEqual(auditYamlSubset(PAGES), []);
   assert.deepEqual(auditYamlSubset(PIN_CHECK), []);
+  // (b⁗) Codex r7 F1: a block scalar (`- name: |`) carrying counterfeit `uses: actions/setup-node@… / with: / node-version-file:` text while
+  //      the real step only runs a command. The lexer rightly skips scalar content — so every semantic audit must see it stripped too
+  //      (stripBlockScalars() inside normalizeYaml()): 2 real setup-node steps, validate has 0 → RED. Multi-line quoted / flow values and
+  //      next-line scalar values (other ways to hide "key:"-looking lines inside a scalar) are rejected by the lexer outright.
+  const SETUP_VALIDATE = /      - name: Set up Node\.js\n        uses: actions\/setup-node@([0-9a-f]{40}) # v7\.1\.0\n        with:\n          node-version-file: "\.node-version"\n\n      - name: Generate task manifest/;
+  const counterfeit = mutate(PAGES, SETUP_VALIDATE, '      - name: |\n          Set up Node.js\n          uses: actions/setup-node@$1 # v7.1.0\n          with:\n            node-version-file: ".node-version"\n        run: echo counterfeit\n\n      - name: Generate task manifest');
+  assert.deepEqual(auditYamlSubset(counterfeit), [], 'the counterfeit is valid subset YAML (scalar content is skipped) — the semantic audits must catch it');
+  assert.equal(stepBlocks(counterfeit).filter((b) => /uses:\s*actions\/setup-node@/.test(b)).length, 2, 'scalar content must be invisible to stepBlocks');
+  const cp = auditPagesWorkflow(counterfeit);
+  assert.ok(cp.some((p) => /expected 3 setup-node steps, found 2/.test(p)) && cp.some((p) => /job "validate" must have exactly one setup-node step consuming \.node-version, found 0/.test(p)), 'block-scalar counterfeit must be RED');
+  assert.doesNotMatch(stripBlockScalars(counterfeit), /echo "::error file=tasks\.json/, 'the real run: | script body is stripped too');
+  assert.equal(lines(stripBlockScalars(PAGES)).length, lines(PAGES).length, 'line count preserved');
+  const quotedSpan = mutate(PAGES, SETUP_VALIDATE, '      - name: "Set up\n          uses: actions/setup-node@$1 # v7.1.0"\n        run: echo counterfeit\n\n      - name: Generate task manifest');
+  assert.ok(auditYamlSubset(quotedSpan).some((p) => /double-quoted value must open and close on the same line/.test(p)));
+  assert.ok(auditYamlSubset("a: 'x\n  uses: y'\n").some((p) => /single-quoted value must open and close/.test(p)));
+  const flowSpan = mutate(PAGES, SETUP_VALIDATE, '      - name: Set up Node.js\n        uses: actions/setup-node@$1 # v7.1.0\n        with: [\n          node-version-file: ".node-version" ]\n\n      - name: Generate task manifest');
+  assert.ok(auditYamlSubset(flowSpan).some((p) => /flow sequence must close on the same line/.test(p)));
+  assert.ok(auditYamlSubset('a: {\n  b: 1 }\n').some((p) => /flow mapping must close on the same line/.test(p)));
+  assert.ok(auditYamlSubset('with:\n  node-version:\n    "24"\n').some((p) => /outside the accepted subset/.test(p)), 'a next-line scalar value is outside the subset');
+  // (b⁗′) Grok r7 F1: the setup-node inventory matched the SUBSTRING `uses: actions/setup-node@` anywhere in the step text — a checkout step
+  //       whose quoted name (or trailing comment) carries that string, plus a with: node-version-file, impersonated setup-node after the real
+  //       step was deleted. Now only the `uses:` KEY (comment-stripped, key-anchored) identifies the action → RED. The unquoted plain form is
+  //       invalid YAML (": " in a plain scalar; a real parser rejects it) and the lexer rejects it too.
+  const SHA = PAGES.match(/^\s*uses:\s*actions\/setup-node@([0-9a-f]{40})/m)[1];
+  const CHECKOUT_TO_SETUP = /      - name: Checkout\n        uses: actions\/checkout@([0-9a-f]{40}) # v7\.0\.1\n\n([\s\S]*?)      - name: Set up Node\.js\n        uses: actions\/setup-node@[0-9a-f]{40} # v7\.1\.0\n        with:\n          node-version-file: "\.node-version"\n\n      - name: Generate task manifest/;
+  for (const nameLine of [`      - name: "uses: actions/setup-node@${SHA}"`, `      - name: Checkout # uses: actions/setup-node@${SHA}`]) {
+    const t = mutate(PAGES, CHECKOUT_TO_SETUP, `${nameLine}\n        uses: actions/checkout@$1 # v7.0.1\n        with:\n          node-version-file: ".node-version"\n\n$2      - name: Generate task manifest`);
+    assert.deepEqual(auditYamlSubset(t), [], 'the impersonation is valid subset YAML — the semantic audits must catch it');
+    const p = auditPagesWorkflow(t);
+    assert.ok(p.some((x) => /expected 3 setup-node steps, found 2/.test(x)) && p.some((x) => /job "validate" must have exactly one setup-node step consuming \.node-version, found 0/.test(x)), `impersonation not caught: ${nameLine.trim()}`);
+  }
+  assert.ok(auditYamlSubset(mutate(PAGES, CHECKOUT_TO_SETUP, `      - name: uses: actions/setup-node@${SHA}\n        uses: actions/checkout@$1 # v7.0.1\n\n$2      - name: Generate task manifest`)).some((p) => /plain scalar value contains ": "/.test(p)));
+  assert.equal(usesRefOf('      - name: "uses: actions/setup-node@x" # uses: actions/setup-node@y\n        uses: actions/checkout@abc # v7.0.1\n'), 'actions/checkout@abc');
+  // (b⁗″) Grok r7 F2: `if: false` (GitHub skips the step), `continue-on-error: true`, `env:` or any other key on a setup-node step → RED
+  for (const extraKey of ['if: false', 'if: ${{ false }}', 'continue-on-error: true', 'timeout-minutes: 1', 'id: n']) {
+    const t = mutate(PAGES, /      - name: Set up Node\.js\n        uses: actions\/setup-node@/g, `      - name: Set up Node.js\n        ${extraKey}\n        uses: actions/setup-node@`);
+    assert.ok(auditSetupNode(t, { expectedSteps: 3 }).some((p) => /keys outside \{name, uses, with\}/.test(p)), `extra step key not caught: ${extraKey}`);
+  }
+  assert.deepEqual(stepKeys('      - name: x\n        uses: y\n        with:\n          a: 1\n          if: false\n        # if: false\n'), ['name', 'uses', 'with'], 'nested with-keys and comments are not step keys');
+  // (b⁗‴) ordering: a run: step before setup-node executes on the image Node → RED; container:/services: on a pages.yml job → RED
+  const reordered = mutate(PAGES, /      - name: Set up Node\.js\n        uses: actions\/setup-node@([0-9a-f]{40}) # v7\.1\.0\n        with:\n          node-version-file: "\.node-version"\n\n      - name: Generate task manifest\n        run: node scripts\/build-manifest\.mjs --strict\n/, '      - name: Generate task manifest\n        run: node scripts/build-manifest.mjs --strict\n\n      - name: Set up Node.js\n        uses: actions/setup-node@$1 # v7.1.0\n        with:\n          node-version-file: ".node-version"\n');
+  assert.ok(auditPagesWorkflow(reordered).some((p) => /job "validate": a run: step precedes the setup-node step/.test(p)));
+  assert.ok(auditPagesWorkflow(mutate(PAGES, /  validate:\n    runs-on: ubuntu-26\.04\n/, '  validate:\n    runs-on: ubuntu-26.04\n    container: node:24\n')).some((p) => /job "validate" must not use "container:"/.test(p)));
   // (c) a job dropped its setup-node → count + per-job RED
   const fewer = mutate(PAGES, /      - name: Set up Node\.js\n        uses: actions\/setup-node@[0-9a-f]{40} # v\d+\.\d+\.\d+\n        with:\n          node-version-file: "\.node-version"\n\n      - name: Configure Pages/, '      - name: Configure Pages');
   const fewerP = auditPagesWorkflow(fewer);
