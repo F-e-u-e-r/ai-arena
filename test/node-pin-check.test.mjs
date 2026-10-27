@@ -10,7 +10,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { parsePinned, classifyPin, formatReport, cmpSemver, EOL_WARN_DAYS } from '../scripts/check-node-pin.mjs';
+import { parsePinned, classifyPin, formatReport, cmpSemver, parseIsoDate, EOL_WARN_DAYS } from '../scripts/check-node-pin.mjs';
 
 const INDEX = [
   { version: 'v26.12.1', date: '2026-10-21', security: true, lts: false },
@@ -72,8 +72,15 @@ test('NP-4: major-line-migration — the pinned line is past its EOL → exit 1 
   assert.ok(r.daysToEol < 0);
   assert.match(formatReport(r), /::error::node-pin-check: major-line-migration/);
   assert.doesNotMatch(formatReport(r), /patch-drift/);
-  // 恰好 EOL 當天：仍視為尚未過期（daysToEol = 0 → warning 而非 error）；隔天才 migration。
-  assert.equal(classifyPin({ pinned: '22.23.4', index: INDEX, schedule: SCHEDULE, today: '2027-04-30' }).category, 'current');
+  // EOL 邊界（審查 F1，fail closed）：EOL 當天（today == end）即為 major-line-migration；前一天仍 current（剩 1 天 → warning）。
+  const dayBefore = classifyPin({ pinned: '22.23.4', index: INDEX, schedule: SCHEDULE, today: '2027-04-29' });
+  assert.equal(dayBefore.category, 'current');
+  assert.equal(dayBefore.daysToEol, 1);
+  assert.ok(dayBefore.advisories.some((a) => a.level === 'warning'));
+  const eolDay = classifyPin({ pinned: '22.23.4', index: INDEX, schedule: SCHEDULE, today: '2027-04-30' });
+  assert.equal(eolDay.category, 'major-line-migration');
+  assert.equal(eolDay.daysToEol, 0);
+  assert.equal(eolDay.exit, 1);
   assert.equal(classifyPin({ pinned: '22.23.4', index: INDEX, schedule: SCHEDULE, today: '2027-05-01' }).category, 'major-line-migration');
 });
 
@@ -96,6 +103,20 @@ test('NP-6: fail closed — unknown pin, empty index, missing schedule line, bad
   assert.throws(() => classifyPin({ pinned: '22.23.4', index: [], schedule: SCHEDULE, today: TODAY }), /非空陣列/);
   assert.throws(() => classifyPin({ pinned: '22.23.4', index: INDEX, schedule: { v24: SCHEDULE.v24 }, today: TODAY }), /缺 v22\.end/);
   assert.throws(() => classifyPin({ pinned: '22.23.4', index: INDEX, schedule: SCHEDULE, today: 'today' }), /YYYY-MM-DD/);
+  // 無效日期（審查 F1）：格式合規但不存在的日期（2027-13-01、2027-02-30）會被 Date 變成 NaN 或正規化 → 必須丟錯，
+  // 不得靜默落到 current（fail-open）。today / end / maintenance / 其他線的 lts 皆受保護。
+  assert.throws(() => parseIsoDate('2027-13-01', 'x'), /不是有效日期/);
+  assert.throws(() => parseIsoDate('2027-02-30', 'x'), /不是有效日期/);
+  assert.equal(parseIsoDate('2027-04-30', 'x').toISOString().slice(0, 10), '2027-04-30');
+  assert.throws(() => classifyPin({ pinned: '22.23.4', index: INDEX, schedule: { ...SCHEDULE, v22: { ...SCHEDULE.v22, end: '2027-13-01' } }, today: TODAY }), /v22\.end 不是有效日期/);
+  assert.throws(() => classifyPin({ pinned: '22.23.4', index: INDEX, schedule: { ...SCHEDULE, v22: { ...SCHEDULE.v22, maintenance: 'soon' } }, today: TODAY }), /v22\.maintenance 必須是 YYYY-MM-DD/);
+  assert.throws(() => classifyPin({ pinned: '22.23.4', index: INDEX, schedule: SCHEDULE, today: '2026-02-30' }), /today 不是有效日期/);
+  // known-bad 臂（F1 機制）：忠實複製 EOL 判定、只拿掉日期驗證 → 無效 end 使比較全為假 → 落到 current（fail-open）。
+  const naiveEol = (today, end) => {
+    const days = Math.floor((new Date(`${end}T00:00:00Z`) - new Date(`${today}T00:00:00Z`)) / 86_400_000); // 無驗證
+    return days <= 0 ? 'major-line-migration' : 'current';
+  };
+  assert.equal(naiveEol(TODAY, '2027-13-01'), 'current', 'mutant: NaN comparison silently yields current');
   // known-bad 臂（oracle 鑑別力）：一個「查不到就當 current」的變異必須被上面的斷言抓到 —— 用忠實複製、只移除
   // 「釘住值必須存在於清單」那一道的變異來證明該檢查是載重的。
   const mutant = ({ pinned, index }) => {

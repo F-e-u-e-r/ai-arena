@@ -6,6 +6,10 @@ name: Node pin check
 # pin is behind the latest patch of its major line (patch-drift) or the line is end-of-life
 # (major-line-migration). It only reports: no write token, no commits, no PRs, no auto-merge, and it is a
 # separate workflow with no Pages/deploy steps, so it can never trigger a deployment.
+# BOUNDARY (by Owner design, Workstream E3): this is a DETECTIVE reporter, not a merge or deploy gate — a stale
+# pin can still merge/deploy between weekly runs. Making it a gate would put a network dependency (nodejs.org)
+# into the publication path; the Owner chose exact pin + weekly report instead. Visibility = a red scheduled run
+# (GitHub notifies the workflow's last committer of failed scheduled runs by default) + the Actions tab.
 # NOTE: GitHub disables scheduled workflows after 60 days without repository activity; `workflow_dispatch`
 # remains available to run it by hand.
 on:

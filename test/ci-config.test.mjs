@@ -28,6 +28,17 @@ const RUNNER_LABEL = 'ubuntu-26.04';
 function lines(text) { return text.split('\n'); }
 function indentOf(l) { return l.match(/^ */)[0].length; }
 
+// .node-version 的契約（CI-1 的真實謂詞；CI-6 以 known-bad 餵同一函式，審查 F3 (a)）：
+// 內容恰為「精確 X.Y.Z + 一個換行」，主版本 == APPROVED_MAJOR。
+export function auditNodeVersionFile(text) {
+  const problems = [];
+  const v = text.trim();
+  if (!/^\d+\.\d+\.\d+$/.test(v)) problems.push(`.node-version must be an exact X.Y.Z (no ranges, aliases or v-prefix), got: "${v}"`);
+  else if (Number(v.split('.')[0]) !== APPROVED_MAJOR) problems.push(`.node-version major ${v.split('.')[0]} != approved ${APPROVED_MAJOR} (moving major lines is an Owner decision — update APPROVED_MAJOR consciously)`);
+  if (text !== `${v}\n`) problems.push('.node-version must be exactly the version plus one trailing newline');
+  return problems;
+}
+
 // 以「`- uses:` / `- name:` 開頭的行」切出步驟區塊（含其後更深縮排的行）。
 export function stepBlocks(text) {
   const ls = lines(text); const blocks = []; let cur = null;
@@ -77,10 +88,11 @@ export function auditSetupNode(text, { expectedSteps }) {
   return problems;
 }
 
-// jobs: 區塊內 2 空白縮排的鍵 = job 名稱（on: / permissions: 等頂層區塊不計）。
+// jobs: 區塊內 2 空白縮排的鍵 = job 名稱（on: / permissions: 等頂層區塊不計）。GitHub job id 可含字母、數字、
+// `-`、`_`（起首為字母或 `_`）—— 審查 F3 (b)：舊正則漏掉底線 id，使多出的 `extra_job` 不被計數。
 export function jobNames(text) {
   const m = text.match(/^jobs:\n([\s\S]*)$/m);
-  return m ? (m[1].match(/^  [a-z][a-z0-9-]*:\s*$/gm) || []).map((j) => j.trim().replace(':', '')) : [];
+  return m ? (m[1].match(/^  [A-Za-z_][A-Za-z0-9_-]*:\s*$/gm) || []).map((j) => j.trim().replace(':', '')) : [];
 }
 
 export function auditPagesWorkflow(text) {
@@ -103,11 +115,19 @@ export function auditPinCheckWorkflow(text) {
     const extra = triggers.filter((t) => !['schedule', 'workflow_dispatch'].includes(t));
     if (extra.length) problems.push(`pin-check must only be triggered by schedule/workflow_dispatch, found: ${extra.join(', ')}`);
     if (!triggers.includes('schedule')) problems.push('pin-check lacks a schedule trigger');
+    if (!triggers.includes('workflow_dispatch')) problems.push('pin-check lacks the workflow_dispatch trigger (manual re-run after the 60-day schedule disablement)');
   }
+  // 權限（審查 F3 (c)）：恰好一個頂層 permissions 區塊 = contents: read；任何位置都不得出現任何 `<perm>: write`
+  // / `write-all`、job 層 permissions、或 token / secrets 參照（read-only 回報器不需要任何憑證）。
+  const permBlocks = lines(text).filter((l) => /^\s*permissions:/.test(l));
+  if (permBlocks.length !== 1 || !/^permissions:\s*$/.test(permBlocks[0])) problems.push(`pin-check must have exactly one top-level permissions: block, found ${permBlocks.length} (${permBlocks.map((l) => l.trim()).join(' | ')})`);
   const perms = text.match(/^permissions:\n((?:[ \t]+.*\n?)+)/m);
   if (!perms) problems.push('pin-check lacks an explicit permissions: block');
   else if (perms[1].trim() !== 'contents: read') problems.push(`pin-check permissions must be exactly "contents: read", got: ${perms[1].trim().replace(/\n/g, ' | ')}`);
-  if (/\b(pages|id-token|contents):\s*write\b/.test(text)) problems.push('pin-check must not hold any write permission');
+  for (const l of lines(text)) {
+    if (/^\s*[a-z-]+:\s*write(-all)?\s*$/.test(l) || /^\s*permissions:\s*write-all\s*$/.test(l)) problems.push(`pin-check must not hold any write permission: "${l.trim()}"`);
+  }
+  if (/\$\{\{\s*secrets\./.test(text) || /GITHUB_TOKEN/.test(text)) problems.push('pin-check must not reference secrets or GITHUB_TOKEN');
   if (/(configure-pages|upload-pages-artifact|deploy-pages|environment:)/.test(text)) problems.push('pin-check must not contain Pages/deploy steps or an environment');
   if (!/^\s*timeout-minutes:\s*\d+/m.test(text)) problems.push('pin-check job lacks timeout-minutes');
   if (!/run:\s*node scripts\/check-node-pin\.mjs/.test(text)) problems.push('pin-check does not run scripts/check-node-pin.mjs');
@@ -123,10 +143,8 @@ function mutate(source, from, to) {
 
 // ── 契約 ────────────────────────────────────────────────────────────────────
 test('CI-1: .node-version is an exact X.Y.Z on the approved major line', () => {
-  const v = NODE_VERSION_FILE.trim();
-  assert.match(v, /^\d+\.\d+\.\d+$/, '.node-version must be an exact patch version (no ranges, aliases or v-prefix)');
-  assert.equal(Number(v.split('.')[0]), APPROVED_MAJOR, `CI Node line is ${APPROVED_MAJOR}; moving to another major is an Owner decision — update APPROVED_MAJOR consciously`);
-  assert.equal(NODE_VERSION_FILE, `${v}\n`, 'file is exactly the version plus one trailing newline');
+  assert.deepEqual(auditNodeVersionFile(NODE_VERSION_FILE), []);
+  assert.match(NODE_VERSION_FILE.trim(), /^22\.\d+\.\d+$/);
 });
 
 test('CI-2: every setup-node step in pages.yml consumes .node-version (3 jobs, single source, no literal node-version)', () => {
@@ -185,7 +203,23 @@ test('CI-6: known-bad arms — each audit rule can actually fail', () => {
   assert.ok(auditPinCheckWorkflow(deployStep).some((p) => /Pages\/deploy/.test(p)));
   const noTimeout = mutate(PIN_CHECK, /    timeout-minutes: 5\n/, '');
   assert.ok(auditPinCheckWorkflow(noTimeout).some((p) => /timeout-minutes/.test(p)));
-  // (h) .node-version drift to another major / a range → CI-1 RED (pure checks on the value)
-  assert.notEqual(Number('24.22.1'.split('.')[0]), APPROVED_MAJOR);
-  assert.doesNotMatch('22', /^\d+\.\d+\.\d+$/);
+  // (g′) 審查 F3 (c)：pin-check 失去 workflow_dispatch / 加 job 層 `actions: write` / 參照 secrets → RED
+  const noDispatch = mutate(PIN_CHECK, /  workflow_dispatch:\n/, '');
+  assert.ok(auditPinCheckWorkflow(noDispatch).some((p) => /lacks the workflow_dispatch/.test(p)));
+  const jobPerm = mutate(PIN_CHECK, /    timeout-minutes: 5\n/, '    timeout-minutes: 5\n    permissions:\n      actions: write\n');
+  const jobPermProblems = auditPinCheckWorkflow(jobPerm);
+  assert.ok(jobPermProblems.some((p) => /exactly one top-level permissions/.test(p)) && jobPermProblems.some((p) => /must not hold any write permission: "actions: write"/.test(p)));
+  const secretRef = mutate(PIN_CHECK, /run: node scripts\/check-node-pin\.mjs\n/, 'run: node scripts/check-node-pin.mjs\n        env:\n          T: ${{ secrets.X }}\n');
+  assert.ok(auditPinCheckWorkflow(secretRef).some((p) => /secrets or GITHUB_TOKEN/.test(p)));
+  // (h) 審查 F3 (a)：.node-version 的真實謂詞對 known-bad 值 RED（不是比常數）
+  assert.deepEqual(auditNodeVersionFile('22.23.4\n'), []);
+  assert.ok(auditNodeVersionFile('24.22.1\n').some((p) => /major 24 != approved 22/.test(p)));
+  assert.ok(auditNodeVersionFile('22\n').some((p) => /exact X\.Y\.Z/.test(p)));
+  assert.ok(auditNodeVersionFile('v22.23.4\n').some((p) => /exact X\.Y\.Z/.test(p)));
+  assert.ok(auditNodeVersionFile('22.23.4\n\n').some((p) => /trailing newline/.test(p)));
+  assert.ok(auditNodeVersionFile('22.23.4').some((p) => /trailing newline/.test(p)));
+  // (i) 審查 F3 (b)：多出一個底線 id 的 job → jobNames 看得見 → pages 稽核 RED
+  const extraJob = mutate(PAGES, /\njobs:\n/, '\njobs:\n  extra_job:\n    runs-on: ubuntu-26.04\n    steps:\n      - run: echo hi\n');
+  assert.ok(jobNames(extraJob).includes('extra_job'));
+  assert.ok(auditPagesWorkflow(extraJob).some((p) => /expected 3 jobs/.test(p)));
 });

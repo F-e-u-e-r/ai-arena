@@ -44,15 +44,27 @@ export function cmpSemver(a, b) {
   return 0;
 }
 
-function dayDiff(laterIso, earlierIso) {
-  return Math.floor((new Date(`${laterIso}T00:00:00Z`) - new Date(`${earlierIso}T00:00:00Z`)) / 86_400_000);
+// ISO 日期（YYYY-MM-DD）嚴格解析：格式正確且真實存在（round-trip 相等，擋 2027-13-01 / 2027-02-30 這類會被
+// Date 正規化或變成 NaN 的值）。無效 → 丟錯（fail closed）。審查 F1：未驗證的 NaN 比較會讓所有分支為假、
+// 靜默落到 current（fail-open）。
+export function parseIsoDate(s, label) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(s))) throw new Error(`${label} 必須是 YYYY-MM-DD（目前："${s}"）`);
+  const d = new Date(`${s}T00:00:00Z`);
+  if (Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== s) {
+    throw new Error(`${label} 不是有效日期（目前："${s}"）`);
+  }
+  return d;
+}
+
+function dayDiff(later, earlier) {
+  return Math.round((later - earlier) / 86_400_000);
 }
 
 // index：nodejs.org/dist/index.json 的陣列；schedule：schedule.json 物件；today：'YYYY-MM-DD'（可注入以便測試）。
 export function classifyPin({ pinned, index, schedule, today }) {
   if (!Array.isArray(index) || !index.length) throw new Error('釋出索引不是非空陣列（來源異常，fail closed）');
   if (!schedule || typeof schedule !== 'object') throw new Error('時程資料不是物件（來源異常，fail closed）');
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(today))) throw new Error(`today 必須是 YYYY-MM-DD（目前："${today}"）`);
+  const t = parseIsoDate(today, 'today');
   const major = Number(pinned.split('.')[0]);
   const line = index
     .filter((r) => typeof r.version === 'string' && new RegExp(`^v${major}\\.\\d+\\.\\d+$`).test(r.version))
@@ -63,26 +75,29 @@ export function classifyPin({ pinned, index, schedule, today }) {
     throw new Error(`釘住的 ${pinned} 不在官方 v${major}.x 釋出清單中（來源異常或 .node-version 錯字，fail closed）`);
   }
   const sched = schedule[`v${major}`];
-  if (!sched || !/^\d{4}-\d{2}-\d{2}$/.test(String(sched.end))) {
-    throw new Error(`時程資料缺 v${major}.end（來源異常，fail closed）`);
-  }
+  if (!sched || sched.end === undefined) throw new Error(`時程資料缺 v${major}.end（來源異常，fail closed）`);
+  const end = parseIsoDate(sched.end, `schedule v${major}.end`);
+  const maint = sched.maintenance === undefined || sched.maintenance === null
+    ? null : parseIsoDate(sched.maintenance, `schedule v${major}.maintenance`);
   const latest = line[0].version;
   const newer = line.filter((r) => cmpSemver(r.version, pinned) > 0);
-  const daysToEol = dayDiff(sched.end, today);
+  const daysToEol = dayDiff(end, t);
   const base = {
     pinned, major, latest, newer: newer.map((r) => r.version), securityBehind: newer.some((r) => r.security),
     eol: sched.end, daysToEol, advisories: [],
   };
-  if (daysToEol < 0) {
+  // EOL 當天即視為 EOL（today >= end；fail closed）。審查 F1：舊版只在 daysToEol < 0 才判，與註解矛盾。
+  if (daysToEol <= 0) {
     return { ...base, category: 'major-line-migration', exit: 1 };
   }
   if (daysToEol <= EOL_WARN_DAYS) {
     base.advisories.push({ level: 'warning', message: `Node v${major} 將於 ${sched.end} EOL（剩 ${daysToEol} 天）—— 請規劃主版本線遷移（Owner 決策，非例行 patch 維護）` });
   }
-  if (sched.maintenance && dayDiff(today, sched.maintenance) >= 0) {
+  if (maint && dayDiff(t, maint) >= 0) {
     const activeLts = Object.entries(schedule)
-      .filter(([k, s]) => /^v\d+$/.test(k) && Number(k.slice(1)) > major && s.lts && dayDiff(today, s.lts) >= 0
-        && (!s.maintenance || dayDiff(today, s.maintenance) < 0))
+      .filter(([k, s]) => /^v\d+$/.test(k) && Number(k.slice(1)) > major && s.lts
+        && dayDiff(t, parseIsoDate(s.lts, `schedule ${k}.lts`)) >= 0
+        && (!s.maintenance || dayDiff(t, parseIsoDate(s.maintenance, `schedule ${k}.maintenance`)) < 0))
       .map(([k]) => k);
     base.advisories.push({ level: 'notice', message: `Node v${major} 處於 Maintenance（自 ${sched.maintenance}，只收安全修補）${activeLts.length ? `；目前 Active LTS：${activeLts.join(', ')}` : ''}` });
   }
