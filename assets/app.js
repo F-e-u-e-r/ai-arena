@@ -620,9 +620,13 @@ function lazyIframe(body, src) {
 
 // 這支 script 跑在 gallery 自身的 origin（不像 submission 是隔離在 sandbox iframe 內），
 // 所以 pin 到明確版本並加 SRI：即使 unpkg 或套件被投毒，雜湊對不上瀏覽器就會拒絕執行。
-// 升級版本時，同步更新這兩個常數（integrity = sha384 of dist/model-viewer.min.js）。
+// 升級版本時，同步更新這兩個常數（integrity = sha384 of dist/model-viewer.min.js，
+// 計算：`openssl dgst -sha384 -binary dist/model-viewer.min.js | openssl base64 -A`），並更新
+// test/fixtures/model-viewer-<ver>.* ；test/model-viewer-sri.test.mjs 會用 fixture 位元組重算
+// 雜湊比對這個常數，瀏覽器測試 test/browser/model-viewer-sri.spec.mjs 則驗證真的載得進來。
+// 歷史：2026-07-08 的常數取自 4.0.0 的檔案而 URL 釘 4.3.1，瀏覽器一律拒載；2026-10-27 修正。
 const MODEL_VIEWER_SRC = 'https://unpkg.com/@google/model-viewer@4.3.1/dist/model-viewer.min.js';
-const MODEL_VIEWER_SRI = 'sha384-sr9b4Ux0WhAUGclJ0ym0FSY2zSOMmNSn0bP/SA0e6bNCrpn/5W3QL8mm+LdlQMKw';
+const MODEL_VIEWER_SRI = 'sha384-cprcVQt7wbUl0xngF3PGP6yBB7n4/t+4AoAMG9biiMCGFiWOdzUH10Ie2COTqFNW';
 let mvLoaded = false;
 function ensureModelViewer() {
   if (mvLoaded) return;
