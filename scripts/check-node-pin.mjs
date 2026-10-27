@@ -66,6 +66,8 @@ export function classifyPin({ pinned, index, schedule, today }) {
   if (!schedule || typeof schedule !== 'object') throw new Error('時程資料不是物件（來源異常，fail closed）');
   const t = parseIsoDate(today, 'today');
   const major = Number(pinned.split('.')[0]);
+  // 奇數主版本（Current-only，無 LTS）不在本 repo 的釘住政策內 → 直接拒絕（fail closed；下方的政策 EOL 公式只對偶數 LTS 線成立）。
+  if (major % 2 !== 0) throw new Error(`v${major} 是奇數（非 LTS）主版本線，不在釘住政策內（fail closed）`);
   const line = index
     .filter((r) => typeof r.version === 'string' && new RegExp(`^v${major}\\.\\d+\\.\\d+$`).test(r.version))
     .map((r) => ({ version: r.version.slice(1), date: r.date, security: r.security === true }))
@@ -93,6 +95,13 @@ export function classifyPin({ pinned, index, schedule, today }) {
   }
   const span = dayDiff(end, start);
   if (span < 600 || span > 1300) throw new Error(`schedule v${major} start→end 跨度 ${span} 天不合理（來源異常，fail closed）`);
+  // Node 釋出政策交叉驗證（Grok R3 F3：跨度上限仍容許 end 被延到 start+1300 天）：偶數主版本（LTS 線）的 EOL 固定為
+  // 「首次釋出年份 + 3」的 4 月 30 日（v18 2025-04-30、v20 2026-04-30、v22 2027-04-30、v24 2028-04-30）。schedule.end 可以
+  // **提前**（如 v16 因 OpenSSL 縮短）但**不得晚於**政策 EOL；晚於 → 來源異常，fail closed。（奇數主版本已在上方拒絕。）
+  const policyEnd = `${lineStart.getUTCFullYear() + 3}-04-30`;
+  if (dayDiff(end, parseIsoDate(policyEnd, 'policy end')) > 0) {
+    throw new Error(`schedule v${major}.end=${sched.end} 晚於 Node 釋出政策的 EOL ${policyEnd}（來源異常或政策變更，fail closed）`);
+  }
   const maint = sched.maintenance === undefined || sched.maintenance === null
     ? null : parseIsoDate(sched.maintenance, `schedule v${major}.maintenance`);
   const latest = line[0].version;

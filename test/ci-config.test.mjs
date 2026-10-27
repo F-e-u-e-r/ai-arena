@@ -92,6 +92,10 @@ export function auditRunsOn(text) {
   return problems;
 }
 
+// setup-node 的 with 鍵白名單（Grok R3 F2/F4）：`mirror`/`mirror-token` 可把 Node 下載來源換成非官方主機、`check-latest`
+// 的任何布林寫法（"true"/True）、`registry-url`、`token`、`architecture` 都不在本 repo 契約內——未列名即 RED，要新增須有意識地改這裡。
+const SETUP_NODE_ALLOWED_WITH = ['node-version-file', 'cache'];
+
 export function auditSetupNode(text, { expectedSteps }) {
   const problems = [];
   const norm = normalizeYaml(text);
@@ -100,32 +104,67 @@ export function auditSetupNode(text, { expectedSteps }) {
   for (const s of steps) {
     if (!/^\s*node-version-file:\s*["']?\.node-version["']?\s*(#.*)?$/m.test(s)) problems.push('setup-node step does not consume node-version-file: .node-version');
     if (/^\s*node-version:/m.test(s)) problems.push('setup-node step still carries a node-version key (second source of truth; setup-node prefers it over the file)');
-    if (/^\s*check-latest:\s*true/m.test(s)) problems.push('setup-node step sets check-latest: true (reproducibility contract forbids it)');
+    if (/^\s*check-latest:/m.test(s)) problems.push('setup-node step sets check-latest (any value; the reproducibility contract forbids the key)');
+    const withIdx = s.split('\n').findIndex((l) => /^\s*with:\s*$/.test(l));
+    if (withIdx >= 0) {
+      for (const l of s.split('\n').slice(withIdx + 1)) {
+        const k = stripTrailingComment(l).match(/^\s+([a-z][a-z0-9_-]*):/);
+        if (k && !SETUP_NODE_ALLOWED_WITH.includes(k[1])) problems.push(`setup-node with-key not allowlisted (${SETUP_NODE_ALLOWED_WITH.join(', ')}): "${k[1]}"`);
+      }
+    }
   }
   if (/^\s*node-version:/m.test(norm)) problems.push('workflow contains a node-version key somewhere');
   return problems;
 }
 
+// YAML 構造 fail-closed（Grok R3 F1）：anchor（`key: &a`）、alias（`*a`）、merge key（`<<:`）與 flow-style 映射/序列作為
+// job/step 定義都是 GitHub 會接受、而行級稽核看不透的寫法 → 一律 RED，不嘗試解讀。
+export function auditYamlConstructs(text) {
+  const problems = [];
+  for (const l of lines(normalizeYaml(text))) {
+    if (isComment(l)) continue;
+    const s = stripTrailingComment(l);
+    if (/:\s*[&*][A-Za-z0-9_-]+\s*$/.test(s) || /^\s*-\s*[&*][A-Za-z0-9_-]+/.test(s)) problems.push(`YAML anchor/alias not allowed (audit cannot follow it): "${s.trim()}"`);
+    if (/^\s*<<\s*:/.test(s)) problems.push(`YAML merge key not allowed: "${s.trim()}"`);
+    if (/^  [a-z_][a-z0-9_-]*:\s*[{[]/.test(s) || /^\s*-\s*[{[]/.test(s)) problems.push(`flow-style mapping/sequence not allowed for jobs/steps: "${s.trim()}"`);
+  }
+  return problems;
+}
+
 // jobs: 區塊內 2 空白縮排的鍵 = job 名稱（允許引號、尾註解；GitHub job id：字母/底線起首，含數字 - _）。
+// 任何冒號後帶內容的 2 空白鍵（anchor / flow）都會被 auditPagesWorkflow 當成不支援語法 RED，不會被靜默略過。
 export function jobNames(text) {
   const m = normalizeYaml(text).match(/^jobs:\n([\s\S]*)$/m);
-  return m ? (m[1].match(/^  [a-z_][a-z0-9_-]*:\s*(#.*)?$/gm) || []).map((j) => stripTrailingComment(j).trim().replace(':', '')) : [];
+  return m ? (m[1].match(/^  [a-z_][a-z0-9_-]*:/gm) || []).map((j) => j.trim().replace(':', '')) : [];
 }
 export function jobBlocks(text) {
   const m = normalizeYaml(text).match(/^jobs:\n([\s\S]*)$/m);
   if (!m) return {};
   const out = {}; let cur = null;
   for (const l of m[1].split('\n')) {
-    const h = stripTrailingComment(l).match(/^  ([a-z_][a-z0-9_-]*):\s*$/);
+    const h = l.match(/^  ([a-z_][a-z0-9_-]*):/);
     if (h) { cur = h[1]; out[cur] = []; continue; }
     if (cur) out[cur].push(l);
   }
   return Object.fromEntries(Object.entries(out).map(([k, v]) => [k, v.join('\n')]));
 }
+function auditJobHeaders(text) {
+  const m = normalizeYaml(text).match(/^jobs:\n([\s\S]*)$/m);
+  if (!m) return ['no jobs: block'];
+  const problems = [];
+  for (const l of m[1].split('\n')) {
+    if (isComment(l) || l.trim() === '') continue;
+    if (indentOf(l) === 2 && !/^  [a-z_][a-z0-9_-]*:\s*(#.*)?$/.test(l)) problems.push(`unsupported job header syntax (anchor/alias/flow/other) — fail closed: "${l.trim()}"`);
+    if (indentOf(l) < 2) problems.push(`unexpected top-level content after jobs: "${l.trim()}"`);
+  }
+  return problems;
+}
 
 export function auditPagesWorkflow(text) {
   const names = jobNames(text);
   const problems = [
+    ...auditYamlConstructs(text),
+    ...auditJobHeaders(text),
     ...auditUsesPinning(text),
     ...auditRunsOn(text),
     ...auditSetupNode(text, { expectedSteps: 3 }),
@@ -141,7 +180,7 @@ export function auditPagesWorkflow(text) {
 export function auditPinCheckWorkflow(text) {
   const norm = normalizeYaml(text);
   const nl = lines(norm);
-  const problems = [...auditUsesPinning(text), ...auditRunsOn(text), ...auditSetupNode(text, { expectedSteps: 1 })];
+  const problems = [...auditYamlConstructs(text), ...auditJobHeaders(text), ...auditUsesPinning(text), ...auditRunsOn(text), ...auditSetupNode(text, { expectedSteps: 1 })];
   const onBlock = norm.match(/^on:\n((?:[ \t]+.*\n?)+)/m);
   if (!onBlock) problems.push('no on: block');
   else {
@@ -253,9 +292,12 @@ test('CI-6: known-bad arms — each audit rule can actually fail, including quot
     const t = mutate(PAGES, /node-version-file: "\.node-version"\n/, `node-version-file: ".node-version"\n          ${variant}\n`);
     assert.ok(auditSetupNode(t, { expectedSteps: 3 }).some((p) => /node-version key/.test(p)), `variant not caught: ${variant}`);
   }
-  // (b) check-latest: true → RED
-  const cl = mutate(PAGES, /node-version-file: "\.node-version"\n/, 'node-version-file: ".node-version"\n          check-latest: true\n');
-  assert.ok(auditSetupNode(cl, { expectedSteps: 3 }).some((p) => /check-latest/.test(p)));
+  // (b) check-latest in any boolean spelling → RED (Grok R3 F4); other non-allowlisted with-keys (mirror → alternate download host) → RED (Grok R3 F2)
+  for (const variant of ['check-latest: true', 'check-latest: "true"', 'Check-Latest: True', 'mirror: https://example.invalid', 'mirror-token: ${{ secrets.X }}', 'registry-url: https://example.invalid']) {
+    const t = mutate(PAGES, /node-version-file: "\.node-version"\n/, `node-version-file: ".node-version"\n          ${variant}\n`);
+    assert.ok(auditSetupNode(t, { expectedSteps: 3 }).some((p) => /check-latest|not allowlisted/.test(p)), `with-key variant not caught: ${variant}`);
+  }
+  assert.deepEqual(auditSetupNode(PAGES, { expectedSteps: 3 }), [], 'the real cache: "npm" key stays allowed');
   // (c) a job dropped its setup-node → count + per-job RED
   const fewer = mutate(PAGES, /      - name: Set up Node\.js\n        uses: actions\/setup-node@[0-9a-f]{40} # v\d+\.\d+\.\d+\n        with:\n          node-version-file: "\.node-version"\n\n      - name: Configure Pages/, '      - name: Configure Pages');
   const fewerP = auditPagesWorkflow(fewer);
@@ -273,6 +315,19 @@ test('CI-6: known-bad arms — each audit rule can actually fail, including quot
     const p = auditPagesWorkflow(t);
     assert.ok(p.some((x) => /expected 3 jobs/.test(x)) && p.some((x) => /must have exactly one setup-node step consuming \.node-version, found 0/.test(x)), `extra job not caught: ${header}`);
   }
+  // (f′) Grok R3 F1: anchored / flow-style / aliased job definitions are not interpreted — they are REJECTED outright (fail closed)
+  const anchored = mutate(PAGES, /\njobs:\n/, '\njobs:\n  exfil: &exfil\n    runs-on: ubuntu-26.04\n    permissions:\n      pages: write\n      id-token: write\n    steps:\n      - uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1\n');
+  const pa = auditPagesWorkflow(anchored);
+  assert.ok(pa.some((x) => /anchor\/alias not allowed/.test(x)) && pa.some((x) => /unsupported job header syntax/.test(x)) && pa.some((x) => /expected 3 jobs/.test(x)), 'anchored job must be rejected');
+  const flow = mutate(PAGES, /\njobs:\n/, '\njobs:\n  exfil: { runs-on: ubuntu-26.04, permissions: { pages: write, id-token: write }, steps: [ { run: echo hi } ] }\n');
+  const pf = auditPagesWorkflow(flow);
+  assert.ok(pf.some((x) => /flow-style/.test(x)) && pf.some((x) => /unsupported job header syntax/.test(x)), 'flow-style job must be rejected');
+  const aliased = mutate(PAGES, /\njobs:\n/, '\njobs:\n  exfil: *deploy\n');
+  assert.ok(auditPagesWorkflow(aliased).some((x) => /anchor\/alias not allowed|unsupported job header syntax/.test(x)), 'aliased job must be rejected');
+  const mergeKey = mutate(PAGES, /    runs-on: ubuntu-26\.04\n    steps:\n      - name: Checkout\n        uses: actions\/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7\.0\.1\n\n      # Node is pinned/, '    runs-on: ubuntu-26.04\n    <<: *x\n    steps:\n      - name: Checkout\n        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1\n\n      # Node is pinned');
+  assert.ok(auditPagesWorkflow(mergeKey).some((x) => /merge key not allowed/.test(x)));
+  assert.deepEqual(auditYamlConstructs(PAGES), [], 'the real workflow uses no anchors/aliases/flow jobs (the ${{ }} expressions are not flagged)');
+  assert.deepEqual(auditYamlConstructs(PIN_CHECK), []);
   // (g) pin-check isolation arms: push trigger (bare + quoted), job-level permissions (bare + quoted write), environment, deploy action,
   //     secrets ref, missing dispatch, extra run, shell override, extra uses (github-script), second job, missing timeout → CI-5 RED
   const arms = [

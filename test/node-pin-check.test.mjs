@@ -123,6 +123,14 @@ test('NP-6: fail closed — unknown pin, empty index, missing schedule line, bad
   // 索引缺少該線最早釋出（截斷的索引）→ start 與可見最早日不符 → 丟錯（fail closed，不靜默當 current）
   const truncated = INDEX.filter((r) => r.version !== 'v22.0.0' && r.version !== 'v22.9.0');
   assert.throws(() => classifyPin({ pinned: '22.23.4', index: truncated, schedule: SCHEDULE, today: TODAY }), /不符/);
+  // Node 政策交叉驗證（Grok R3 F3）：end 在跨度上限內但晚於政策 EOL（2027-04-30）→ 丟錯；提前（v16 式縮短）→ 允許；
+  // 奇數（非 LTS）主版本 → 拒絕
+  assert.throws(() => classifyPin({ pinned: '22.23.4', index: INDEX, schedule: { ...SCHEDULE, v22: { ...SCHEDULE.v22, end: '2027-11-15' } }, today: '2027-05-01' }), /晚於 Node 釋出政策的 EOL 2027-04-30/);
+  const shortened = classifyPin({ pinned: '22.23.4', index: INDEX, schedule: { ...SCHEDULE, v22: { ...SCHEDULE.v22, end: '2027-01-31' } }, today: TODAY });
+  assert.equal(shortened.category, 'current'); assert.equal(shortened.eol, '2027-01-31');
+  const oddIndex = [...INDEX, { version: 'v23.10.0', date: '2025-03-13', security: false, lts: false }, { version: 'v23.0.0', date: '2024-10-16', security: false, lts: false }];
+  const oddSchedule = { ...SCHEDULE, v23: { start: '2024-10-16', lts: '', maintenance: '2025-04-01', end: '2025-06-01' } };
+  assert.throws(() => classifyPin({ pinned: '23.10.0', index: oddIndex, schedule: oddSchedule, today: '2025-01-01' }), /奇數（非 LTS）主版本線/);
   // 真實 v22 時程（2024-04-24 → 2027-04-30 = 1101 天；start == v22.0.0 釋出日）在界限內
   assert.equal(classifyPin({ pinned: '22.23.4', index: INDEX, schedule: SCHEDULE, today: TODAY }).category, 'current');
   // known-bad 臂（F1 機制）：忠實複製 EOL 判定、只拿掉日期驗證 → 無效 end 使比較全為假 → 落到 current（fail-open）。
