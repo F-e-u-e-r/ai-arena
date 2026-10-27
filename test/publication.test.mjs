@@ -16,6 +16,7 @@
 // HM-1..HM-4（Workstream C，2026-10-27）：主機中繼資料隔離 —— 參考集 / fixture 從本機工作樹複製時剝除
 //   被 .gitignore 排除的 OS 中繼資料（.DS_Store / Thumbs.db），使 P-1a/P-1b 在髒工作樹上不假失敗，
 //   同時以 known-bad 臂證明「非 cruft 名的未授權輸入」仍失敗、兩者可區分。生產契約一行未改。
+//   跨模型審查（Codex gpt-5.6-luna）後修正：F1 symlink 邊界如實明示、F2 依名非依追蹤邊界明文化、F3 plantHostMetadata。
 
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -73,6 +74,12 @@ function listFiles(dir) {
 // 仍保留該檔 → P-1a 以 DROPPED 失敗；若被縮窄，組裝器會發佈它而參考集不含 → EXTRA 失敗 —— 兩側
 // 皆可偵測（HM-1 以 known-bad 臂證明比對器有鑑別力）。HM-3 另以等式釘住兩份清單，使任一側變更都
 // 必須有意識地同步，而非靜默跟隨。
+// 邊界（刻意、非遺漏；跨模型審查 F2）：判定依據是「完整檔名 + 一般檔」，**不是**「是否被 git 追蹤」——
+// 測試不依賴 git（須可在 git archive 匯出樹與 CI clean checkout 執行）。因此被 `git add -f` 強制追蹤的
+// `.DS_Store` 一般檔也會被剝除：生產依名同樣永不發佈它，兩側一致 → P-1 通過；修正前的 cp -R 參考集則會
+// 以 DROPPED 失敗。「追蹤樹中混入 cruft 名檔」屬倉庫衛生（.gitignore + PR 審查），不是本比對所驗的發佈忠實度。
+// 同理，名為 .DS_Store 的 symlink 被 strip 保留，但 listFiles 只列一般檔 → 對 P-1 不可見；生產端的名稱跳過
+// 亦先於 symlink 檢查（oracle 與 assembler 皆然），故兩側一致（HM-4 端到端明示此邊界；審查 F1）。
 const HOST_METADATA_NAMES = Object.freeze(new Set(['.DS_Store', 'Thumbs.db']));
 function isHostMetadata(name) { return HOST_METADATA_NAMES.has(name); }
 // 只對測試 temp 樹呼叫（絕不對 ROOT）。遞迴只進真實目錄（Dirent 型別 = lstat 語義，不跟隨 symlink）；
@@ -93,9 +100,17 @@ function cpReference(rootDir = ROOT) {
   return dest;
 }
 // 複製一棵來源樹進 fixture 並剝除主機中繼資料（fixture 輸入與主機狀態隔離；N-* 結果不依賴本機是否有 .DS_Store）。
+// 只剝一般檔：主機樹若有名為 .DS_Store 的「目錄 / symlink」（非主機中繼資料）會被帶進 fixture，由 oracle /
+// 組裝器依名跳過；HM-* 植入 cruft 時一律經 plantHostMetadata()（先移除同路徑既有項目）以免與之碰撞（審查 F3）。
 function copyTree(src, dest) {
   cpSync(src, dest, { recursive: true });
   stripHostMetadata(dest);
+}
+// HM-* 植入主機中繼資料檔：先移除同路徑任何既有項目（避免主機樹帶入的同名目錄造成 EISDIR；審查 F3），再寫入一般檔。
+function plantHostMetadata(root, rel) {
+  const p = path.join(root, rel);
+  rmSync(p, { recursive: true, force: true });
+  writeFileSync(p, 'host-metadata');
 }
 function makeFixture(tasks = ['spinning-cube']) {
   const root = mktmp('fixture-root-');
@@ -534,7 +549,7 @@ test('HM-1: .DS_Store/Thumbs.db contamination at every cp -R depth does NOT fail
     'tasks/.DS_Store', 'tasks/spinning-cube/.DS_Store', 'tasks/spinning-cube/opus-4.8-high/.DS_Store',
     'tasks/bouncing-balls/Thumbs.db',
   ].sort();
-  for (const rel of [...copiedCruft, '.DS_Store']) writeFileSync(path.join(root, rel), 'host-metadata');
+  for (const rel of [...copiedCruft, '.DS_Store']) plantHostMetadata(root, rel);
   // (a) 生產側不變（A-7）：oracle 仍過、組裝輸出與乾淨時完全相同
   assert.equal(runOracle(root).status, 0, 'oracle 忽略主機中繼資料（A-7）');
   const dirtySite = listFiles(await assembleTo(root));
@@ -558,7 +573,7 @@ test('HM-1: .DS_Store/Thumbs.db contamination at every cp -R depth does NOT fail
 test('HM-2: an unauthorized extra publication input on the same tree (non-cruft name) still FAILS — host metadata vs content stay distinguishable', async () => {
   // (a) task 層：tasks/<task>/.DS_Store 通過（oracle、組裝器、參考集一致）；同一層 stray.html（tracked-equivalent）被 oracle 與組裝器擋
   const root = makeFixture(['spinning-cube']);
-  writeFileSync(path.join(root, 'tasks', 'spinning-cube', '.DS_Store'), 'host-metadata');
+  plantHostMetadata(root, 'tasks/spinning-cube/.DS_Store');
   assert.equal(runOracle(root).status, 0);
   assert.deepEqual(compareSets(listFiles(await assembleTo(root)), listFiles(cpReference(root))), { dropped: [], extra: [] });
   writeFileSync(path.join(root, 'tasks', 'spinning-cube', 'stray.html'), '<stray>');
@@ -567,7 +582,7 @@ test('HM-2: an unauthorized extra publication input on the same tree (non-cruft 
   await assert.rejects(assembleSite({ rootDir: root, outDir: mktmp('hm2a-') }), /不允許雜散檔或非一般檔（submission 層）/);
   // (b) assets 層：assets/.DS_Store 通過；assets/pwn.html 被 assets 封閉集擋（N-4）
   const root2 = makeFixture(['spinning-cube']);
-  writeFileSync(path.join(root2, 'assets', '.DS_Store'), 'host-metadata');
+  plantHostMetadata(root2, 'assets/.DS_Store');
   assert.equal(runOracle(root2).status, 0);
   assert.deepEqual(compareSets(listFiles(await assembleTo(root2)), listFiles(cpReference(root2))), { dropped: [], extra: [] });
   writeFileSync(path.join(root2, 'assets', 'pwn.html'), '<pwn>');
@@ -595,7 +610,7 @@ test('HM-3: contract pin — production OS_CRUFT equals the test-local HOST_META
     + '兩者刻意獨立維護、不自動跟隨；若刻意變更生產契約，必須同步審視本測試並更新此釘');
 });
 
-test('HM-4: stripHostMetadata removes ONLY regular files named exactly .DS_Store / Thumbs.db; a directory or symlink under that name is kept and surfaces as DROPPED', async () => {
+test('HM-4: stripHostMetadata removes ONLY regular files named exactly .DS_Store / Thumbs.db; a directory under that name surfaces as DROPPED; a symlink under that name is kept (not followed) but is invisible to the regular-file comparison (documented boundary)', async () => {
   // 函式自身邊界
   const d = mktmp('hm4-');
   mkdirSync(path.join(d, 'sub')); mkdirSync(path.join(d, 'sub2', '.DS_Store'), { recursive: true }); mkdirSync(path.join(d, 'sub3'));
@@ -616,6 +631,7 @@ test('HM-4: stripHostMetadata removes ONLY regular files named exactly .DS_Store
   // P-1 比對以 DROPPED 把它看見（非靜默視為主機中繼資料）。
   const root = makeFixture(['spinning-cube']);
   const sub = path.join(root, 'tasks', 'spinning-cube', 'opus-4.8-high');
+  rmSync(path.join(sub, '.DS_Store'), { recursive: true, force: true }); // 主機樹若帶入同名項目先移除（審查 F3）
   mkdirSync(path.join(sub, '.DS_Store')); writeFileSync(path.join(sub, '.DS_Store', 'evil.html'), '<x>');
   assert.equal(runOracle(root).status, 0);
   const site = listFiles(await assembleTo(root));
@@ -623,4 +639,19 @@ test('HM-4: stripHostMetadata removes ONLY regular files named exactly .DS_Store
   const r = compareSets(site, listFiles(cpReference(root)));
   assert.deepEqual(r.dropped, ['tasks/spinning-cube/opus-4.8-high/.DS_Store/evil.html'], '目錄假冒 cruft 名 → 參考集保留 → DROPPED（被看見）');
   assert.deepEqual(r.extra, []);
+  // 端到端（symlink 假冒 cruft 名；跨模型審查 F1 修正宣稱）：submission 夾內名為 .DS_Store 的 symlink —— 生產端
+  // oracle 與組裝器都「依名跳過、先於 symlink 檢查」（不發佈、也不拒絕；既有行為，另列追蹤項）；參考集的 strip
+  // 保留該 symlink（不刪、不跟隨目標），但 listFiles 只列一般檔 → 兩側皆不含它 → P-1 比對通過。此為 P-1「一般檔
+  // 比對」的明示邊界，**不是** DROPPED；非 cruft 名的 symlink 則由組裝器直接拒絕（N-5c）。
+  const rootL = makeFixture(['spinning-cube']);
+  const subL = path.join(rootL, 'tasks', 'spinning-cube', 'opus-4.8-high');
+  rmSync(path.join(subL, '.DS_Store'), { recursive: true, force: true });
+  symlinkSync('/etc/hosts', path.join(subL, '.DS_Store'));
+  assert.equal(runOracle(rootL).status, 0, 'oracle 依名跳過 cruft 名 symlink（既有行為，先於 symlink 檢查）');
+  const siteDirL = await assembleTo(rootL);
+  assert.equal(existsSync(path.join(siteDirL, 'tasks/spinning-cube/opus-4.8-high/.DS_Store')), false, '組裝器依名跳過，不發佈該 symlink');
+  const refL = cpReference(rootL);
+  assert.ok(lstatSync(path.join(refL, 'tasks/spinning-cube/opus-4.8-high/.DS_Store')).isSymbolicLink(), 'strip 保留 symlink（不刪、不跟隨）');
+  assert.deepEqual(compareSets(listFiles(siteDirL), listFiles(refL)), { dropped: [], extra: [] },
+    'cruft 名 symlink 對一般檔比對不可見：兩側皆不含 → 通過（明示邊界，非 DROPPED）');
 });
