@@ -13,6 +13,10 @@
 //   N-10 = root symlink（MF2：assertEnumerableDir / assertNoSymlinks 根 lstat）
 //   N-11 = main-guard 經 symlinked 調用路徑仍執行（MF3：realpath 兩側）
 // P-6（組裝後 _site 直接瀏覽器渲染）屬瀏覽器套件：見 test/browser/assembled-site.spec.mjs。
+// HM-1..HM-4（Workstream C，2026-10-27）：主機中繼資料隔離 —— 參考集 / fixture 從本機工作樹複製時剝除
+//   被 .gitignore 排除的 OS 中繼資料（.DS_Store / Thumbs.db），使 P-1a/P-1b 在髒工作樹上不假失敗，
+//   同時以 known-bad 臂證明「非 cruft 名的未授權輸入」仍失敗、兩者可區分。生產契約一行未改。
+//   跨模型審查（Codex gpt-5.6-luna）後修正：F1 symlink 邊界如實明示、F2 依名非依追蹤邊界明文化、F3 plantHostMetadata。
 
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -32,7 +36,7 @@ import {
   assembleSite, expectedPublicationPaths, assertRegularFileNoFollow,
   assertInsideFolder, assertEnumerableDir, enumeratePublishedTree, copyPublicationFile,
 } from '../scripts/assemble-site.mjs';
-import { CHROME_FILES, ASSET_FILES } from '../scripts/lib/publication-policy.mjs';
+import { CHROME_FILES, ASSET_FILES, OS_CRUFT } from '../scripts/lib/publication-policy.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const BUILD_MANIFEST = fileURLToPath(new URL('../scripts/build-manifest.mjs', import.meta.url));
@@ -60,20 +64,78 @@ function listFiles(dir) {
   })(dir);
   return out.sort();
 }
-function cpReference() {
+// ── 主機中繼資料隔離（Workstream C：.DS_Store 封閉世界測試脆弱性）─────────────────────────────
+// 參考集（cp -R）與 fixture（cpSync）都從「本機工作樹」複製，而工作樹可能含被 .gitignore 排除、
+// clean checkout（CI / git archive）永不含有的 OS 中繼資料檔（macOS .DS_Store、Windows Thumbs.db）。
+// 修正前 cpReference 原封不動帶入 → 參考集 409 ≠ 407（P-1a）、hash 多兩筆（P-1b）→ 本機假失敗。
+// 修法：在「測試輸入」側剝除這些檔（只剝名稱完全相符的一般檔；目錄與 symlink 不剝、不跟隨），
+// **不**動生產契約（publication-policy / assembler 一行未改）。
+// 此清單刻意是測試自己的副本、不拿 OS_CRUFT 來過濾：若生產清單被加寬（多忽略一個名字），參考集
+// 仍保留該檔 → P-1a 以 DROPPED 失敗；若被縮窄，組裝器會發佈它而參考集不含 → EXTRA 失敗 —— 兩側
+// 皆可偵測（HM-1 以 known-bad 臂證明比對器有鑑別力）。HM-3 另以等式釘住兩份清單，使任一側變更都
+// 必須有意識地同步，而非靜默跟隨。
+// 邊界（刻意、非遺漏；跨模型審查 F2）：判定依據是「完整檔名 + 一般檔」，**不是**「是否被 git 追蹤」——
+// 測試不依賴 git（須可在 git archive 匯出樹與 CI clean checkout 執行）。因此被 `git add -f` 強制追蹤的
+// `.DS_Store` 一般檔也會被剝除：生產依名同樣永不發佈它，兩側一致 → P-1 通過；修正前的 cp -R 參考集則會
+// 以 DROPPED 失敗。「追蹤樹中混入 cruft 名檔」屬倉庫衛生（.gitignore + PR 審查），不是本比對所驗的發佈忠實度。
+// 同理，名為 .DS_Store 的 symlink 被 strip 保留，但 listFiles 只列一般檔 → 對 P-1 不可見；生產端的名稱跳過
+// 亦先於 symlink 檢查（oracle 與 assembler 皆然），故兩側一致（HM-4 端到端明示此邊界；審查 F1）。
+const HOST_METADATA_NAMES = Object.freeze(new Set(['.DS_Store', 'Thumbs.db']));
+function isHostMetadata(name) { return HOST_METADATA_NAMES.has(name); }
+// 只對測試 temp 樹呼叫（絕不對 ROOT）。遞迴只進真實目錄（Dirent 型別 = lstat 語義，不跟隨 symlink）；
+// 只刪「名稱命中且為一般檔」者。名為 .DS_Store 的目錄或 symlink 不是主機中繼資料 → 一律保留（不刪、不跟隨）：
+// 目錄的內容會進入 listFiles 而被比對看見（HM-4 → DROPPED）；symlink 不是一般檔、不進 listFiles → 對比對不可見
+// （見上方邊界；HM-4 端到端明示）。
+function stripHostMetadata(dir) {
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, e.name);
+    if (e.isDirectory()) { stripHostMetadata(full); continue; }
+    if (e.isFile() && isHostMetadata(e.name)) rmSync(full);
+  }
+}
+// legacy 對照（P-1）：對 rootDir 跑與舊 deploy 完全相同的 cp -R，再剝除主機中繼資料 → 等於「clean
+// checkout 上的 cp -R」。rootDir 預設 ROOT；fixture 樹亦可（HM-1/HM-2/HM-4）。
+function cpReference(rootDir = ROOT) {
   const dest = mktmp('cp-ref-');
-  execFileSync('cp', ['-R', 'index.html', 'assets', 'tasks', 'tasks.json', dest], { cwd: ROOT });
+  execFileSync('cp', ['-R', 'index.html', 'assets', 'tasks', 'tasks.json', dest], { cwd: rootDir });
+  stripHostMetadata(dest);
   return dest;
+}
+// 複製一棵來源樹進 fixture 並剝除主機中繼資料（fixture 輸入與主機狀態隔離；N-* 結果不依賴本機是否有 .DS_Store）。
+// 只剝一般檔：主機樹若有名為 .DS_Store 的「目錄 / symlink」（非主機中繼資料）會被帶進 fixture，由 oracle /
+// 組裝器依名跳過；HM-* 植入 cruft 時一律經 plantHostMetadata()（先移除同路徑既有項目）以免與之碰撞（審查 F3）。
+function copyTree(src, dest) {
+  cpSync(src, dest, { recursive: true });
+  stripHostMetadata(dest);
+}
+// HM-* 植入主機中繼資料檔：先移除同路徑任何既有項目（避免主機樹帶入的同名目錄造成 EISDIR；審查 F3），再寫入一般檔。
+function plantHostMetadata(root, rel) {
+  const p = path.join(root, rel);
+  rmSync(p, { recursive: true, force: true });
+  writeFileSync(p, 'host-metadata');
 }
 function makeFixture(tasks = ['spinning-cube']) {
   const root = mktmp('fixture-root-');
   copyFileSync(path.join(ROOT, 'index.html'), path.join(root, 'index.html'));
-  cpSync(path.join(ROOT, 'assets'), path.join(root, 'assets'), { recursive: true });
-  cpSync(path.join(ROOT, 'schema'), path.join(root, 'schema'), { recursive: true });
-  if (existsSync(path.join(ROOT, 'data'))) cpSync(path.join(ROOT, 'data'), path.join(root, 'data'), { recursive: true });
+  copyTree(path.join(ROOT, 'assets'), path.join(root, 'assets'));
+  copyTree(path.join(ROOT, 'schema'), path.join(root, 'schema'));
+  if (existsSync(path.join(ROOT, 'data'))) copyTree(path.join(ROOT, 'data'), path.join(root, 'data'));
   mkdirSync(path.join(root, 'tasks'), { recursive: true });
-  for (const t of tasks) cpSync(path.join(ROOT, 'tasks', t), path.join(root, 'tasks', t), { recursive: true });
+  for (const t of tasks) copyTree(path.join(ROOT, 'tasks', t), path.join(root, 'tasks', t));
   return root;
+}
+async function assembleTo(rootDir) {
+  const siteDir = mktmp('site-');
+  await assembleSite({ rootDir, outDir: siteDir });
+  return siteDir;
+}
+// P-1a 的雙向集合比對，抽成純函式使 HM-* 能對「比對器本身」餵 known-bad
+// （DROPPED = 參考集有、_site 無；EXTRA = _site 有、參考集無）。
+function compareSets(sitePaths, refPaths) {
+  return {
+    dropped: refPaths.filter((p) => !sitePaths.includes(p)),
+    extra: sitePaths.filter((p) => !refPaths.includes(p)),
+  };
 }
 function runOracle(root, args = []) {
   try {
@@ -100,8 +162,9 @@ test('P-1a: assembled _site path-set == cp -R (407 paths, DROPPED=0 EXTRA=0)', a
   const sitePaths = listFiles(siteDir);
   const refPaths = listFiles(cpReference());
   assert.equal(refPaths.length, 407, 'cp -R clean-tree 參考集應為 407');
-  assert.deepEqual(refPaths.filter((p) => !sitePaths.includes(p)), [], 'DROPPED 必須為空');
-  assert.deepEqual(sitePaths.filter((p) => !refPaths.includes(p)), [], 'EXTRA 必須為空');
+  const { dropped, extra } = compareSets(sitePaths, refPaths);
+  assert.deepEqual(dropped, [], 'DROPPED 必須為空');
+  assert.deepEqual(extra, [], 'EXTRA 必須為空');
   assert.equal(sitePaths.length, 407);
   assert.equal(expected.length, 407);
 });
@@ -168,7 +231,7 @@ test('N-1: task dir without task.json → oracle fails (reverting fix would acce
   assert.equal(bad.status, 1);
   assert.match(bad.stderr, /缺少 task\.json/);
   rmSync(path.join(root, 'tasks', 'not-a-submission'), { recursive: true, force: true });
-  cpSync(path.join(ROOT, 'tasks', 'bouncing-balls'), path.join(root, 'tasks', 'bouncing-balls'), { recursive: true });
+  copyTree(path.join(ROOT, 'tasks', 'bouncing-balls'), path.join(root, 'tasks', 'bouncing-balls'));
   assert.equal(runOracle(root).status, 0);
 });
 
@@ -469,4 +532,128 @@ test('N-12: task.json / submission.json must be a regular file (a directory is r
   try { execFileSync('mkfifo', [sub4]); } catch { return; } // 無 mkfifo 環境略過 FIFO 分支
   cpSync(path.join(clean, 'tasks.json'), path.join(root4, 'tasks.json'));
   await assert.rejects(assembleSite({ rootDir: root4, outDir: mktmp('n12f-') }), /缺少 submission\.json（或其非一般檔）/);
+});
+
+// ═══════════════════════ 主機中繼資料隔離（Workstream C；HM-1..HM-4）═══════════════════════
+// 契約：被 .gitignore 排除的 OS 中繼資料（.DS_Store / Thumbs.db）污染本機工作樹時，P-1a/P-1b 不得假失敗；
+// 但「同一棵樹上、非 cruft 名的未授權發佈輸入」仍必須失敗（兩者可區分）；乾淨樹照常通過（P-1a/P-1b 本身，
+// CI clean checkout 與 git archive 皆為乾淨樹）。所有 HM-* 都在隔離 fixture 上自行植入污染，不依賴本機狀態。
+
+test('HM-1: .DS_Store/Thumbs.db contamination at every cp -R depth does NOT fail the P-1 comparison; legacy cp -R without the strip (known-bad) does', async () => {
+  const root = makeFixture(['spinning-cube', 'bouncing-balls']);
+  assert.equal(runOracle(root).status, 0);
+  const cleanSite = listFiles(await assembleTo(root));
+  const cleanRef = listFiles(cpReference(root));
+  assert.deepEqual(compareSets(cleanSite, cleanRef), { dropped: [], extra: [] }, '乾淨 fixture：P-1 比對通過（對照）');
+  // 污染：cp -R 四個引數（index.html / assets / tasks / tasks.json）會帶入的每一層，＋ root 的 .DS_Store（cp -R 不帶入）
+  const copiedCruft = [
+    'assets/.DS_Store', 'assets/fonts/.DS_Store',
+    'tasks/.DS_Store', 'tasks/spinning-cube/.DS_Store', 'tasks/spinning-cube/opus-4.8-high/.DS_Store',
+    'tasks/bouncing-balls/Thumbs.db',
+  ].sort();
+  for (const rel of [...copiedCruft, '.DS_Store']) plantHostMetadata(root, rel);
+  // (a) 生產側不變（A-7）：oracle 仍過、組裝輸出與乾淨時完全相同
+  assert.equal(runOracle(root).status, 0, 'oracle 忽略主機中繼資料（A-7）');
+  const dirtySite = listFiles(await assembleTo(root));
+  assert.deepEqual(dirtySite, cleanSite, '組裝器輸出不受主機中繼資料影響（A-7）');
+  // (b) 測試側：剝除後的參考集 == 乾淨參考集 == 組裝輸出 → P-1 比對通過（修正目標）
+  const dirtyRef = listFiles(cpReference(root));
+  assert.deepEqual(dirtyRef, cleanRef, '剝除主機中繼資料後，污染樹的 cp -R 參考集 == 乾淨參考集');
+  assert.deepEqual(compareSets(dirtySite, dirtyRef), { dropped: [], extra: [] }, '污染樹上 P-1 比對必須通過');
+  // (c) known-bad：忠實複製 cpReference、只移除 stripHostMetadata 一步（＝修正前實作）→ 參考集多出恰好那 6 個
+  //     被 cp -R 帶入的 cruft 路徑 → 比對以 DROPPED 失敗（即修正前本機假失敗的機制；證明剝除為載重、比對器非恆真）。
+  const legacyCpReference = (rootDir) => {
+    const dest = mktmp('cp-ref-legacy-');
+    execFileSync('cp', ['-R', 'index.html', 'assets', 'tasks', 'tasks.json', dest], { cwd: rootDir });
+    return dest; // （stripHostMetadata 已移除）
+  };
+  const legacy = compareSets(dirtySite, listFiles(legacyCpReference(root)));
+  assert.deepEqual(legacy.dropped, copiedCruft, 'known-bad：未剝除 → 參考集多出 cp -R 帶入的 cruft（修正前的假失敗）');
+  assert.deepEqual(legacy.extra, []);
+});
+
+test('HM-2: an unauthorized extra publication input on the same tree (non-cruft name) still FAILS — host metadata vs content stay distinguishable', async () => {
+  // (a) task 層：tasks/<task>/.DS_Store 通過（oracle、組裝器、參考集一致）；同一層 stray.html（tracked-equivalent）被 oracle 與組裝器擋
+  const root = makeFixture(['spinning-cube']);
+  plantHostMetadata(root, 'tasks/spinning-cube/.DS_Store');
+  assert.equal(runOracle(root).status, 0);
+  assert.deepEqual(compareSets(listFiles(await assembleTo(root)), listFiles(cpReference(root))), { dropped: [], extra: [] });
+  writeFileSync(path.join(root, 'tasks', 'spinning-cube', 'stray.html'), '<stray>');
+  const bad = runOracle(root);
+  assert.equal(bad.status, 1); assert.match(bad.stderr, /雜散檔或非一般檔/);
+  await assert.rejects(assembleSite({ rootDir: root, outDir: mktmp('hm2a-') }), /不允許雜散檔或非一般檔（submission 層）/);
+  // (b) assets 層：assets/.DS_Store 通過；assets/pwn.html 被 assets 封閉集擋（N-4）
+  const root2 = makeFixture(['spinning-cube']);
+  plantHostMetadata(root2, 'assets/.DS_Store');
+  assert.equal(runOracle(root2).status, 0);
+  assert.deepEqual(compareSets(listFiles(await assembleTo(root2)), listFiles(cpReference(root2))), { dropped: [], extra: [] });
+  writeFileSync(path.join(root2, 'assets', 'pwn.html'), '<pwn>');
+  await assert.rejects(assembleSite({ rootDir: root2, outDir: mktmp('hm2b-') }), /封閉集不符（N-4）/);
+  // (c) 名稱近似但非 cruft（DS_Store / .DS_Store.bak / Thumbs.db.txt）：strip 只認完整檔名、生產亦不忽略 →
+  //     放在 submission 夾內會被兩側都「看見」並發佈（N-8 文件化殘餘，非本 PR 範圍）；放在 task 層則為雜散 → 擋。
+  const lookalikes = ['DS_Store', '.DS_Store.bak', 'Thumbs.db.txt'];
+  const root3 = makeFixture(['spinning-cube']);
+  for (const n of lookalikes) writeFileSync(path.join(root3, 'tasks', 'spinning-cube', 'opus-4.8-high', n), 'x');
+  assert.equal(runOracle(root3).status, 0);
+  const site3 = listFiles(await assembleTo(root3));
+  const ref3 = listFiles(cpReference(root3));
+  for (const n of lookalikes) {
+    assert.ok(site3.includes(`tasks/spinning-cube/opus-4.8-high/${n}`), `近似名非 cruft → 組裝器照常發佈（被看見）：${n}`);
+    assert.ok(ref3.includes(`tasks/spinning-cube/opus-4.8-high/${n}`), `近似名非 cruft → 參考集保留（strip 只認完整檔名）：${n}`);
+  }
+  assert.deepEqual(compareSets(site3, ref3), { dropped: [], extra: [] });
+  writeFileSync(path.join(root3, 'tasks', 'spinning-cube', 'DS_Store'), 'x'); // task 層近似名 → 雜散
+  await assert.rejects(assembleSite({ rootDir: root3, outDir: mktmp('hm2c-') }), /不允許雜散檔或非一般檔（submission 層）/);
+});
+
+test('HM-3: contract pin — production OS_CRUFT equals the test-local HOST_METADATA_NAMES (change one ⇒ consciously change the other)', () => {
+  assert.deepEqual([...OS_CRUFT].sort(), [...HOST_METADATA_NAMES].sort(),
+    '生產 OS cruft 清單（publication-policy OS_CRUFT）與測試參考集剝除清單（HOST_METADATA_NAMES）不一致：'
+    + '兩者刻意獨立維護、不自動跟隨；若刻意變更生產契約，必須同步審視本測試並更新此釘');
+});
+
+test('HM-4: stripHostMetadata removes ONLY regular files named exactly .DS_Store / Thumbs.db; a directory under that name surfaces as DROPPED; a symlink under that name is kept (not followed) but is invisible to the regular-file comparison (documented boundary)', async () => {
+  // 函式自身邊界
+  const d = mktmp('hm4-');
+  mkdirSync(path.join(d, 'sub')); mkdirSync(path.join(d, 'sub2', '.DS_Store'), { recursive: true }); mkdirSync(path.join(d, 'sub3'));
+  writeFileSync(path.join(d, '.DS_Store'), 'x');                        // 一般檔、完整名 → 剝
+  writeFileSync(path.join(d, 'sub', 'Thumbs.db'), 'x');                 // 一般檔、完整名 → 剝
+  writeFileSync(path.join(d, 'sub', 'DS_Store'), 'x');                  // 近似名 → 留
+  writeFileSync(path.join(d, 'sub', '.DS_Store.bak'), 'x');             // 近似名 → 留
+  writeFileSync(path.join(d, 'keep.txt'), 'x');                         // 一般檔 → 留
+  writeFileSync(path.join(d, 'sub2', '.DS_Store', 'evil.html'), '<x>'); // 名為 .DS_Store 的「目錄」→ 留（含內容）
+  symlinkSync(path.join(d, 'keep.txt'), path.join(d, 'sub3', 'Thumbs.db')); // 名為 Thumbs.db 的「symlink」→ 留、不跟隨
+  stripHostMetadata(d);
+  assert.equal(existsSync(path.join(d, '.DS_Store')), false);
+  assert.equal(existsSync(path.join(d, 'sub', 'Thumbs.db')), false);
+  assert.deepEqual(listFiles(d), ['keep.txt', 'sub/.DS_Store.bak', 'sub/DS_Store', 'sub2/.DS_Store/evil.html'].sort());
+  assert.ok(lstatSync(path.join(d, 'sub3', 'Thumbs.db')).isSymbolicLink(), 'symlink 保留且未被跟隨刪除');
+  assert.equal(readFileSync(path.join(d, 'keep.txt'), 'utf8'), 'x', 'symlink 目標未被刪除');
+  // 端到端：submission 夾內「名為 .DS_Store 的目錄」—— 生產依名跳過（不發佈其內容）、參考集保留其內容 →
+  // P-1 比對以 DROPPED 把它看見（非靜默視為主機中繼資料）。
+  const root = makeFixture(['spinning-cube']);
+  const sub = path.join(root, 'tasks', 'spinning-cube', 'opus-4.8-high');
+  rmSync(path.join(sub, '.DS_Store'), { recursive: true, force: true }); // 主機樹若帶入同名項目先移除（審查 F3）
+  mkdirSync(path.join(sub, '.DS_Store')); writeFileSync(path.join(sub, '.DS_Store', 'evil.html'), '<x>');
+  assert.equal(runOracle(root).status, 0);
+  const site = listFiles(await assembleTo(root));
+  assert.ok(!site.some((p) => p.includes('/.DS_Store/')), '生產依名跳過 .DS_Store 目錄（不發佈其內容）');
+  const r = compareSets(site, listFiles(cpReference(root)));
+  assert.deepEqual(r.dropped, ['tasks/spinning-cube/opus-4.8-high/.DS_Store/evil.html'], '目錄假冒 cruft 名 → 參考集保留 → DROPPED（被看見）');
+  assert.deepEqual(r.extra, []);
+  // 端到端（symlink 假冒 cruft 名；跨模型審查 F1 修正宣稱）：submission 夾內名為 .DS_Store 的 symlink —— 生產端
+  // oracle 與組裝器都「依名跳過、先於 symlink 檢查」（不發佈、也不拒絕；既有行為，另列追蹤項）；參考集的 strip
+  // 保留該 symlink（不刪、不跟隨目標），但 listFiles 只列一般檔 → 兩側皆不含它 → P-1 比對通過。此為 P-1「一般檔
+  // 比對」的明示邊界，**不是** DROPPED；非 cruft 名的 symlink 則由組裝器直接拒絕（N-5c）。
+  const rootL = makeFixture(['spinning-cube']);
+  const subL = path.join(rootL, 'tasks', 'spinning-cube', 'opus-4.8-high');
+  rmSync(path.join(subL, '.DS_Store'), { recursive: true, force: true });
+  symlinkSync('/etc/hosts', path.join(subL, '.DS_Store'));
+  assert.equal(runOracle(rootL).status, 0, 'oracle 依名跳過 cruft 名 symlink（既有行為，先於 symlink 檢查）');
+  const siteDirL = await assembleTo(rootL);
+  assert.equal(existsSync(path.join(siteDirL, 'tasks/spinning-cube/opus-4.8-high/.DS_Store')), false, '組裝器依名跳過，不發佈該 symlink');
+  const refL = cpReference(rootL);
+  assert.ok(lstatSync(path.join(refL, 'tasks/spinning-cube/opus-4.8-high/.DS_Store')).isSymbolicLink(), 'strip 保留 symlink（不刪、不跟隨）');
+  assert.deepEqual(compareSets(listFiles(siteDirL), listFiles(refL)), { dropped: [], extra: [] },
+    'cruft 名 symlink 對一般檔比對不可見：兩側皆不含 → 通過（明示邊界，非 DROPPED）');
 });
