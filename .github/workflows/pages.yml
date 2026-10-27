@@ -44,6 +44,7 @@ jobs:
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: ".node-version"
+          cache: "npm"
 
       - name: Generate task manifest
         run: node scripts/build-manifest.mjs --strict
@@ -58,10 +59,17 @@ jobs:
       - name: Scan submissions for secrets
         run: node scripts/scan-secrets.mjs
 
-      # Zero-dep node:test over every test/*.test.mjs: Any/Explicit-Subset filter + sort logic
-      # (filter-core), the Model Family registry (model-registry), the closed-world publication
-      # regression suite (publication — P-1a/1b, P-2..P-5, N-1..N-12, HM-1..HM-4), the model-viewer SRI
-      # oracle (model-viewer-sri — SRI-1..6), the CI-config contracts (ci-config — CI-0..6) and the
+      # test/ci-config.test.mjs parses both workflow files with the dev-only `yaml` package (exact-pinned in
+      # package.json / package-lock.json; installed from the lockfile with integrity verification). The
+      # published site still has ZERO runtime dependencies: the closed-world assembler below publishes only
+      # the validated set, never node_modules. The three source gates above stay dependency-free on purpose.
+      - name: Install locked test dependencies
+        run: npm ci
+
+      # node:test over every test/*.test.mjs: Any/Explicit-Subset filter + sort logic (filter-core), the
+      # Model Family registry (model-registry), the closed-world publication regression suite (publication —
+      # P-1a/1b, P-2..P-5, N-1..N-12, HM-1..HM-4), the model-viewer SRI oracle (model-viewer-sri — SRI-1..6),
+      # the CI-config contracts (ci-config — CI-0..6, real YAML parser + canonical workflow policy) and the
       # offline node-pin-check classifier contracts (node-pin-check — NP-1..8). The glob test/*.test.mjs
       # is required: a directory arg (`node --test test/`) is NOT searched by the runner here.
       - name: Run unit tests (filter-core, model-registry, publication, model-viewer-sri, ci-config, node-pin-check)
