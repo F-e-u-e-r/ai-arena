@@ -818,7 +818,10 @@ test('CI-6g (Codex head-9 F1/F2, head-10 F1/F2): no audit crashes — explicit k
   assert.ok(has(auditPagesWorkflow(mutate(PAGES, RETRY, '')), DEPLOY_STEP));
   assert.ok(has(auditPagesWorkflow(mutate(PAGES, /      - name: Configure Pages\n/, '      - run: echo pre\n      - name: Configure Pages\n')), DEPLOY_STEP));
   // (Codex head-10 F1) deploy step CONTROLS and inputs are frozen too: a non-blocking assembler, an always-upload, an extra/changed input, a changed
-  // retry condition, a dropped id, a changed node-version-file on deploy's setup-node → RED; renaming a step (name is cosmetic) stays GREEN
+  // retry condition, a dropped id, a dropped continue-on-error, a changed node-version-file on deploy's setup-node → RED; renaming a step (name is
+  // cosmetic) stays GREEN. (Codex head-11 F1: the setup-node arm below was claimed by this comment but missing — added.)
+  const ds = auditPagesWorkflow(mutate(PAGES, SETUP_DEPLOY, '      - name: Set up Node.js\n        uses: actions/setup-node@$1 # v7.1.0\n        with:\n          node-version-file: "package.json"\n\n      - name: Configure Pages'));
+  assert.ok(has(ds, /job "deploy" step #2 \(setup-node\) node-version-file must be exactly the string "\.node-version"/) && has(ds, DEPLOY_STEP), `changed node-version-file on deploy's setup-node: ${ds.join(' | ')}`);
   const ASM = /      - name: Build static site \(closed-world assembler\)\n        run: node scripts\/assemble-site\.mjs\n/;
   const UP = /      - name: Upload Pages artifact\n        uses: actions\/upload-pages-artifact@([0-9a-f]{40}) # v5\.0\.0\n/;
   assert.ok(has(auditPagesWorkflow(mutate(PAGES, ASM, '      - name: Build static site (closed-world assembler)\n        continue-on-error: true\n        run: node scripts/assemble-site.mjs\n')), DEPLOY_STEP), 'continue-on-error on the assembler');
