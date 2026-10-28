@@ -20,24 +20,31 @@ concurrency:
 # Every action is pinned to a full-length commit SHA (supply-chain hardening: a moving tag
 # can be re-pointed, a SHA cannot). The trailing `# vX.Y.Z` comment records the release the
 # SHA was resolved from; Dependabot (github-actions ecosystem) bumps the SHA and the comment together.
+# Runner OS is an explicit, GA image label (`ubuntu-26.04`; runner-images #14747), never the rolling
+# `ubuntu-latest` alias (which migrates to 26.04 in Nov 2026, #14748): the OS is a reproducibility
+# input, so a major change must show up as a repo diff instead of happening under the same commit.
+# Not a private image build number — GitHub still rolls patch images underneath the label.
 jobs:
   # Run on every PR and push: verify manifest sync and scan for secrets.
   validate:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # Node is pinned to an exact patch (Owner decision 2026-10-27, after the Node.js 2026-10-21
-      # security release). With a major-only range (`"22"`) the hosted toolcache lags new patches, and
-      # `check-latest` would let the same commit run a different Node patch without a repo diff; with an
-      # exact pin `check-latest` can only re-resolve the same version (one redundant manifest lookup), so
-      # it stays at its default. The same pin is used in all three jobs. Dependabot does NOT bump
-      # `node-version` — bump all three by hand on each Node security release.
+      # security release) from ONE repo-owned source: `.node-version` (consumed by all three jobs via
+      # `node-version-file`; test/ci-config.test.mjs CI-1/CI-2 enforce single source + the approved 22 line).
+      # With a major-only range (`"22"`) the hosted toolcache lags new patches, and `check-latest` would let
+      # the same commit run a different Node patch without a repo diff; with an exact pin `check-latest`
+      # can only re-resolve the same version, so it stays at its default. Dependabot does NOT bump the pin —
+      # the weekly read-only `node-pin-check.yml` fails when the pin is behind its line (patch-drift) or the
+      # line is EOL (major-line-migration); fix = edit `.node-version` in a PR.
       - name: Set up Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: "22.23.4"
+          node-version-file: ".node-version"
+          cache: "npm"
 
       - name: Generate task manifest
         run: node scripts/build-manifest.mjs --strict
@@ -52,12 +59,20 @@ jobs:
       - name: Scan submissions for secrets
         run: node scripts/scan-secrets.mjs
 
-      # Zero-dep node:test over every test/*.test.mjs: Any/Explicit-Subset filter + sort logic
-      # (filter-core), the Model Family registry (model-registry), AND the closed-world
-      # publication regression suite (publication — P-1a/1b, P-2..P-5, N-1..N-12). The glob
-      # test/*.test.mjs covers publication.test.mjs (first-hand confirmed); a directory arg
-      # (`node --test test/`) is NOT searched by the runner here, so the glob is required.
-      - name: Run unit tests (filter-core, model-registry, publication)
+      # test/ci-config.test.mjs parses both workflow files with the dev-only `yaml` package (exact-pinned in
+      # package.json / package-lock.json; installed from the lockfile with integrity verification). The
+      # published site still has ZERO runtime dependencies: the closed-world assembler below publishes only
+      # the validated set, never node_modules. The three source gates above stay dependency-free on purpose.
+      - name: Install locked test dependencies
+        run: npm ci
+
+      # node:test over every test/*.test.mjs: Any/Explicit-Subset filter + sort logic (filter-core), the
+      # Model Family registry (model-registry), the closed-world publication regression suite (publication —
+      # P-1a/1b, P-2..P-5, N-1..N-12, HM-1..HM-4), the model-viewer SRI oracle (model-viewer-sri — SRI-1..6),
+      # the CI-config contracts (ci-config — CI-0..6, real YAML parser + canonical workflow policy) and the
+      # offline node-pin-check classifier contracts (node-pin-check — NP-1..8). The glob test/*.test.mjs
+      # is required: a directory arg (`node --test test/`) is NOT searched by the runner here.
+      - name: Run unit tests (filter-core, model-registry, publication, model-viewer-sri, ci-config, node-pin-check)
         run: node --test test/*.test.mjs
 
       # WS5-A Packet A: fail-closed closed-world publication gate at the PR layer. Assembles to a
@@ -76,7 +91,7 @@ jobs:
   # the site stays dependency-free at runtime (Playwright is test infra). The static
   # site is served by the zero-dep test/browser/static-server.mjs (Playwright webServer).
   browser-smoke:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -84,7 +99,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: "22.23.4"
+          node-version-file: ".node-version"
           cache: "npm"
 
       - name: Install locked test dependencies
@@ -103,7 +118,7 @@ jobs:
   deploy:
     if: github.event_name != 'pull_request'
     needs: validate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     # The only job that needs deployment credentials (see the workflow-level permissions note).
     permissions:
       contents: read
@@ -119,7 +134,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: "22.23.4"
+          node-version-file: ".node-version"
 
       - name: Configure Pages
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0

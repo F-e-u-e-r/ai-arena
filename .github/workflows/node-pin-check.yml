@@ -1,0 +1,42 @@
+name: Node pin check
+
+# Read-only, scheduled stale-pin detector for `.node-version` (Workstream E3, 2026-10-27).
+# Dependabot does not maintain the Node version pin, so this workflow compares the exact pin against the
+# official Node.js release index + release schedule once a week (and on demand) and FAILS the run when the
+# pin is behind the latest patch of its major line (patch-drift) or the line is end-of-life
+# (major-line-migration). It only reports: no write token, no commits, no PRs, no auto-merge, and it is a
+# separate workflow with no Pages/deploy steps, so it can never trigger a deployment.
+# BOUNDARY (by Owner design, Workstream E3): this is a DETECTIVE reporter, not a merge or deploy gate — a stale
+# pin can still merge/deploy between weekly runs. Making it a gate would put a network dependency (nodejs.org)
+# into the publication path; the Owner chose exact pin + weekly report instead.
+# ALERTING (honest statement): there is NO configured alert path — by design this workflow holds no write token,
+# so it cannot open an issue or post anywhere. Visibility relies on (a) the red run in the Actions tab and
+# (b) the Owner's own GitHub notification settings for failed workflow runs (GitHub notifies the actor of a run;
+# for a scheduled run that is the user who last changed the cron — only if that user's settings allow it).
+# A write-capable alert (e.g. `issues: write` + create-issue step) is a conscious Owner decision, not added here.
+# NOTE: GitHub disables scheduled workflows after 60 days without repository activity and does NOT produce a failed
+# run when it does so; `workflow_dispatch` remains available to run it by hand. Documented residual.
+on:
+  schedule:
+    - cron: "17 6 * * 1" # Mondays 06:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Consumes the same single-source pin as pages.yml, so the checker runs on the exact Node it audits.
+      - name: Set up Node.js (from .node-version)
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: ".node-version"
+
+      - name: Compare .node-version against the official Node.js release index and schedule
+        run: node scripts/check-node-pin.mjs
