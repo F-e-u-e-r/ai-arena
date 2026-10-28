@@ -26,6 +26,16 @@
 //        封閉 action 集合；canonical 前奏 checkout（只有 name+uses）→ setup-node；checkout 只能是第 1 步（較後的 checkout 可換掉工作區）；
 //        deploy 的步驟序列（action / run 指令 / upload path）== DEPLOY_SHAPE（發佈路徑凍結）。
 //   任何稽核內部例外 → `[audit internal error — fail closed]` problem（guarded()），不讓測試程序崩潰但仍 RED。
+//
+// head 8 最終輪發現在本架構下的處置（審查紀錄，Codex head-10 F3）：
+//   Codex r8 F1（引號值內的 `#`）→ 已由解析器架構修正（CI-6a）。
+//   Codex r8 F2（較後 run 步驟 `if: always()`）→ rejected-with-reason：setup-node 不得帶 if / continue-on-error（白名單），其失敗即 job 失敗，
+//     不存在「check 綠卻以映像 Node 執行」的路徑；且屬 W-1（惡意 workflow 作者）類別。稽核只要求 `if` 是表達式字串，不解讀其內容。
+//   Codex r8 F3 / Grok r8 F2（job 層 `if: false`、測試步驟 `if`/`continue-on-error`）→ W-1 類別處置不變：PR 本可改寫自身的閘；job 層 `if`
+//     與裸布林 `if` 現被封閉形狀附帶擋下，表達式 `if: ${{ false }}` 與 run 步驟的 `continue-on-error` 在 validate/browser-smoke 仍 GREEN（殘餘）。
+//   Grok r8 F1（setup-node 前的 github-script / checkout repository / 後續 PATH 改寫）→ W-1 類別處置不變；action 形式被 canonical 前奏 +
+//     封閉 action 集合 + checkout-only-step-1 附帶擋下，run 本文改 `$GITHUB_PATH` 仍 GREEN（殘餘）。
+//   Grok r8 F3（deploy `if` 未排除 pull_request_target）→ main 既有且本 PR 未改；封閉觸發集合使 pull_request_target 無法再加入。
 //   CI-3 每個 runs-on 都是明確的 ubuntu-26.04；任何解析後字串都不得含 ubuntu-latest。
 //   CI-4 每個 uses 都是 GitHub-owned、40-hex SHA 釘住、並帶 `# vX.Y.Z` 釋出註解（註解由解析器提供：Scalar.comment）。
 //   CI-5 node-pin-check.yml 隔離：只有 schedule + workflow_dispatch；permissions 恰為 contents: read 且無 job 層 permissions；
@@ -59,18 +69,19 @@ const SETUP_NODE_ALLOWED_STEP_KEYS = ['name', 'uses', 'with'];   // Grok r7 F2�
 const SETUP_NODE_ALLOWED_WITH = ['node-version-file', 'cache'];  // Grok R3 F2/F4：mirror / mirror-token / registry-url / check-latest 不在契約內
 const STEP_KEYS = ['name', 'id', 'if', 'uses', 'with', 'run', 'continue-on-error'];
 const JOB_KEYS = { validate: ['runs-on', 'steps'], 'browser-smoke': ['runs-on', 'steps'], deploy: ['if', 'needs', 'runs-on', 'permissions', 'environment', 'steps'] };
-// deploy job 的 canonical 步驟序列（發佈路徑；Codex head-9 F2 之後釘死）：每一步要麼是指定的 action、要麼是指定的 run 指令，順序固定。
-// 改動發佈路徑（新增步驤、換 action、改組裝指令）是有意識的契約變更——必須同時改這裡。
+// deploy job 的 canonical 步驟（發佈路徟；Codex head-9 F2 之後釘死，Codex head-10 F1 之後補全）：每一步**除 `name` 外的所有鍵**都凍結——
+// action 名（SHA 由 CI-4 另管）、run 指令、`if`、`continue-on-error`、`id`、全部 `with` 輸入值。只凍結序列而放任步驟控制鍵，等於允許
+// 「組裝器 continue-on-error + 上傳 if: always()」把 fail-closed 的發佈路徑變成 fail-open。改動發佈路徑 = 有意識的契約變更，必須同時改這裡。
 const DEPLOY_SHAPE = [
   { uses: 'actions/checkout' },
-  { uses: 'actions/setup-node' },
+  { uses: 'actions/setup-node', with: { 'node-version-file': '.node-version' } },
   { uses: 'actions/configure-pages' },
   { run: 'node scripts/build-manifest.mjs --strict' },
   { run: 'node scripts/assemble-site.mjs' },
-  { uses: 'actions/upload-pages-artifact', with: { path: '_site' } },
-  { uses: 'actions/deploy-pages' },
-  { run: 'sleep 30' },
-  { uses: 'actions/deploy-pages' },
+  { uses: 'actions/upload-pages-artifact', with: { name: 'github-pages-${{ github.run_attempt }}', path: '_site' } },
+  { id: 'deployment', uses: 'actions/deploy-pages', 'continue-on-error': true, with: { artifact_name: 'github-pages-${{ github.run_attempt }}', timeout: 600000 } },
+  { if: "steps.deployment.outcome == 'failure'", run: 'sleep 30' },
+  { id: 'deployment_retry', if: "steps.deployment.outcome == 'failure'", uses: 'actions/deploy-pages', with: { artifact_name: 'github-pages-${{ github.run_attempt }}', timeout: 600000 } },
 ];
 const PIN_CHECK_FORBIDDEN_KEYS = ['shell', 'env', 'container', 'services', 'environment', 'defaults', 'strategy', 'outputs', 'secrets', 'concurrency', 'needs'];
 
@@ -291,21 +302,25 @@ function auditGlobalKeys(problems, doc, lc) {
 
 export function jobNames(text) { const { doc } = parseWorkflow(text); return doc ? keysOf(getIn(doc.contents, 'jobs')) : []; }
 
-// deploy job：步驟序列必須與 DEPLOY_SHAPE 逐步相等（action 名 / run 指令 / 指定的 with 值）。
+// deploy job：每一步（去 `name`、`uses` 只留 action 名）的解析結果必須與 DEPLOY_SHAPE 對應項**完全相等**（鍵集合與值；鍵序不計）。
+const sortKeys = (v) => (Array.isArray(v) ? v.map(sortKeys) : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, sortKeys(v[k])])) : v);
+function canonicalStep(step) {
+  if (!isMap(step)) return null;
+  const js = toCanonical(step); // 同一個 AST→JS 轉換（CI-5b 也用它）；YAMLMap.toJS() 需要 Document 參數，這裡不需要
+  if (js && typeof js === 'object') { delete js.name; if (typeof js.uses === 'string') js.uses = actionName(js.uses); }
+  return js;
+}
 function auditDeployShape(problems, steps) {
   if (!isSeq(steps) || steps.flow) return; // 已由 auditSteps 回報
-  const describe = (s) => (!isMap(s) ? '?' : usesOf(s) ? `uses:${actionName(usesOf(s))}` : `run:${JSON.stringify(strOf(getIn(s, 'run')) ?? null)}`);
-  const expected = DEPLOY_SHAPE.map((e) => (e.uses ? `uses:${e.uses}` : `run:${JSON.stringify(e.run)}`));
-  const actual = steps.items.map(describe);
-  if (actual.length !== expected.length || actual.some((a, i) => a !== expected[i])) {
-    problems.push(`job "deploy" steps must be exactly the canonical publication sequence [${expected.join(' → ')}], got [${actual.join(' → ')}] — ${POLICY}`);
+  const label = (e) => (e.uses ? `uses:${e.uses}` : `run:${JSON.stringify(e.run)}`);
+  if (steps.items.length !== DEPLOY_SHAPE.length) {
+    problems.push(`job "deploy" must have exactly ${DEPLOY_SHAPE.length} steps [${DEPLOY_SHAPE.map(label).join(' → ')}], got ${steps.items.length} — ${POLICY}`);
     return;
   }
   DEPLOY_SHAPE.forEach((e, i) => {
-    for (const [k, v] of Object.entries(e.with ?? {})) {
-      const got = strOf(getIn(getIn(steps.items[i], 'with'), k));
-      if (got !== v) problems.push(`job "deploy" step #${i + 1} (${e.uses}) with.${k} must be exactly ${JSON.stringify(v)}, got ${JSON.stringify(got)} — ${POLICY}`);
-    }
+    const got = JSON.stringify(sortKeys(canonicalStep(steps.items[i])));
+    const want = JSON.stringify(sortKeys(e));
+    if (got !== want) problems.push(`job "deploy" step #${i + 1} must be exactly the canonical publication step ${want} (every key except name is frozen: action, run, if, continue-on-error, id, with), got ${got} — ${POLICY}`);
   });
 }
 
@@ -762,7 +777,7 @@ test('CI-6e: pin-check isolation arms — every rule RED and the canonical-form 
   assert.equal(canonicalPinCheck('not: [valid'), null, 'unparseable input never equals the template');
 });
 
-test('CI-6g (Codex head-9 F1/F2): no audit crashes — explicit keys without values are REPORTED, not thrown; checkout only as step #1; deploy publication sequence frozen', () => {
+test('CI-6g (Codex head-9 F1/F2, head-10 F1/F2): no audit crashes — explicit keys without values are REPORTED (pages + pin-check), not thrown; checkout only as step #1; every deploy step frozen except its name (action, run, if, continue-on-error, id, with)', () => {
   // F1: `? node-version: 1` (compact-mapping key, no value node) used to throw a TypeError inside the visitor; now reported as policy + fail closed
   for (const t of ['? node-version: 1\n', '? k\n', `${PAGES}? junk\n`, 'a:\n  ? b\n']) {
     const p = auditWorkflowYaml(t);
@@ -770,28 +785,53 @@ test('CI-6g (Codex head-9 F1/F2): no audit crashes — explicit keys without val
     assert.ok(has(p, /explicit key \("\? key"\)/) || has(p, /without a value node|non-scalar mapping key/), p.join(' | '));
     assert.ok(!has(p, /audit internal error/), `no internal error for ${JSON.stringify(t.slice(-30))}: ${p.join(' | ')}`);
   }
-  assert.doesNotThrow(() => auditPagesWorkflow(`${PAGES}? junk\n`));
-  assert.ok(has(auditPagesWorkflow('jobs:\n  validate:\n    steps:\n      - ? continue-on-error\n        uses: x\n'), /explicit key/));
+  // the semantic entry points report (non-empty, policy message, no internal error) rather than throw or swallow (Codex head-10 F2)
+  for (const [label, fn, t] of [
+    ['pages + ? junk', auditPagesWorkflow, `${PAGES}? junk\n`],
+    ['pages: ? continue-on-error in a step', auditPagesWorkflow, 'jobs:\n  validate:\n    steps:\n      - ? continue-on-error\n        uses: x\n'],
+    ['pin-check + ? junk', auditPinCheckWorkflow, `${PIN_CHECK}? junk\n`],
+    ['pin-check: valueless explicit key under on', auditPinCheckWorkflow, mutate(PIN_CHECK, /  workflow_dispatch:\n/, '  workflow_dispatch:\n  ? push\n')],
+    ['pin-check: ? node-version in with', auditPinCheckWorkflow, mutate(PIN_CHECK, /          node-version-file: "\.node-version"\n/, '          node-version-file: ".node-version"\n          ? node-version\n')],
+  ]) {
+    let p; assert.doesNotThrow(() => { p = fn(t); }, label);
+    assert.ok(p.length > 0 && has(p, /explicit key \("\? key"\)/) && !has(p, /audit internal error/), `${label}: ${p.join(' | ')}`);
+  }
   // the guard itself is load-bearing: an audit that throws is converted into a fail-closed problem (never a silent pass)
   assert.deepEqual(guarded(() => { throw new TypeError('boom'); })('x'), ['[audit internal error — fail closed] TypeError: boom']);
   // F2: a later actions/checkout (with repository:/ref: override) anywhere in a job → RED; replacing the retry step keeps 10 uses but breaks the deploy shape
   const GEN_DEPLOY = /      - name: Generate task manifest\n        run: node scripts\/build-manifest\.mjs --strict\n\n      # Closed-world assembler/;
   const laterCheckout = mutate(PAGES, GEN_DEPLOY, '      - name: Generate task manifest\n        run: node scripts/build-manifest.mjs --strict\n\n      - name: Replace the workspace\n        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1\n        with:\n          repository: attacker/site\n\n      # Closed-world assembler');
   const lc1 = auditPagesWorkflow(laterCheckout);
-  assert.ok(has(lc1, /job "deploy" step #5: actions\/checkout may only appear as step #1/) && has(lc1, /canonical publication sequence/), lc1.join(' | '));
+  assert.ok(has(lc1, /job "deploy" step #5: actions\/checkout may only appear as step #1/) && has(lc1, /must have exactly 9 steps|canonical publication step/), lc1.join(' | '));
   const RETRY = /      - name: Retry GitHub Pages deployment\n        id: deployment_retry\n        if: steps\.deployment\.outcome == 'failure'\n        uses: actions\/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5\.0\.1\n        with:\n          artifact_name: github-pages-\$\{\{ github\.run_attempt \}\}\n          timeout: 600000\n/;
   const swapped = mutate(mutate(PAGES, RETRY, ''), GEN_DEPLOY, '      - name: Generate task manifest\n        run: node scripts/build-manifest.mjs --strict\n\n      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1\n        with:\n          repository: attacker/site\n\n      # Closed-world assembler');
   assert.equal((swapped.match(/^\s*(?:- )?uses:/gm) || []).length, 10, 'the mutation keeps the uses count at 10');
   const sw = auditPagesWorkflow(swapped);
-  assert.ok(has(sw, /actions\/checkout may only appear as step #1/) && has(sw, /canonical publication sequence/), sw.join(' | '));
+  assert.ok(has(sw, /actions\/checkout may only appear as step #1/) && has(sw, /canonical publication step/), sw.join(' | '));
   const validateCheckout = mutate(PAGES, /      - name: Scan submissions for secrets\n/, '      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1\n        with:\n          repository: attacker/site\n      - name: Scan submissions for secrets\n');
   assert.ok(has(auditPagesWorkflow(validateCheckout), /job "validate" step #5: actions\/checkout may only appear as step #1/));
   assert.ok(has(auditPagesWorkflow(mutate(PAGES, /      - name: Install Chromium only\n/, '      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1\n      - name: Install Chromium only\n')), /job "browser-smoke" step #\d+: actions\/checkout may only appear as step #1/));
-  // deploy canonical sequence: reorder build/assemble, change the upload path, drop the retry, add a step, change a run command → RED; real file GREEN
-  assert.ok(has(auditPagesWorkflow(mutate(PAGES, /      - name: Build static site \(closed-world assembler\)\n        run: node scripts\/assemble-site\.mjs\n/, '      - name: Build static site (closed-world assembler)\n        run: node scripts/assemble-site.mjs --allow-strays\n')), /canonical publication sequence/));
-  assert.ok(has(auditPagesWorkflow(mutate(PAGES, /          path: _site\n/, '          path: .\n')), /with\.path must be exactly "_site"/));
-  assert.ok(has(auditPagesWorkflow(mutate(PAGES, RETRY, '')), /canonical publication sequence/));
-  assert.ok(has(auditPagesWorkflow(mutate(PAGES, /      - name: Configure Pages\n/, '      - run: echo pre\n      - name: Configure Pages\n')), /canonical publication sequence/));
+  // deploy canonical steps: change a run command, the upload path, drop the retry, add a step → RED; real file GREEN
+  const DEPLOY_STEP = /job "deploy" step #\d+ must be exactly the canonical publication step|job "deploy" must have exactly 9 steps/;
+  assert.ok(has(auditPagesWorkflow(mutate(PAGES, /      - name: Build static site \(closed-world assembler\)\n        run: node scripts\/assemble-site\.mjs\n/, '      - name: Build static site (closed-world assembler)\n        run: node scripts/assemble-site.mjs --allow-strays\n')), DEPLOY_STEP));
+  assert.ok(has(auditPagesWorkflow(mutate(PAGES, /          path: _site\n/, '          path: .\n')), DEPLOY_STEP));
+  assert.ok(has(auditPagesWorkflow(mutate(PAGES, RETRY, '')), DEPLOY_STEP));
+  assert.ok(has(auditPagesWorkflow(mutate(PAGES, /      - name: Configure Pages\n/, '      - run: echo pre\n      - name: Configure Pages\n')), DEPLOY_STEP));
+  // (Codex head-10 F1) deploy step CONTROLS and inputs are frozen too: a non-blocking assembler, an always-upload, an extra/changed input, a changed
+  // retry condition, a dropped id, a changed node-version-file on deploy's setup-node → RED; renaming a step (name is cosmetic) stays GREEN
+  const ASM = /      - name: Build static site \(closed-world assembler\)\n        run: node scripts\/assemble-site\.mjs\n/;
+  const UP = /      - name: Upload Pages artifact\n        uses: actions\/upload-pages-artifact@([0-9a-f]{40}) # v5\.0\.0\n/;
+  assert.ok(has(auditPagesWorkflow(mutate(PAGES, ASM, '      - name: Build static site (closed-world assembler)\n        continue-on-error: true\n        run: node scripts/assemble-site.mjs\n')), DEPLOY_STEP), 'continue-on-error on the assembler');
+  // (Grok head-10 F1, same class) the assemble step skipped via an expression `if` while its run string is unchanged → RED
+  assert.ok(has(auditPagesWorkflow(mutate(PAGES, ASM, '      - name: Build static site (closed-world assembler)\n        if: ${{ false }}\n        run: node scripts/assemble-site.mjs\n')), DEPLOY_STEP), 'if: ${{ false }} on the assembler');
+  assert.ok(has(auditPagesWorkflow(mutate(PAGES, ASM, '      - name: Build static site (closed-world assembler)\n        if: false\n        run: node scripts/assemble-site.mjs\n')), DEPLOY_STEP), 'if: false on the assembler');
+  assert.ok(has(auditPagesWorkflow(mutate(PAGES, UP, '      - name: Upload Pages artifact\n        if: always()\n        uses: actions/upload-pages-artifact@$1 # v5.0.0\n')), DEPLOY_STEP), 'if: always() on the upload');
+  assert.ok(has(auditPagesWorkflow(mutate(PAGES, /          path: _site\n/, '          path: _site\n          retention-days: 1\n')), DEPLOY_STEP), 'extra upload input');
+  assert.ok(has(auditPagesWorkflow(mutate(PAGES, /          timeout: 600000\n/, '          timeout: 1\n')), DEPLOY_STEP), 'changed deploy-pages input');
+  assert.ok(has(auditPagesWorkflow(mutate(PAGES, /        id: deployment_retry\n        if: steps\.deployment\.outcome == 'failure'\n/, '        id: deployment_retry\n        if: always()\n')), DEPLOY_STEP), 'changed retry condition');
+  assert.ok(has(auditPagesWorkflow(mutate(PAGES, /        id: deployment\n/, '')), DEPLOY_STEP), 'dropped step id');
+  assert.ok(has(auditPagesWorkflow(mutate(PAGES, /        continue-on-error: true\n        with:\n          artifact_name/, '        with:\n          artifact_name')), DEPLOY_STEP), 'dropped continue-on-error on the first deploy-pages');
+  assert.deepEqual(auditPagesWorkflow(mutate(PAGES, /      - name: Build static site \(closed-world assembler\)\n/, '      - name: Assemble\n')), [], 'step names are cosmetic');
   assert.deepEqual(auditPagesWorkflow(PAGES), []);
 });
 
