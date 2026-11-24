@@ -509,6 +509,27 @@ test('O: a selected chip shows fill + ✓ + chip-wide border; hover is outline-o
   expect(un.countColor).not.toBe(un.text);
   expect(un.countSep).toContain('·');
   expect(un.countText).toMatch(/^\d+$/);
+
+  // …but still legible: count text keeps WCAG 1.4.3 ≥4.5:1 on its chip surface — a ZERO count included
+  // (cross-review finding: an extra opacity cut on zero counts had dropped them to ≈2.7:1)
+  await page.locator('.chip-only[aria-label="只看 Cursor"]').click();   // tool = {Cursor} only → most model counts become 0
+  await page.mouse.move(0, 0);
+  const countContrast = (label) => page.evaluate((label) => {
+    const parse = (c) => { const p = c.match(/rgba?\(([^)]+)\)/)[1].split(/\s*,\s*/).map(Number); return [p[0], p[1], p[2], p[3] ?? 1]; };
+    const lum = (rgb) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(rgb[0]) + 0.7152 * f(rgb[1]) + 0.0722 * f(rgb[2]); };
+    const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+    const btn = [...document.querySelectorAll('.chip-toggle')].find(b => b.childNodes[0].textContent.trim() === label);
+    const count = btn.querySelector('.chip-count'), ks = getComputedStyle(count);
+    const bg = parse(getComputedStyle(btn.parentElement).backgroundColor);
+    const c = parse(ks.color), a = c[3] * Number(ks.opacity);  // element opacity composites the glyphs too
+    return { text: count.textContent, ratio: ratio([0, 1, 2].map(i => c[i] * a + bg[i] * (1 - a)), bg) };
+  }, label);
+  const zero = await countContrast('GPT-6 Sol');
+  const nonZero = await countContrast('Composer 2.5');            // Cursor's own model keeps a non-zero count
+  expect(zero.text).toBe('0');
+  expect(nonZero.text).not.toBe('0');
+  expect(zero.ratio).toBeGreaterThanOrEqual(4.5);
+  expect(nonZero.ratio).toBeGreaterThanOrEqual(4.5);
 });
 
 // ---- H. Faceted candidate counts (WS3): per-value availability under OTHER facets ----
@@ -644,12 +665,16 @@ test('R: sort key/direction change only the order — filtered set, selections a
   await page.goto(TASK);
   await page.locator('.chip-toggle').first().waitFor();
   await (await chipToggle(page, 'Codex')).click();
-  const snap = () => page.evaluate(() => ({
-    order: [...document.querySelectorAll('.grid .card:not([hidden])')]
-      .map(c => c.querySelector('.model').textContent + ' · ' + c.querySelector('.badge.effort').textContent),
-    pressed: [...document.querySelectorAll('.chip-toggle[aria-pressed="true"]')].map(b => b.childNodes[0].textContent.trim()),
-    count: document.querySelector('.filter-count').textContent,
-  }));
+  const snap = () => page.evaluate(() => {
+    const cards = [...document.querySelectorAll('.grid .card:not([hidden])')];
+    return {
+      order: cards.map(c => c.querySelector('.model').textContent + ' · ' + c.querySelector('.badge.effort').textContent),
+      times: cards.map(c => Date.parse(c.querySelector('time.generated-at').dateTime)),   // independent time oracle
+      pressed: [...document.querySelectorAll('.chip-toggle[aria-pressed="true"]')].map(b => b.childNodes[0].textContent.trim()),
+      count: document.querySelector('.filter-count').textContent,
+    };
+  });
+  const monotonic = (ts, dir) => ts.every((t, i) => i === 0 || (dir > 0 ? ts[i - 1] <= t : ts[i - 1] >= t));
   const a = await snap();
   expect(a.order.length).toBe(clientCount('Codex'));
   expect(new Set(a.order).size).toBe(a.order.length);          // distinct name keys → reversal must be exact
@@ -659,8 +684,11 @@ test('R: sort key/direction change only the order — filtered set, selections a
   expect(b.order).toEqual([...a.order].reverse());
   expect(b.pressed).toEqual(a.pressed);
   expect(b.count).toBe(a.count);
-  await page.locator('.sort-select').selectOption('time');
+  await page.locator('.sort-select').selectOption('time');      // key change (direction still 遞減)
   const c = await snap();
+  expect(c.times.every(Number.isFinite)).toBe(true);
+  expect(c.order).not.toEqual(b.order);                         // the key really re-sorted …
+  expect(monotonic(c.times, -1)).toBe(true);                    // … by upload time, descending
   expect([...c.order].sort()).toEqual([...a.order].sort());    // same membership under another key
   expect(c.pressed).toEqual(a.pressed);
   expect(c.count).toBe(a.count);
@@ -668,6 +696,10 @@ test('R: sort key/direction change only the order — filtered set, selections a
   const d = await snap();
   expect(d.order).toEqual(c.order.filter(x => x.endsWith(' · max')));
   expect(d.order.length).toBeGreaterThan(0);
+  await page.locator('.dir-btn').click();                       // time, ascending
+  const e = await snap();
+  expect(monotonic(e.times, 1)).toBe(true);
+  expect([...e.order].sort()).toEqual([...d.order].sort());
 });
 
 // ---- S. Layout: ≥481px each facet's chips start on the label's line in one aligned column shared with the

@@ -261,11 +261,12 @@ body {
   font-size: 10px;
   font-variant-numeric: tabular-nums;
   color: var(--muted);
-  opacity: .8;                 /* muted@80% on panel-2 ≈5.0:1 */
+  opacity: .8;                 /* muted@80% on panel-2 ≈4.8:1（≥ WCAG 1.4.3 的 4.5:1） */
 }
 .chip-count::before { content: '·'; margin-right: 3px; }
 .chip-count:empty { display: none; }                               /* 尚未填入前不佔位 */
-.chip-count-zero { opacity: .5; }
+/* 0 不再額外調淡：疊第二層 opacity 只剩 ≈2.7:1（舊版 ≈2.9:1，皆低於 4.5:1）；「0」本身與 chip 的 title
+   已表達「目前無候選」。JS 仍切換 .chip-count-zero（狀態 hook，現無樣式）。 */
 .chip-toggle[aria-pressed="true"] .chip-count { color: var(--bg); opacity: .75; }  /* emerald 上深色字 ≈6.6:1 */
 
 /* 鍵盤 focus：.chip 的 overflow:hidden（修剪 pill 圓角）會一併剪掉子按鈕預設 outline，
