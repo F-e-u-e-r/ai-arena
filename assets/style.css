@@ -170,31 +170,43 @@ body {
 .toolbar-note { font-size: 12px; color: var(--muted); }
 
 /* ---- compare controls: sort + facet filter ---- */
-.controls { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; margin-bottom: 14px; }
-.sort-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.sort-ctrl { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+/* 2026-11-24 Owner UX pass：排序列、三個 facet 列（工具／模型／推理強度）與「已篩選」列共用一條左側標籤欄
+   （--filter-label-w，容得下「推理強度」4 個全形字）＋右側內容欄。chip 太多時在右欄內換行（hanging indent），
+   標籤不再獨占一行、各列 chip 起點對齊；≤480px 才改為標籤在上、chip 全寬（見檔尾 media query）。 */
+.controls {
+  --filter-label-w: 56px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.facet, .filter-summary { display: flex; align-items: baseline; gap: 8px; }
+.facet-label, .sort-label, .summary-label { flex: 0 0 var(--filter-label-w); font-size: 12px; color: var(--muted); }
+.filter-chips { flex: 1 1 auto; min-width: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* 排序：標籤＋下拉＋方向鈕讀成一個控制組——下拉與方向鈕以共用邊線接成 segmented group（同高、相鄰圓角收平），
+   與下方篩選列以標籤欄對齊、視覺上仍是獨立的一列。只改外觀；排序資料模型與 dir 鈕的 aria-label 契約（§6）不動。 */
+.sort-row { display: flex; align-items: center; margin-bottom: 6px; }   /* 與篩選列之間多留一點，排序自成一組 */
+.sort-ctrl { display: inline-flex; align-items: center; gap: 8px; }
+.sort-select, .dir-btn { height: 28px; border: 1px solid var(--border); cursor: pointer; }
 .sort-select {
   font-size: 13px;
-  padding: 5px 8px;
-  border-radius: 7px;
+  padding: 0 8px;
+  border-radius: 7px 0 0 7px;
   background: var(--panel-2);
   color: var(--text);
-  border: 1px solid var(--border);
-  cursor: pointer;
 }
 .dir-btn {
   font-size: 12px;
-  padding: 5px 10px;
-  border-radius: 7px;
+  padding: 0 10px;
+  margin-left: -1px;            /* 與下拉共用一條邊線 */
+  border-radius: 0 7px 7px 0;
   background: transparent;
   color: var(--muted);
-  border: 1px solid var(--border);
-  cursor: pointer;
 }
 .dir-btn:hover { color: var(--text); border-color: var(--accent); }
-.facet { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.facet-label { font-size: 12px; color: var(--muted); min-width: 4em; }
-.filter-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.dir-btn:hover, .sort-select:focus-visible, .dir-btn:focus-visible { position: relative; z-index: 1; } /* 邊框／focus ring 不被鄰鈕壓住 */
+
 /* chip = 非互動式 wrapper，內含兩個 sibling <button>：主體 toggle ＋ 尾段 Only（§5.3）。 */
 .chip {
   display: inline-flex;
@@ -204,7 +216,11 @@ body {
   overflow: hidden;
   background: var(--panel-2);
 }
+/* hover（未選取）＝ emerald 外框＋標籤提亮；不填色、不出 ✓，與 selected 的實心填色明確區分。 */
 .chip:hover { border-color: var(--accent); }
+/* selected：整顆 chip 讀成一個單位——外框 emerald、Only 尾段 emerald 淡底；主體實心填色＋✓ 見下。
+   以 :has() 從 aria-pressed（唯一狀態來源）衍生、不另設 class；不支援 :has() 時仍有主體填色＋✓。 */
+.chip:has(> .chip-toggle[aria-pressed="true"]) { border-color: var(--accent); background: rgba(53, 224, 161, .14); }
 .chip-toggle, .chip-only {
   font-size: 12px;
   background: transparent;
@@ -212,33 +228,46 @@ body {
   cursor: pointer;
   min-height: 24px;            /* WCAG 2.5.8 目標尺寸（≥24；touch 建議 44） */
 }
-/* 主體＝normal multi-select toggle。selected 用「✓ 前綴 + accent 填色」雙編碼（不只靠顏色）、
-   未選取＝中性無符號（去除 ✕、無刪除線、無虛線框）；固定保留 ✓ 寬度避免切換時跳動。
-   對比：selected 深色字（var(--bg)）on emerald accent ≈11.46:1、未選取 text on panel-2 ≈14.30:1，皆 ≥WCAG AA 4.5:1。 */
-.chip-toggle { padding: 4px 10px; color: var(--text); }
+/* 主體＝normal multi-select toggle。selected 用「✓ 前綴 + accent 實心填色 + 深色字」三重編碼（不只靠顏色）；
+   未選取＝中性無符號（去除 ✕、無刪除線、無虛線框），標籤比主文字低一階（#c5cfca＝Portfolio --c-fg-body，
+   同 .provider），讓 selected 更突出；固定保留 ✓ 寬度避免切換時跳動。
+   對比：selected 深色字 on emerald ≈11.46:1；未選取 #c5cfca on panel-2 ≈10.46:1（hover 提亮為 text ≈14.30:1）。 */
+.chip-toggle { padding: 4px 9px 4px 6px; color: #c5cfca; }
+.chip:hover .chip-toggle:not([aria-pressed="true"]) { color: var(--text); }
 .chip-toggle::before { content: '✓'; display: inline-block; width: 1.1em; visibility: hidden; }
 .chip-toggle[aria-pressed="true"] { background: var(--accent); color: var(--bg); }
 .chip-toggle[aria-pressed="true"]::before { visibility: visible; }
-/* 尾段＝獨立 Only action（低調、與主體以細線分隔），命中區 ≥24px。 */
+/* 尾段＝獨立 Only action。OD-3「禁 hover-only」與 §5.3「常駐可見」仍有效，故不做「hover 才出現」：
+   靜止時常駐但大幅降低視覺重量——無分隔線、較小較淡的 ◎（muted@60% on panel-2 ≈3.33:1，仍 ≥ WCAG 1.4.11
+   的 3:1）；滑過 chip 或鍵盤 focus 進到 chip 時才補上分隔線並提亮。命中區維持 ≥24px（touch 34px，見下）。 */
 .chip-only {
-  padding: 4px 7px;
-  color: var(--muted);
-  border-left: 1px solid var(--border);
+  padding: 4px 6px 4px 4px;
+  font-size: 11px;
+  color: rgba(154, 168, 162, .6);
+  border-left: 1px solid transparent;
   min-width: 24px;
 }
-.chip-only:hover { color: var(--text); background: rgba(255, 255, 255, .05); }
+.chip:hover .chip-only,
+.chip:has(:focus-visible) .chip-only,
+.chip:has(> .chip-toggle[aria-pressed="true"]) .chip-only { color: var(--muted); border-left-color: var(--border); }
+/* 指到 Only 本身：再提亮＋淡底。權重 (0,4,0) 與上一條 selected 規則相同、宣告在後，故兩種狀態都生效。 */
+.chip:hover .chip-only:hover { color: var(--text); background: rgba(255, 255, 255, .06); }
 
-/* WS3 faceted candidate count：chip 標籤後的小字數字，表示「在其他 facet 當前約束下」有幾份
-   符合此值。純資訊——0 仍顯示（更淡），絕不以此取消選取；可見總數（顯示 X/Y）才是權威結果。 */
+/* WS3 faceted candidate count：chip 標籤後的「· N」小字，表示「在其他 facet 當前約束下」有幾份符合此值。
+   是 metadata 不是標籤——muted、較小、前綴「·」與名稱分開（「GPT-6 Astra · 2」，避免與版本號黏在一起）；
+   「·」由 CSS 產生，DOM 文字仍只有數字。純資訊——0 仍顯示（更淡），絕不以此取消選取；可見總數才是權威。 */
 .chip-count {
-  margin-left: 5px;
+  margin-left: 4px;
   font-size: 10px;
   font-variant-numeric: tabular-nums;
-  opacity: .6;
+  color: var(--muted);
+  opacity: .8;                 /* muted@80% on panel-2 ≈4.8:1（≥ WCAG 1.4.3 的 4.5:1） */
 }
+.chip-count::before { content: '·'; margin-right: 3px; }
 .chip-count:empty { display: none; }                               /* 尚未填入前不佔位 */
-.chip-count-zero { opacity: .35; }
-.chip-toggle[aria-pressed="true"] .chip-count { opacity: .85; }    /* accent 填色上仍可讀 */
+/* 0 不再額外調淡：疊第二層 opacity 只剩 ≈2.7:1（舊版 ≈2.9:1，皆低於 4.5:1）；「0」本身與 chip 的 title
+   已表達「目前無候選」。JS 仍切換 .chip-count-zero（狀態 hook，現無樣式）。 */
+.chip-toggle[aria-pressed="true"] .chip-count { color: var(--bg); opacity: .75; }  /* emerald 上深色字 ≈6.6:1 */
 
 /* 鍵盤 focus：.chip 的 overflow:hidden（修剪 pill 圓角）會一併剪掉子按鈕預設 outline，
    改用 inset（負 offset）outline 畫在按鈕內緣、不被裁剪。未選取的 toggle 與 Only 尾段都是深底
@@ -259,11 +288,13 @@ body {
    或 ≤720px（含 390／320）皆套用，桌機滑鼠維持原本 compact 尺寸。 */
 @media (pointer: coarse), (max-width: 720px) {
   .chip-toggle, .chip-only { min-height: 34px; }
-  .chip-only { min-width: 34px; }
-  .family-btn { min-height: 34px; }
+  /* 觸控沒有 hover 可「提亮」，Only 尾段靜止即以 muted ◎ ＋分隔線呈現（仍是低調的次要控制）。 */
+  .chip-only { min-width: 34px; color: var(--muted); border-left-color: var(--border); }
   .summary-x { min-width: 34px; }
+  .chip-action { min-height: 34px; }
 }
-.filter-actions { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* 底列：可見數＋提示，縮排到內容欄與 chip 對齊。 */
+.filter-actions { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; padding-left: calc(var(--filter-label-w) + 8px); }
 .chip-action {
   font-size: 12px;
   padding: 4px 10px;
@@ -285,34 +316,20 @@ body {
   color: var(--muted);
 }
 
-/* WS3 Model Family quick-select（系列快捷）：bulk-add 一整條模型線目前在場的成員。
-   刻意與可選 chip 區隔——dashed 外框＝「群組／bulk 動作」，自身無 aria-pressed 狀態；
-   hover 轉實線 accent。放在 facet 之上，僅本 task 有 ≥2 成員的系列才出現（密度）。 */
-.family-selects { display: flex; flex-wrap: wrap; gap: 6px; }
-.family-btn {
-  font-size: 12px;
-  padding: 4px 11px;
-  border-radius: 999px;
-  background: var(--panel-2);
-  color: var(--text);
-  border: 1px dashed var(--border);
-  cursor: pointer;
-}
-.family-btn:hover { border-style: solid; border-color: var(--accent); }
-.family-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-
-/* WS3 Active Filter Summary（已套用）：衍生自狀態的 active 約束摘要，各為可移除標籤（× 移除個別
-   值、最後一項回 Any；某列 ≥5 折疊成「列：N 項」）。全 Any 時整列 hidden（不佔位）。 */
-.filter-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 12px; }
-.summary-label { font-size: 12px; color: var(--muted); }
+/* 「已篩選」列（WS3 Active Filter Summary，2026-11-24 改版）：只在有篩選時出現（全 Any 時整列 hidden、不佔位）。
+   各已選值一個可移除 token（× 移除該值、最後一項回 Any；某列 ≥5 折疊成「列：N 項」）＋列尾「清除全部」（＝唯一 Reset）。
+   token 用 selected chip 的 emerald 淡底／外框，對應「這些就是你選的值」。 */
+.filter-summary[hidden] { display: none; }   /* .filter-summary 有 display:flex，需更高權重才蓋得掉 [hidden] */
+.summary-body { flex: 1 1 auto; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.summary-tokens { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
 /* tag = 文字 + 尾段 ×（sibling；tag 本身非互動）。overflow:hidden 修 pill 圓角，故 × 用 inset outline。 */
 .summary-tag {
   display: inline-flex;
   align-items: stretch;
-  border: 1px solid var(--border);
+  border: 1px solid rgba(53, 224, 161, .45);
   border-radius: 999px;
   overflow: hidden;
-  background: var(--panel-2);
+  background: rgba(53, 224, 161, .14);
 }
 .summary-text { font-size: 12px; padding: 3px 4px 3px 10px; color: var(--text); white-space: nowrap; }
 .summary-x {
@@ -327,6 +344,24 @@ body {
 }
 .summary-x:hover { color: var(--text); background: rgba(255, 255, 255, .05); }
 .summary-x:focus-visible { outline: 2px solid #fff; outline-offset: -2px; }
+
+/* 零結果說明（跨 facet 無交集是合法狀態）：選取保持不動，指向「已篩選」列的移除／清除全部。 */
+.filter-empty {
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--muted);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+/* ≤480px：右欄太窄，改為標籤在上、chip／token 全寬換行；底列取消縮排。 */
+@media (max-width: 480px) {
+  .facet, .filter-summary { flex-wrap: wrap; row-gap: 6px; }
+  .facet-label, .summary-label { flex-basis: 100%; }
+  .filter-actions { padding-left: 0; }
+}
 
 /* ---- grid of submissions ---- */
 /* minmax 的 min 用 min(320px, 100%)：桌機 100% 一定 >320px，故維持原本 320px 下限、外觀不變；

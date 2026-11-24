@@ -3,9 +3,10 @@
 // Model Family bulk-select 與候選 count）。每個 assert 皆「先寫預期、再比實際」。
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import {
-  facetValues, initState, isAny, isSelected,
-  toggle, only, reset, addToFacet, clearFacet, candidateCounts, visible, visibleCount,
+  facetValue, facetValues, initState, isAny, isSelected,
+  toggle, only, reset, clearFacet, candidateCounts, visible, visibleCount,
   compareText, sortValue, sortedSubs
 } from '../assets/filter-core.mjs';
 
@@ -216,21 +217,44 @@ test('10: reducers never mutate frozen inputs; each toggle branch pins its exact
   assert.deepEqual(frozen.model, ['Opus 4.8']);                // reset 回新物件、輸入未變
 });
 
-// (11) addToFacet（WS3 bulk-union）：聯集進 Subset、保留既有、去重、不可變、空輸入 NO-OP、永不移除。
-test('11: addToFacet unions values into a facet Subset (preserve, dedup, immutable, never remove)', () => {
-  // Any → [values]
-  assert.deepEqual(addToFacet(initState(FACETS), 'model', ['Grok 4.5', 'Grok 4.6']).model,
-    ['Grok 4.5', 'Grok 4.6']);
-  // union preserves existing (cross-family / individual) selections and dedups
-  const st = deepFreeze({ client: 'any', model: ['GPT-5.6 Sol'], effort: 'any' });
-  const after = addToFacet(st, 'model', ['Grok 4.5', 'GPT-5.6 Sol', 'Grok 4.6']); // Sol already selected
-  assert.deepEqual(after.model, ['GPT-5.6 Sol', 'Grok 4.5', 'Grok 4.6']);         // existing first, new appended, no dup
-  assert.deepEqual(st.model, ['GPT-5.6 Sol']);                                     // frozen input not mutated
-  assert.equal(after.client, 'any');                                              // other facets untouched
-  assert.equal(after.effort, 'any');
-  assert.equal(addToFacet(st, 'model', []), st);                                   // empty values → NO-OP (same ref)
-  // never removes: unioning a subset of what's already selected keeps everything
-  assert.deepEqual(addToFacet({ client: 'any', model: ['A', 'B'], effort: 'any' }, 'model', ['A']).model, ['A', 'B']);
+// (11) 計數來自正規結果資料（2026-11-24 Owner UX pass）。原 test 11 測的 addToFacet（「系列」快捷的
+//      bulk-union）已隨「系列」列一併移除。此處改釘：三個可見 facet（工具 client／模型 model／推理強度
+//      effort，= app.js FILTER_FACETS）在全 Any 下的 candidateCounts，逐值等於磁碟上每筆原始
+//      tasks/<task>/<sub>/submission.json（正規紀錄，不經 UI）的計數；每列計數總和 = 該 task 紀錄數
+//      （每筆紀錄在每列恰落一個值，缺值歸 '—'）；tasks.json 與原始紀錄逐筆一致。「系列」從來不是 facet，
+//      移除它不改變任何紀錄或計數。
+test('11: facet counts derive from the canonical submission.json records; each facet partitions every record', () => {
+  const root = new URL('../', import.meta.url);
+  const manifest = JSON.parse(readFileSync(new URL('tasks.json', root), 'utf8'));
+  let checked = 0;
+  for (const dirent of readdirSync(new URL('tasks/', root), { withFileTypes: true })) {
+    if (!dirent.isDirectory()) continue;                       // 略過本機 OS cruft（.DS_Store 等）
+    const raw = readdirSync(new URL(`tasks/${dirent.name}/`, root), { withFileTypes: true })
+      .filter(d => d.isDirectory() && existsSync(new URL(`tasks/${dirent.name}/${d.name}/submission.json`, root)))
+      .map(d => ({ folder: d.name, ...JSON.parse(readFileSync(new URL(`tasks/${dirent.name}/${d.name}/submission.json`, root), 'utf8')) }));
+    // task id 與 build-manifest 同規則：task.json 的 id 優先，否則用資料夾名
+    const taskId = JSON.parse(readFileSync(new URL(`tasks/${dirent.name}/task.json`, root), 'utf8')).id || dirent.name;
+    const task = manifest.find(t => t.id === taskId);
+    assert.ok(task, `manifest has task ${taskId}`);
+    const subs = task.submissions;
+    // tasks.json 與原始紀錄逐筆一致（id = 資料夾名；三個 facet 欄位相同）
+    assert.equal(subs.length, raw.length, `${dirent.name}: manifest vs raw record count`);
+    for (const r of raw) {
+      const s = subs.find(x => x.id === (r.id || r.folder));
+      assert.ok(s, `${dirent.name}/${r.folder} present in manifest`);
+      for (const key of FACETS) assert.equal(facetValue(s, key), facetValue(r, key), `${dirent.name}/${r.folder}.${key}`);
+    }
+    for (const key of FACETS) {
+      const counts = candidateCounts(subs, initState(FACETS), FACETS, key);
+      const tally = new Map();
+      for (const r of raw) tally.set(facetValue(r, key), (tally.get(facetValue(r, key)) || 0) + 1);
+      assert.deepEqual([...counts.entries()].sort(), [...tally.entries()].sort(), `${dirent.name}: ${key} counts = raw tally`);
+      assert.equal([...counts.values()].reduce((a, b) => a + b, 0), raw.length, `${dirent.name}: ${key} partitions all records`);
+    }
+    assert.equal(visibleCount(subs, initState(FACETS), FACETS), raw.length); // 全 Any → 全部可見
+    checked++;
+  }
+  assert.equal(checked, manifest.length, 'every manifest task was checked against its raw records');
 });
 
 // (12) candidateCounts（WS3 faceted counts）：其他 facet 約束下的 per-value 可用性；
