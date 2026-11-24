@@ -1,6 +1,13 @@
 # Filtering Spec — Any / Explicit Subset 模型（P0 凍結版）
 
-> 狀態：**P0 CONTRACT FROZEN（2026-10-13）／ 實作待授權（Implementation Authorization pending）**。
+> **目前狀態（2026-11-24 更新；取代下方 2026-10-13 的狀態敘述）**
+> - 下方標示 2026-10-13 的內容（緊接的狀態區塊與「Spec Freeze Record」）是 **P0 凍結契約的歷史紀錄**，原文保留；
+>   其中「實作待授權」「尚未授權 Production Implementation」「未 commit／未 push／未開 PR」等字句描述的是當時，**不是 repo 現況**。
+> - P0 實作其後已完成並合併（PR #32，squash `50f16e1`）。
+> - 2026-11-24 Owner 指示的 UX 修訂記錄於下方〈UX Revision Record（2026-11-24，Owner-directed incremental pass）〉，
+>   由 **PR #54** 實作；截至 2026-11-24，PR #54 **待合併**。
+
+> 狀態〔**歷史紀錄，2026-10-13**；現況見上〕：**P0 CONTRACT FROZEN（2026-10-13）／ 實作待授權（Implementation Authorization pending）**。
 > 本文件是依原始 Owner Decisions（OD-1 ～ OD-7）與 **Spec Freeze Round（FD-1 ～ FD-6）**（見下方「Spec Freeze Record」）
 > 凍結的 P0 語義與 UX 契約。Owner 已 review 並**批准 P0 Spec Freeze**；本輪僅為 **Spec Revision**，
 > **尚未授權 Production Implementation**——實作須俟 Implementation Authorization 另行啟動。
