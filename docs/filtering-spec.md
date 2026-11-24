@@ -55,6 +55,22 @@ Owner 於 2026-10-13 完成 review：**批准 P0 Spec Freeze**，核准既有核
   大型前端測試基建、跨維度「只看此配置」、動態 Family Token Semantics。
 - **Production Implementation 尚未授權**：本 Spec 凍結後，實作需另行 **Implementation Authorization** 方可開始。
 
+## UX Revision Record（2026-11-24，Owner-directed incremental pass）
+
+Owner 指示的增量 UX 修訂：只改呈現與 P1 附加功能，**P0 凍結語義（§2 狀態機、§3 可見性、契約 1–12）不變**。
+後續修改**勿**依 §4.3／§5.3 的 Family 描述把「系列」列加回——該 UI 已依本紀錄退場。
+
+| 項目 | 決議 | 與既有契約的關係 |
+|------|------|------------------|
+| 「系列」列 | **移除**：Grok／GPT-5.6／Opus 混用不同分類層級，不是一致的維度；其唯一呼叫端 `addToFacet` 一併刪除 | 屬 P1（§4，非 P0 凍結項）。`assets/model-registry.mjs`（canonical registry＋CI 驗證）**保留不動**，供未來重用 |
+| 篩選維度 | 只剩 工具／模型／推理強度 三列；排序列在上、自成一組 | §2.1 facet 不變 |
+| Only | **仍常駐可見**（OD-3 禁 hover-only、§5.3），但靜止時降權：無分隔線、較小較淡的 ◎（對比仍 ≥3:1）；滑過 chip 或鍵盤 focus 進 chip 時提亮並補分隔線；touch／≤720px 靜止即顯示 34px 尾段 | 契約 4、12 不變（sibling buttons、「只看 {值}」、已隔離 NO-OP） |
+| Selected | ✓＋emerald 實心填色＋整顆 chip emerald 外框（含 Only 尾段淡底）；hover 只有外框（無填色、無 ✓） | 契約 8 加強，非改變 |
+| 候選 count | 「· N」muted 小字，定位為 metadata | §3.2 語義不變 |
+| 已篩選列 | 只在有篩選時出現：每個已選值一個 token（× 移除該值；≥5 折疊「列：N 項」）＋列尾「清除全部」＝**唯一 Reset**（取代常駐的「重設篩選」） | 契約 5：仍為單一 Reset、全部回 Any；全 Any 時 Reset 本即 NO-OP 故隨列隱藏 |
+| 零結果 | 顯示說明文字、保留選取 | E6 不變（不回滾、不刪 selection） |
+| Deferred（本輪不做） | **Provider 篩選**（OpenAI／Anthropic／xAI／Moonshot…，待模型量增加再評估）；**Results｜Coverage 視圖**（canonical Model × Tool × Reasoning 覆蓋矩陣，標示 tested／partial／untested） | — |
+
 ---
 
 ## 0. 背景與核心缺陷（為何要改）

@@ -4,7 +4,7 @@
 // preservation. Pure filter/sort logic stays in test/filter-core.test.mjs (node:test).
 //
 // Fixtures are the committed manifest (tasks.json → #savannah-ecosystem) served same-origin
-// by static-server.mjs. Expected counts are DERIVED from that manifest (TOTAL/GROK/... below)
+// by static-server.mjs. Expected counts are DERIVED from that manifest (TOTAL/GROK45/... below)
 // with plain filters independent of filter-core, so they track the data (adding submissions
 // never silently breaks them) while still discriminating a real filter/count regression.
 import { test, expect } from '@playwright/test';
@@ -21,11 +21,22 @@ const _CLIENT_LABELS = { 'claude-code': 'Claude', codex: 'Codex', cursor: 'Curso
 const _clientLabel = (c) => _CLIENT_LABELS[c] || c;
 const modelCount = (name) => _savSubs.filter(s => s.model === name).length;
 const clientCount = (lbl) => _savSubs.filter(s => _clientLabel(s.client) === lbl).length;
+const effortCount = (e) => _savSubs.filter(s => s.effort === e).length;
 const clientEffortCount = (lbl, e) => _savSubs.filter(s => _clientLabel(s.client) === lbl && s.effort === e).length;
-const GROK = ['Grok 4.5', 'Grok 4.6', 'Grok 4.7'].reduce((n, m) => n + modelCount(m), 0);
-const GPT56 = ['GPT-5.6 Luna', 'GPT-5.6 Sol', 'GPT-5.6 Terra'].reduce((n, m) => n + modelCount(m), 0);
 const GROK45 = modelCount('Grok 4.5');
-const GROK47 = modelCount('Grok 4.7');
+
+// The chip toggle whose visible label is exactly `label` (its first text node — the WS3 count span and the
+// CSS ✓ are excluded), as a real-click Locator. Labels are unique across the three facets in the fixture
+// (tool names / model names / effort levels never collide), which this lookup also asserts.
+async function chipToggle(page, label) {
+  const idx = await page.evaluate((t) => {
+    const all = [...document.querySelectorAll('.chip-toggle')];
+    const hits = all.map((b, i) => (b.childNodes[0].textContent.trim() === t ? i : -1)).filter(i => i >= 0);
+    return hits.length === 1 ? hits[0] : -hits.length - 1;
+  }, label);
+  expect(idx, `exactly one chip labelled "${label}"`).toBeGreaterThanOrEqual(0);
+  return page.locator('.chip-toggle').nth(idx);
+}
 
 // ---- A. 320px responsive overflow (WS1 contract) ---------------------------
 test('A: no horizontal page overflow at a 320px viewport (not masked by overflow clipping)', async ({ page }) => {
@@ -136,8 +147,8 @@ test('C: filter chips reflect aria-pressed; Only replaces (not toggles) and pres
   expect(onlyCheck.pressed).toEqual([onlyCheck.bName]);       // Only REPLACED {A} with {B} (not {A,B}, not a toggle)
   expect(onlyCheck.grokStillPressed).toBe(true);              // Only on client left the model facet intact (I6)
 
-  // reset → every chip back to Any, full count
-  await page.locator('.chip-action', { hasText: '重設篩選' }).click();
+  // reset (清除全部 — the single Reset, in the 已篩選 row) → every chip back to Any, full count
+  await page.locator('.chip-action', { hasText: '清除全部' }).click();
   await expect(grok).toHaveAttribute('aria-pressed', 'false');
   await expect(count).toHaveText(`顯示 ${TOTAL}/${TOTAL}`);
 });
@@ -290,50 +301,214 @@ test('F2: moveBefore keeps an iframe execution-context sentinel that a plain re-
   expect(res.afterReinsert).not.toBe('B-ALIVE');   // and so lost its sentinel → oracle discriminates MOVE from RECREATE
 });
 
-// ---- G. Model Family bulk-select (WS3): per-task shortcuts, union, cross-family, reset ----
-test('G: family shortcut bulk-selects a model line, preserves cross-family selection, reset clears', async ({ page }) => {
-  await page.setViewportSize({ width: 1100, height: 900 });
-  await page.goto(TASK); // savannah — all three families present (>=2 members each)
-  const count = page.locator('.filter-count');
-  await page.locator('.family-btn').first().waitFor();
-
-  // exactly the three declared families, in order
-  const famLabels = (await page.locator('.family-btn').allTextContents()).map(s => s.trim());
-  expect(famLabels).toEqual(['Grok', 'GPT-5.6', 'Opus']);
-  // a family button is a bulk action, NOT a stateful toggle — it carries no aria-pressed
-  expect(await page.locator('.family-btn', { hasText: 'Grok' }).getAttribute('aria-pressed')).toBeNull();
-
-  // Grok family → its three members selected, count narrows
-  await page.locator('.family-btn', { hasText: 'Grok' }).click();
-  await expect(count).toHaveText(`顯示 ${GROK}/${TOTAL}`);
-  const pressed1 = await page.locator('.chip-toggle[aria-pressed="true"]')
-    .evaluateAll(bs => bs.map(b => b.childNodes[0].textContent.trim()));  // label node, excludes the count span
-  expect(pressed1.sort()).toEqual(['Grok 4.5', 'Grok 4.6', 'Grok 4.7']);
-
-  // cross-family union: + GPT-5.6 preserves Grok (OD-WS3-4)
-  await page.locator('.family-btn', { hasText: 'GPT-5.6' }).click();
-  await expect(count).toHaveText(`顯示 ${GROK + GPT56}/${TOTAL}`);
-  const pressed2 = await page.locator('.chip-toggle[aria-pressed="true"]')
-    .evaluateAll(bs => bs.map(b => b.childNodes[0].textContent.trim()));
-  for (const m of ['Grok 4.5', 'Grok 4.6', 'Grok 4.7', 'GPT-5.6 Luna', 'GPT-5.6 Sol', 'GPT-5.6 Terra']) {
-    expect(pressed2).toContain(m);
+// ---- G. 系列 row removed (2026-11-24 Owner UX pass): exactly 工具 / 模型 / 推理強度, sort row separate ----
+// Supersedes the WS3 family-shortcut tests. The three labels are asserted positively (an unrendered or
+// partial control block fails too, not just a leftover 系列 row), across every task that renders controls.
+test('G: no 系列 row in any task — exactly 工具/模型/推理強度 facet rows, with the sort row first and separate', async ({ page }) => {
+  const withControls = _manifest.filter(t => (t.submissions || []).length >= 2);   // controls need ≥2 submissions
+  expect(withControls.length).toBeGreaterThan(0);
+  for (const t of withControls) {
+    await page.goto('/#' + encodeURIComponent(t.id));
+    await expect(page.locator('.task-title')).toHaveText(t.title || t.id);
+    await page.locator('.controls .chip-toggle').first().waitFor();
+    const r = await page.evaluate(() => {
+      const controls = document.querySelector('.controls');
+      const sort = controls.querySelector('.sort-row');
+      const firstFacet = controls.querySelector('.facet');
+      return {
+        labels: [...controls.querySelectorAll('.facet > .facet-label')].map(l => l.textContent),
+        familyNodes: controls.querySelectorAll('.family-btn, .family-row, .family-selects').length,
+        seriesText: controls.textContent.includes('系列'),
+        sortFirst: !!sort && sort === controls.firstElementChild &&
+          !!(sort.compareDocumentPosition(firstFacet) & Node.DOCUMENT_POSITION_FOLLOWING),
+        sortHasChips: !!sort && !!sort.querySelector('.chip'),
+      };
+    });
+    expect(r.labels, t.id).toEqual(['工具', '模型', '推理強度']);
+    expect(r.familyNodes, t.id).toBe(0);
+    expect(r.seriesText, t.id).toBe(false);
+    expect(r.sortFirst, t.id).toBe(true);
+    expect(r.sortHasChips, t.id).toBe(false);
   }
-  // clicking Grok again when all members present is an idempotent no-op (no dup, count stable)
-  await page.locator('.family-btn', { hasText: 'Grok' }).click();
-  await expect(count).toHaveText(`顯示 ${GROK + GPT56}/${TOTAL}`);
-
-  // reset → Any
-  await page.locator('.chip-action', { hasText: '重設篩選' }).click();
-  await expect(count).toHaveText(`顯示 ${TOTAL}/${TOTAL}`);
-  expect(await page.locator('.chip-toggle[aria-pressed="true"]').count()).toBe(0);
 });
 
-// ---- G2. The family row is per-task: absent when no family has >=2 members present ----
-test('G2: a task with fewer than two members of any family shows no family row', async ({ page }) => {
-  await page.goto('/#spinning-cube'); // only Opus 4.8 present (a single family member)
-  await page.locator('.card').first().waitFor();
-  expect(await page.locator('.family-btn').count()).toBe(0);
-  expect(await page.locator('.family-row').count()).toBe(0);
+// ---- G2. Counts derive from the canonical records: removing 系列 (never a facet) changed no count ----
+test('G2: all-Any chip counts equal the per-value manifest tallies and each facet row sums to the task total', async ({ page }) => {
+  await page.goto(TASK);
+  await page.locator('.chip-count').first().waitFor();
+  const shown = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('.controls .facet')].map(f => [
+    f.querySelector('.facet-label').textContent,
+    Object.fromEntries([...f.querySelectorAll('.chip-toggle')].map(b =>
+      [b.childNodes[0].textContent.trim(), Number(b.querySelector('.chip-count').textContent)])),
+  ])));
+  const tally = (key) => _savSubs.reduce((m, s) => { const k = key(s) || '—'; m[k] = (m[k] || 0) + 1; return m; }, {});
+  expect(shown['工具']).toEqual(tally(s => _clientLabel(s.client)));
+  expect(shown['模型']).toEqual(tally(s => s.model));
+  expect(shown['推理強度']).toEqual(tally(s => s.effort));
+  for (const row of ['工具', '模型', '推理強度']) {
+    expect(Object.values(shown[row]).reduce((a, b) => a + b, 0), `${row} partitions every record`).toBe(TOTAL);
+  }
+  await expect(page.locator('.filter-count')).toHaveText(`顯示 ${TOTAL}/${TOTAL}`);
+});
+
+// ---- M. 工具 / 模型 / 推理強度 each filter; same-facet multi-select ORs; cross-facet ANDs (P0 semantics) ----
+test('M: each of 工具/模型/推理強度 filters; same-facet multi-select is OR; cross-facet is AND', async ({ page }) => {
+  await page.setViewportSize({ width: 1100, height: 900 });
+  await page.goto(TASK);
+  const count = page.locator('.filter-count');
+  await page.locator('.chip-toggle').first().waitFor();
+
+  await (await chipToggle(page, 'Codex')).click();                                   // 工具
+  await expect(count).toHaveText(`顯示 ${clientCount('Codex')}/${TOTAL}`);
+  await (await chipToggle(page, 'Codex')).click();                                   // last value → Any
+  await expect(count).toHaveText(`顯示 ${TOTAL}/${TOTAL}`);
+
+  await (await chipToggle(page, 'high')).click();                                    // 推理強度
+  await expect(count).toHaveText(`顯示 ${effortCount('high')}/${TOTAL}`);
+  await (await chipToggle(page, 'high')).click();
+
+  await (await chipToggle(page, 'GPT-6 Astra')).click();                             // 模型
+  await expect(count).toHaveText(`顯示 ${modelCount('GPT-6 Astra')}/${TOTAL}`);
+  await (await chipToggle(page, 'Grok 4.7')).click();                                // same-facet OR
+  await expect(count).toHaveText(`顯示 ${modelCount('GPT-6 Astra') + modelCount('Grok 4.7')}/${TOTAL}`);
+  await (await chipToggle(page, 'max')).click();                                     // cross-facet AND
+  const expected = _savSubs.filter(s => ['GPT-6 Astra', 'Grok 4.7'].includes(s.model) && s.effort === 'max');
+  expect(expected.length).toBeGreaterThan(0);                                        // non-vacuous intersection …
+  expect(expected.length).toBeLessThan(modelCount('GPT-6 Astra') + modelCount('Grok 4.7')); // … that actually narrows
+  await expect(count).toHaveText(`顯示 ${expected.length}/${TOTAL}`);
+  expect((await page.locator('.card:not([hidden]) .model').allTextContents()).sort())   // the cards, not just the counter
+    .toEqual(expected.map(s => s.model).sort());
+});
+
+// ---- N. Only: quiet but ALWAYS present (OD-3 禁 hover-only / §5.3 常駐可見), brighter on hover/focus,
+//          keyboard-operable, isolates one facet ----
+test('N: Only stays present at reduced weight, brightens on chip hover/keyboard focus, and works from the keyboard', async ({ page }) => {
+  await page.setViewportSize({ width: 1100, height: 900 });
+  await page.goto(TASK);
+  await page.locator('.chip-only').first().waitFor();
+  await page.mouse.move(0, 0);
+
+  // structure: every chip = sibling toggle + Only in a non-interactive wrapper; Only named 「只看 {值}」
+  const chips = await page.evaluate(() => [...document.querySelectorAll('.controls .chip')].map(c => ({
+    kids: [...c.children].map(k => k.tagName + '.' + k.className),
+    label: c.querySelector('.chip-toggle').childNodes[0].textContent.trim(),
+    onlyName: c.querySelector('.chip-only') && c.querySelector('.chip-only').getAttribute('aria-label'),
+    nested: c.querySelectorAll('button button').length,
+  })));
+  expect(chips.length).toBeGreaterThan(0);
+  for (const c of chips) {
+    expect(c.kids).toEqual(['BUTTON.chip-toggle', 'BUTTON.chip-only']);
+    expect(c.onlyName).toBe('只看 ' + c.label);
+    expect(c.nested).toBe(0);
+  }
+
+  // WCAG contrast of the Only glyph / the label, each composited over the chip's own opaque surface
+  const look = (label) => page.evaluate((label) => {
+    const parse = (c) => { const p = c.match(/rgba?\(([^)]+)\)/)[1].split(/\s*,\s*/).map(Number); return [p[0], p[1], p[2], p[3] ?? 1]; };
+    const over = (fg, bg) => [0, 1, 2].map(i => fg[i] * fg[3] + bg[i] * (1 - fg[3]));
+    const lum = (rgb) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(rgb[0]) + 0.7152 * f(rgb[1]) + 0.0722 * f(rgb[2]); };
+    const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+    const btn = [...document.querySelectorAll('.chip-toggle')].find(b => b.childNodes[0].textContent.trim() === label);
+    const chip = btn.parentElement, only = chip.querySelector('.chip-only');
+    const os = getComputedStyle(only), bg = parse(getComputedStyle(chip).backgroundColor);
+    const r = only.getBoundingClientRect();
+    return {
+      shown: os.display !== 'none' && os.visibility === 'visible' && Number(os.opacity) === 1,
+      w: r.width, h: r.height,
+      onlyRatio: ratio(over(parse(os.color), bg), bg),
+      labelRatio: ratio(over(parse(getComputedStyle(btn).color), bg), bg),
+      sepAlpha: parse(os.borderLeftColor)[3],
+    };
+  }, label);
+
+  const rest = await look('Codex');
+  expect(rest.shown).toBe(true);                                // never hidden — not hover-only
+  expect(rest.w).toBeGreaterThanOrEqual(24);                    // WCAG 2.5.8 target
+  expect(rest.h).toBeGreaterThanOrEqual(24);
+  expect(rest.onlyRatio).toBeGreaterThanOrEqual(3);             // WCAG 1.4.11 non-text contrast, even at rest
+  expect(rest.onlyRatio).toBeLessThan(rest.labelRatio);         // secondary to the chip label
+  expect(rest.sepAlpha).toBe(0);                                // no separator line at rest (less noise)
+
+  await (await chipToggle(page, 'Codex')).hover();              // hovering the chip (its label) …
+  const hovered = await look('Codex');
+  expect(hovered.onlyRatio).toBeGreaterThan(rest.onlyRatio);    // … brightens the Only glyph
+  expect(hovered.sepAlpha).toBeGreaterThan(0);                  // … and draws its separator
+  await page.mouse.move(0, 0);
+
+  // keyboard: Tab-focus the toggle (focus-visible) → its Only brightens; Tab → Only; Enter isolates; Enter again NO-OP
+  await (await chipToggle(page, 'Codex')).focus();
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Tab');
+  expect((await look('Codex')).onlyRatio).toBeGreaterThan(rest.onlyRatio);
+  await page.keyboard.press('Tab');
+  expect(await page.evaluate(() => document.activeElement.getAttribute('aria-label'))).toBe('只看 Codex');
+  await (await chipToggle(page, 'Claude')).click();             // client = {Claude} first, so Only must REPLACE it
+  await page.locator('.chip-only[aria-label="只看 Codex"]').focus();
+  await page.keyboard.press('Enter');
+  const pressedClients = () => page.locator('.facet', { has: page.locator('.facet-label', { hasText: '工具' }) })
+    .locator('.chip-toggle[aria-pressed="true"]').evaluateAll(bs => bs.map(b => b.childNodes[0].textContent.trim()));
+  expect(await pressedClients()).toEqual(['Codex']);
+  await expect(page.locator('.filter-count')).toHaveText(`顯示 ${clientCount('Codex')}/${TOTAL}`);
+  await page.keyboard.press('Enter');                           // already isolated → NO-OP, not a toggle back to Any
+  expect(await pressedClients()).toEqual(['Codex']);
+  await expect(page.locator('.filter-count')).toHaveText(`顯示 ${clientCount('Codex')}/${TOTAL}`);
+
+  // touch / narrow: no hover to reveal it, so the Only tail is a 34px target with its separator at rest
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.mouse.move(0, 0);
+  const touch = await look('Cursor');
+  expect(touch.shown).toBe(true);
+  expect(touch.w).toBeGreaterThanOrEqual(34);
+  expect(touch.h).toBeGreaterThanOrEqual(34);
+  expect(touch.sepAlpha).toBeGreaterThan(0);
+});
+
+// ---- O. Selected state is unmistakable (fill + ✓ + whole-chip border); hover is outline-only; counts secondary ----
+test('O: a selected chip shows fill + ✓ + chip-wide border; hover is outline-only; counts are muted, smaller, ·-separated', async ({ page }) => {
+  await page.setViewportSize({ width: 1100, height: 900 });
+  await page.goto(TASK);
+  await page.locator('.chip-toggle').first().waitFor();
+  const accent = await page.evaluate(() => {
+    const p = document.createElement('span'); p.style.color = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+    document.body.appendChild(p); const v = getComputedStyle(p).color; p.remove(); return v;
+  });
+  const st = (label) => page.evaluate((label) => {
+    const btn = [...document.querySelectorAll('.chip-toggle')].find(b => b.childNodes[0].textContent.trim() === label);
+    const cs = getComputedStyle(btn), cc = getComputedStyle(btn.parentElement);
+    const count = btn.querySelector('.chip-count'), ks = getComputedStyle(count);
+    return {
+      pressed: btn.getAttribute('aria-pressed'), fill: cs.backgroundColor, text: cs.color,
+      check: getComputedStyle(btn, '::before').visibility, chipBorder: cc.borderTopColor,
+      labelSize: parseFloat(cs.fontSize), countSize: parseFloat(ks.fontSize), countColor: ks.color,
+      countText: count.textContent, countSep: getComputedStyle(count, '::before').content,
+    };
+  }, label);
+
+  await (await chipToggle(page, 'Codex')).click();
+  await page.mouse.move(0, 0);                                  // measure the selected state, not hover
+  const sel = await st('Codex');
+  const un = await st('Claude');
+  expect(sel.pressed).toBe('true');
+  expect(sel.fill).toBe(accent);                                // solid emerald fill …
+  expect(sel.check).toBe('visible');                            // … plus ✓ (never colour alone)
+  expect(sel.chipBorder).toBe(accent);                          // … and the whole chip (incl. Only tail) reads selected
+  expect(un.pressed).toBe('false');
+  expect(un.fill).not.toBe(accent);
+  expect(un.check).toBe('hidden');
+  expect(un.chipBorder).not.toBe(accent);
+
+  await (await chipToggle(page, 'Claude')).hover();             // hover an UNSELECTED chip
+  const hov = await st('Claude');
+  expect(hov.pressed).toBe('false');
+  expect(hov.chipBorder).toBe(accent);                          // hover cue = outline …
+  expect(hov.fill).not.toBe(accent);                            // … never the selected fill
+  expect(hov.check).toBe('hidden');                             // … never the ✓
+
+  // counts are metadata: smaller than the label, a different (muted) colour, '·'-separated, digits-only DOM text
+  expect(un.countSize).toBeLessThan(un.labelSize);
+  expect(un.countColor).not.toBe(un.text);
+  expect(un.countSep).toContain('·');
+  expect(un.countText).toMatch(/^\d+$/);
 });
 
 // ---- H. Faceted candidate counts (WS3): per-value availability under OTHER facets ----
@@ -376,67 +551,163 @@ test('H: faceted counts reflect other-facet constraints; a zero count never dese
   expect(snap.visible).toBe(`顯示 0/${TOTAL}`);
 });
 
-// ---- I. Active filter summary (WS3): derived removable tags, last→Any, collapse, reset ----
-test('I: active filter summary — removable constraints, × removes one (last→Any), collapse, reset clears', async ({ page }) => {
+// ---- I. 已篩選 summary (2026-11-24 Owner UX pass): only when active; value tokens; × removes one value
+//          (last → Any) and re-filters; ≥5 collapse; 清除全部 = the single Reset, clears EVERY facet;
+//          focus never drops to <body> while the row (and its buttons) disappears ----
+test('I: 已篩選 summary — only when active; × removes one value and re-filters; collapse; 清除全部 resets every facet', async ({ page }) => {
   await page.setViewportSize({ width: 1100, height: 900 });
   await page.goto(TASK);
   const summary = page.locator('.filter-summary');
+  const count = page.locator('.filter-count');
+  const clearAll = page.locator('.chip-action', { hasText: '清除全部' });
+  const tokens = () => page.locator('.summary-tag .summary-text').allTextContents();
+  const pressed = () => page.locator('.chip-toggle[aria-pressed="true"]')
+    .evaluateAll(bs => bs.map(b => b.childNodes[0].textContent.trim()));
+  const active = () => page.evaluate(() => ({
+    cls: document.activeElement.className,
+    label: document.activeElement.classList.contains('chip-toggle') ? document.activeElement.childNodes[0].textContent.trim() : null,
+  }));
   await page.locator('.chip-toggle').first().waitFor();
-  await expect(summary).toBeHidden();                         // all Any → no summary
+  await expect(summary).toBeHidden();                           // all Any → no summary …
+  await expect(clearAll).toBeHidden();                          // … and no standing reset control
 
-  const r = await page.evaluate(() => {
-    const tog = (t) => [...document.querySelectorAll('.chip-toggle')]
-      .find(b => b.childNodes[0].textContent.trim() === t).dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    const fam = (t) => [...document.querySelectorAll('.family-btn')]
-      .find(b => b.textContent.trim() === t).dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    const tags = () => [...document.querySelectorAll('.summary-tag .summary-text')].map(t => t.textContent);
-    const removeTag = (needle) => [...document.querySelectorAll('.summary-tag')]
-      .find(t => t.querySelector('.summary-text').textContent.includes(needle))
-      .querySelector('.summary-x').dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    const pressed = (label) => [...document.querySelectorAll('.chip-toggle')]
-      .find(b => b.childNodes[0].textContent.trim() === label).getAttribute('aria-pressed');
+  for (const v of ['Codex', 'GPT-6 Astra', 'max']) await (await chipToggle(page, v)).click();
+  await expect(summary).toBeVisible();
+  await expect(summary.locator('.summary-label')).toHaveText('已篩選');
+  expect(await tokens()).toEqual(['Codex', 'GPT-6 Astra', 'max']);  // value-only tokens, in facet order
+  expect(await page.locator('.summary-x').evaluateAll(xs => xs.map(x => x.getAttribute('aria-label'))))
+    .toEqual(['移除 工具：Codex', '移除 模型：GPT-6 Astra', '移除 推理強度：max']);   // facet kept in the accessible name
+  const n = (pred) => _savSubs.filter(pred).length;
+  await expect(count).toHaveText(`顯示 ${n(s => s.client === 'codex' && s.model === 'GPT-6 Astra' && s.effort === 'max')}/${TOTAL}`);
 
-    tog('Codex'); fam('Grok');                                // client {Codex} + model {Grok 4.5,4.6,4.7}
-    const afterSelect = tags();
-    removeTag('模型：Grok 4.6');                               // remove one model via its summary ×
-    const grok46pressed = pressed('Grok 4.6');
-    const afterRemoveOne = tags();
-    removeTag('工具：Codex');                                  // remove the only client → client back to Any
-    const codexPressed = pressed('Codex');
-    const afterRemoveLastClient = tags();
-    const countAfterRemove = document.querySelector('.filter-count').textContent; // removal re-applies the filter
-    const activeAfterRemove = document.activeElement.className;                   // focus must not fall to <body>
-    return { afterSelect, grok46pressed, afterRemoveOne, codexPressed, afterRemoveLastClient, countAfterRemove, activeAfterRemove };
-  });
-  expect(r.afterSelect).toEqual(['工具：Codex', '模型：Grok 4.5', '模型：Grok 4.6', '模型：Grok 4.7']);
-  expect(r.grok46pressed).toBe('false');                      // removing a summary tag unselects the main chip
-  expect(r.afterRemoveOne).toEqual(['工具：Codex', '模型：Grok 4.5', '模型：Grok 4.7']);
-  expect(r.codexPressed).toBe('false');
-  expect(r.afterRemoveLastClient).toEqual(['模型：Grok 4.5', '模型：Grok 4.7']); // client gone (Any), models remain
-  expect(r.countAfterRemove).toBe(`顯示 ${GROK45 + GROK47}/${TOTAL}`);                // removing Codex changed the visible result (not just the tags)
-  expect(r.activeAfterRemove).toBe('summary-x');              // focus moved to the next × (not lost to <body>)
+  // × on max → effort back to Any: the main chip unpresses and the RESULT widens (not just the tokens)
+  await page.locator('.summary-x[aria-label="移除 推理強度：max"]').click();
+  await expect(count).toHaveText(`顯示 ${n(s => s.client === 'codex' && s.model === 'GPT-6 Astra')}/${TOTAL}`);
+  expect(await tokens()).toEqual(['Codex', 'GPT-6 Astra']);
+  expect(await pressed()).toEqual(['Codex', 'GPT-6 Astra']);
+  expect((await active()).cls).toBe('summary-x');               // focus → the next ×
 
-  // collapse: >=5 model values collapse to a single "模型：N 項" tag, whose × clears the facet
-  const coll = await page.evaluate(() => {
-    const fam = (t) => [...document.querySelectorAll('.family-btn')]
-      .find(b => b.textContent.trim() === t).dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    fam('Grok'); fam('GPT-5.6');                              // >=5 model values → collapsed tag
-    const collapsedTags = [...document.querySelectorAll('.summary-tag .summary-text')].map(t => t.textContent);
-    [...document.querySelectorAll('.summary-tag')]            // click the collapsed × → clears the whole model facet
-      .find(t => /^模型：\d+ 項$/.test(t.querySelector('.summary-text').textContent))
-      .querySelector('.summary-x').dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    return {
-      collapsedTags,
-      afterCollapsedClear: [...document.querySelectorAll('.summary-tag .summary-text')].map(t => t.textContent),
-      modelsPressed: document.querySelectorAll('.chip-toggle[aria-pressed="true"]').length,
-    };
-  });
-  expect(coll.collapsedTags.some(t => /^模型：\d+ 項$/.test(t))).toBe(true);
-  expect(coll.afterCollapsedClear).toEqual([]);               // the collapsed × cleared the model facet (→ Any)
-  expect(coll.modelsPressed).toBe(0);
+  // remove the rest → row gone, all Any, focus lands on the removed value's chip (never <body>)
+  await page.locator('.summary-x[aria-label="移除 模型：GPT-6 Astra"]').click();
+  await page.locator('.summary-x[aria-label="移除 工具：Codex"]').click();
+  await expect(summary).toBeHidden();
+  await expect(count).toHaveText(`顯示 ${TOTAL}/${TOTAL}`);
+  expect(await active()).toEqual({ cls: 'chip-toggle', label: 'Codex' });
 
-  await page.locator('.chip-action', { hasText: '重設篩選' }).click();
-  await expect(summary).toBeHidden();                         // reset clears the summary
+  // collapse: ≥5 selected models → one 「模型：5 項」 token; its × clears the whole model facet
+  for (const v of ['GPT-6 Astra', 'GPT-6 Luna', 'GPT-6 Sol', 'GPT-6.1 Sol', 'Grok 4.7']) await (await chipToggle(page, v)).click();
+  expect(await tokens()).toEqual(['模型：5 項']);
+  await page.locator('.summary-x').click();
+  await expect(summary).toBeHidden();
+  expect(await pressed()).toEqual([]);
+
+  // 清除全部 resets ALL three dimensions at once
+  for (const v of ['Grok', 'Grok 4.7', 'high']) await (await chipToggle(page, v)).click();
+  expect(await pressed()).toEqual(['Grok', 'Grok 4.7', 'high']);
+  await clearAll.click();
+  expect(await pressed()).toEqual([]);
+  await expect(summary).toBeHidden();
+  await expect(count).toHaveText(`顯示 ${TOTAL}/${TOTAL}`);
+  expect((await active()).cls).toBe('chip-toggle');             // focus moved to the first chip, not <body>
+});
+
+// ---- Q. Zero results (a legal cross-facet conflict, §3.1/E6): selections stay, the 已篩選 row and 清除全部
+//          stay reachable, and an empty-state message explains — no silent deselection ----
+test('Q: a zero-result combination keeps its selections, explains itself, and 清除全部 recovers', async ({ page }) => {
+  await page.setViewportSize({ width: 1100, height: 900 });
+  await page.goto(TASK);
+  const empty = page.locator('.filter-empty');
+  await page.locator('.chip-toggle').first().waitFor();
+  await expect(empty).toBeHidden();                             // never shown while results exist
+  expect(clientCount('Cursor')).toBeGreaterThan(0);             // precondition: both values exist …
+  expect(effortCount('high')).toBeGreaterThan(0);
+  expect(clientEffortCount('Cursor', 'high')).toBe(0);          // … but never together
+  await (await chipToggle(page, 'Cursor')).click();
+  await (await chipToggle(page, 'high')).click();
+  await expect(page.locator('.filter-count')).toHaveText(`顯示 0/${TOTAL}`);
+  expect(await page.locator('.card:not([hidden])').count()).toBe(0);
+  await expect(empty).toBeVisible();
+  await expect(empty).toContainText('沒有符合目前篩選條件的結果');
+  expect(await page.locator('.chip-toggle[aria-pressed="true"]').evaluateAll(bs => bs.map(b => b.childNodes[0].textContent.trim())))
+    .toEqual(['Cursor', 'high']);                              // not silently deselected
+  await expect(page.locator('.filter-summary')).toBeVisible();
+  const clearAll = page.locator('.chip-action', { hasText: '清除全部' });
+  await expect(clearAll).toBeVisible();
+  await clearAll.click();
+  await expect(empty).toBeHidden();
+  await expect(page.locator('.filter-count')).toHaveText(`顯示 ${TOTAL}/${TOTAL}`);
+});
+
+// ---- R. Sorting is independent of filter state; the direction toggle still reverses ----
+test('R: sort key/direction change only the order — filtered set, selections and count are untouched', async ({ page }) => {
+  await page.setViewportSize({ width: 1100, height: 900 });
+  await page.goto(TASK);
+  await page.locator('.chip-toggle').first().waitFor();
+  await (await chipToggle(page, 'Codex')).click();
+  const snap = () => page.evaluate(() => ({
+    order: [...document.querySelectorAll('.grid .card:not([hidden])')]
+      .map(c => c.querySelector('.model').textContent + ' · ' + c.querySelector('.badge.effort').textContent),
+    pressed: [...document.querySelectorAll('.chip-toggle[aria-pressed="true"]')].map(b => b.childNodes[0].textContent.trim()),
+    count: document.querySelector('.filter-count').textContent,
+  }));
+  const a = await snap();
+  expect(a.order.length).toBe(clientCount('Codex'));
+  expect(new Set(a.order).size).toBe(a.order.length);          // distinct name keys → reversal must be exact
+  await page.locator('.dir-btn').click();
+  await expect(page.locator('.dir-btn')).toHaveAttribute('aria-label', /遞減/);
+  const b = await snap();
+  expect(b.order).toEqual([...a.order].reverse());
+  expect(b.pressed).toEqual(a.pressed);
+  expect(b.count).toBe(a.count);
+  await page.locator('.sort-select').selectOption('time');
+  const c = await snap();
+  expect([...c.order].sort()).toEqual([...a.order].sort());    // same membership under another key
+  expect(c.pressed).toEqual(a.pressed);
+  expect(c.count).toBe(a.count);
+  await (await chipToggle(page, 'max')).click();                // filtering after sorting keeps sorted order
+  const d = await snap();
+  expect(d.order).toEqual(c.order.filter(x => x.endsWith(' · max')));
+  expect(d.order.length).toBeGreaterThan(0);
+});
+
+// ---- S. Layout: ≥481px each facet's chips start on the label's line in one aligned column shared with the
+//          sort control (hanging indent); ≤480px the label sits above; never any horizontal overflow ----
+test('S: labels align with their rows (aligned content column ≥481px, stacked ≤480px); no horizontal overflow', async ({ page }) => {
+  for (const width of [1440, 1024, 768, 390, 320]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('about:blank');                             // a same-URL hash goto would NOT reload (state would leak)
+    await page.goto(TASK);
+    await page.locator('.controls .chip').first().waitFor();
+    for (const v of ['Codex', 'GPT-6 Astra', 'max']) await (await chipToggle(page, v)).click();   // 已篩選 row present too
+    const r = await page.evaluate(() => {
+      const rect = (e) => e.getBoundingClientRect();
+      const rows = [...document.querySelectorAll('.controls .facet, .controls .filter-summary')].map(row => {
+        const label = row.querySelector('.facet-label, .summary-label');
+        const first = row.querySelector('.chip, .summary-tag');
+        return { label: label ? label.textContent : null, labelRight: label && rect(label).right,
+          labelBottom: label && rect(label).bottom, firstTop: first && rect(first).top, firstLeft: first && rect(first).left };
+      });
+      const de = document.documentElement;
+      return {
+        rows, sortLeft: rect(document.querySelector('.sort-select')).left,
+        pageOverflow: de.scrollWidth > de.clientWidth,
+        controlsOverflow: [...document.querySelectorAll('.controls *')].some(e => rect(e).right > window.innerWidth + 0.5),
+      };
+    });
+    expect(r.pageOverflow, `${width}px page overflow`).toBe(false);
+    expect(r.controlsOverflow, `${width}px controls overflow`).toBe(false);
+    expect(r.rows.map(x => x.label), `${width}px rows`).toEqual(['工具', '模型', '推理強度', '已篩選']);
+    for (const x of r.rows) {
+      if (width > 480) {
+        expect(x.firstTop, `${width}px ${x.label}: first item on the label's line`).toBeLessThan(x.labelBottom);
+        expect(x.firstLeft, `${width}px ${x.label}: content right of the label`).toBeGreaterThan(x.labelRight);
+        expect(Math.abs(x.firstLeft - r.rows[0].firstLeft), `${width}px ${x.label}: one aligned column`).toBeLessThan(1);
+      } else {
+        expect(x.firstTop, `${width}px ${x.label}: label above its items`).toBeGreaterThanOrEqual(x.labelBottom - 1);
+      }
+    }
+    if (width > 480) expect(Math.abs(r.sortLeft - r.rows[0].firstLeft), `${width}px sort aligned with chips`).toBeLessThan(1);
+  }
 });
 
 // ---- J. WS4-A: selected-chip focus ring flips white→dark on the emerald fill ----

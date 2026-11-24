@@ -80,17 +80,8 @@ export function reset(state) {
   return out;
 }
 
-// WS3 additive helper（非 P0 transition 的改寫）：把一組值「聯集」進某 facet 的 Subset
-// ——Model Family 快捷的 bulk-select（OD-WS3-4）用：選取整個系列＝把目前在場的成員加入
-// 既有選擇、保留跨系列／個別多選、永不移除、去重。Any → [values]；空輸入為 NO-OP（同參照）。
-// 產出仍是合法的 Any|Subset(非空) 狀態，不動既有 toggle/only/reset/visible 語義。
-export function addToFacet(state, key, values) {
-  if (!values || values.length === 0) return state;
-  const cur = state[key] === 'any' ? [] : state[key];
-  const merged = [...cur];
-  for (const v of values) if (!merged.includes(v)) merged.push(v);
-  return merged.length ? { ...state, [key]: merged } : state;
-}
+// （WS3 的 addToFacet——「系列」快捷的 bulk-union——已隨 2026-11-24 Owner UX pass 移除「系列」列一併刪除：
+//  它唯一的呼叫端就是該列；toggle/only/reset/visible 的 P0 語義不受影響。）
 
 // WS3 additive：清空某個 facet（回 Any）。Active Filter Summary 的「折疊標籤一次清除整列」用；
 // 個別移除仍走 toggle（移除單值、最後一項折疊回 Any）。NO-OP（已是 Any）回同參照。純函式。

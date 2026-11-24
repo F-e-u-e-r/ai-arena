@@ -1,10 +1,8 @@
 // Any / Explicit Subset 的篩選與排序純邏輯抽到 filter-core（無 DOM 副作用，與 Node test runner 共用）。
 import {
-  facetValues, initState, isSelected,
-  toggle, only, reset, addToFacet, clearFacet, candidateCounts, visible, compareText, sortedSubs
-} from './filter-core.mjs?v=11';
-// WS3 Model Family — canonical registry (pure, DOM-free; OD-WS3 contract).
-import { familiesInTask } from './model-registry.mjs?v=11';
+  MISSING, facetValues, initState, isSelected,
+  toggle, only, reset, clearFacet, candidateCounts, visible, compareText, sortedSubs
+} from './filter-core.mjs?v=12';
 
 'use strict';
 
@@ -203,9 +201,14 @@ function buildCompareControls(subs, cardById) {
 
   const count = el('span', 'filter-count');
   count.setAttribute('aria-live', 'polite');
+  // 零結果（跨 facet 無交集，合法狀態 §3.1/E6）時的說明；不回滾、不取消任何選取。
+  // 不設 aria-live：count 已朗讀「顯示 0/N」，避免同一變更重複播報。
+  const empty = el('p', 'filter-empty', '沒有符合目前篩選條件的結果。可移除上方「已篩選」中的部分條件，或按「清除全部」。');
+  empty.hidden = true;
   const updateCount = () => {
     const shown = subs.filter(sub => !cardById.get(sub.id).hidden).length;
     count.textContent = `顯示 ${shown}/${subs.length}`;
+    empty.hidden = shown !== 0;
   };
   // 隱藏卡片前，若焦點還在卡內（例如被 focus 的 iframe），先把焦點移到觸發的按鈕，避免焦點掉到 body。
   const setVisible = (id, isVisible, focusFallback) => {
@@ -214,10 +217,20 @@ function buildCompareControls(subs, cardById) {
     card.hidden = !isVisible;
   };
   // filter 只切換 hidden（不重排／不重建／不重載 demo，PR #24 不變量）；可見性委派給 filter-core。
-  // WS3 Active Filter Summary（OD WS3-C）：衍生自 filterState 的「已套用」摘要（不另立狀態來源）。
+  // 「已篩選」列（WS3 Active Filter Summary，OD WS3-C；2026-11-24 Owner UX pass 改版）：只在有篩選時出現——
+  // 每個已選值一個可移除 token ＋ 列尾「清除全部」。「清除全部」就是唯一的 Reset（§2.2c：全部回 Any；
+  // §5.4：單一 Reset），併入此列、不另設常駐按鈕——全 Any 時 Reset 本就是 NO-OP，隨列隱藏。
+  // 全部衍生自 filterState（不另立狀態來源）。
   const summary = el('div', 'filter-summary');
-  summary.setAttribute('aria-live', 'polite');
   summary.hidden = true;
+  summary.append(el('span', 'summary-label', '已篩選'));
+  const tokens = el('div', 'summary-tokens');
+  tokens.setAttribute('aria-live', 'polite');
+  const resetBtn = el('button', 'chip-action', '清除全部');
+  resetBtn.type = 'button';
+  const summaryBody = el('div', 'summary-body');
+  summaryBody.append(tokens, resetBtn);
+  summary.append(summaryBody);
   const applyFilter = (focusFallback) => {
     subs.forEach(sub => setVisible(sub.id, visible(sub, filterState, facetKeys), focusFallback));
     updateCount();
@@ -242,72 +255,49 @@ function buildCompareControls(subs, cardById) {
       if (span.parentElement) span.parentElement.title = n + ' 個候選（目前其他篩選條件下）';
     }
   };
-  // WS3 Active Filter Summary：把目前「非 Any」的約束畫成可移除標籤——× 移除個別值（最後一項
-  // 回 Any），某列選取 ≥5 時折疊成「列：N 項」單一清除（避免大量清單，OD WS3-C）。全 Any 時整列
-  // 隱藏。純衍生自 filterState（不另立狀態）；移除後把焦點移到下一個 × 或重設鈕（鍵盤不丟焦點）。
+  // 「已篩選」token：× 移除個別值（最後一項回 Any），某列選取 ≥5 時折疊成「列：N 項」單一清除（避免
+  // 大量清單，OD WS3-C）。token 只顯示值本身——三列值域互不重疊（工具名／模型名／強度），列名放在 ×
+  // 的 accessible name 與 title；唯缺值 sentinel「—」單獨顯示無意義，才帶上列名。純衍生自 filterState。
+  // 移除後焦點移到第一個 ×；若已無任何篩選（整列隱藏），移到被移除值所在列的 chip（鍵盤不丟焦點到 <body>）。
   const COLLAPSE_AT = 5;
+  const toggleFor = (key, value) =>
+    toggleBtns.find(t => t.key === key && (value === undefined || t.value === value)).btn;
   const renderSummary = () => {
-    summary.innerHTML = '';
+    tokens.innerHTML = '';
     const active = FILTER_FACETS.filter(facet => filterState[facet.key] !== 'any');
-    if (!active.length) { summary.hidden = true; return; }
-    summary.hidden = false;
-    summary.append(el('span', 'summary-label', '已套用：'));
-    const refocus = () => { (summary.querySelector('.summary-x') || resetBtn).focus(); };
-    const makeTag = (text, onRemove, removeLabel) => {
+    summary.hidden = active.length === 0;
+    const makeTag = (text, onRemove, removeLabel, fallback) => {
       const tag = el('span', 'summary-tag');
       tag.append(el('span', 'summary-text', text));
       const x = el('button', 'summary-x', '×');
       x.type = 'button';
       x.setAttribute('aria-label', removeLabel);
       x.title = removeLabel;
-      x.addEventListener('click', () => { onRemove(); renderChipStates(); applyFilter(x); refocus(); });
+      x.addEventListener('click', () => {
+        onRemove(); renderChipStates(); applyFilter(x);
+        (tokens.querySelector('.summary-x') || fallback).focus();
+      });
       tag.append(x);
-      summary.append(tag);
+      tokens.append(tag);
     };
     active.forEach(facet => {
       const vals = filterState[facet.key];
       if (vals.length >= COLLAPSE_AT) {
         makeTag(facet.label + '：' + vals.length + ' 項',
           () => { filterState = clearFacet(filterState, facet.key); },
-          '清除' + facet.label + '的全部 ' + vals.length + ' 項篩選');
+          '清除' + facet.label + '的全部 ' + vals.length + ' 項篩選',
+          toggleFor(facet.key));
       } else {
         vals.forEach(value => {
           const disp = facetDisplay(facet.key, value);
-          makeTag(facet.label + '：' + disp,
+          makeTag(value === MISSING ? facet.label + '：' + disp : disp,
             () => { filterState = toggle(filterState, facet.key, value); },
-            '移除 ' + facet.label + '：' + disp);
+            '移除 ' + facet.label + '：' + disp,
+            toggleFor(facet.key, value));
         });
       }
     });
   };
-
-  // --- Model Family 快速選取（WS3，OD-WS3-4）---
-  // 只對「本 task 實際有 ≥2 成員在場」的系列顯示（單一成員與個別 chip 重複、徒增密度）。
-  // 快捷＝bulk-select convenience：把該系列目前在場成員「聯集」進 model facet（保留跨系列／
-  // 個別多選、展開為固定 Explicit Subset、未來新模型不自動加入、不新增持久 family 狀態）。
-  const families = familiesInTask(subs);
-  if (families.length) {
-    const famRow = el('div', 'facet family-row');
-    famRow.append(el('span', 'facet-label', '系列'));
-    const famGroup = el('div', 'family-selects');
-    famGroup.setAttribute('role', 'group');
-    famGroup.setAttribute('aria-label', '快速選取模型系列');
-    families.forEach(fam => {
-      const btn = el('button', 'family-btn', fam.label);
-      btn.type = 'button';
-      const desc = '選取所有 ' + fam.label + ' 模型（' + fam.values.join('、') + '）';
-      btn.title = desc;
-      btn.setAttribute('aria-label', desc);
-      btn.addEventListener('click', () => {
-        filterState = addToFacet(filterState, 'model', fam.values);  // 聯集進 model Subset
-        renderChipStates();
-        applyFilter(btn);
-      });
-      famGroup.append(btn);
-    });
-    famRow.append(famGroup);
-    controls.append(famRow);
-  }
 
   FILTER_FACETS.forEach(facet => {
     const values = facetValues(subs, facet.key);
@@ -360,24 +350,25 @@ function buildCompareControls(subs, cardById) {
     controls.append(row);
   });
 
-  // 控制列：單一 Reset（取代舊「全選／全不選」）＋ 可見數 ＋ 提示（§5.4）。
-  const actions = el('div', 'filter-actions');
-  const resetBtn = el('button', 'chip-action', '重設篩選');
-  resetBtn.type = 'button';
+  // 「清除全部」= 單一 Reset（取代舊「全選／全不選」，§2.2c）。按下後「已篩選」列（含本鈕）隨即隱藏，
+  // 故把焦點移到第一顆 chip，避免焦點掉到 <body>。
   resetBtn.addEventListener('click', () => {
     filterState = reset(filterState);        // §2.2c：全部回 Any
     renderChipStates();
     applyFilter(resetBtn);
+    toggleBtns[0].btn.focus();
   });
-  // 一行 compact legend（§5.4 提示文字擴充）：明確標示「點名稱＝複選、◎＝只看此項且不影響其他列」，
-  // 讓 Only 的 ◎ 不再只靠 icon／tooltip 被發現；末段沿用原跨 facet AND 提示精神。
+  // 底列：可見數 ＋ 一行 compact legend（§5.4 提示文字擴充）：明確標示「點名稱＝複選、◎＝只看此項且
+  // 不影響其他列」，讓 Only 的 ◎ 不只靠 icon／tooltip 被發現；末段沿用原跨 facet AND 提示精神。
+  const actions = el('div', 'filter-actions');
   const hint = el('span', 'filter-hint');
   hint.append('點名稱可複選 · ');
   hint.append(el('span', 'legend-only', '◎'));
   hint.append(' 只看此項（不影響其他列）· 不同列的條件須同時符合');
-  actions.append(resetBtn, count, hint);
-  controls.append(summary);   // WS3「已套用」摘要（放在 facet 與 actions 之間；全 Any 時隱藏）
+  actions.append(count, hint);
+  controls.append(summary);   // 「已篩選」列（放在 facet 與底列之間；全 Any 時隱藏）
   controls.append(actions);
+  controls.append(empty);     // 零結果說明（僅可見數為 0 時顯示）
 
   updateCount();
   renderCounts();   // WS3：初始就填入 faceted 候選數（全 Any → 各值的原始可用數）
