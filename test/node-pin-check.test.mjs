@@ -176,6 +176,9 @@ test('NP-7: the repository .node-version itself parses and classifies against th
   // 只驗格式與分類器對真實釘住值可用；真實的「是否落後」由排程 workflow 以官方來源判定（網路相依，不在離線範圍）。
   const pinned = parsePinned(readFileSync(new URL('../.node-version', import.meta.url), 'utf8'));
   assert.match(pinned, /^22\.\d+\.\d+$/, 'approved line is Node 22 (see test/ci-config.test.mjs CI-1)');
-  const r = classifyPin({ pinned, index: INDEX, schedule: SCHEDULE, today: TODAY });
+  // 快照凍結於 TODAY，之後的官方 patch 不在 INDEX 內；例行維護（只改 .node-version 一行）不得因此要求改測試，故釘住值不在快照時
+  // 補一列合成釋出再分類。「不在清單 → 丟錯」由 NP-6 驗證；真實版本是否存在 / 是否最新由活體 check-node-pin.mjs 與 setup-node 判定。
+  const index = INDEX.some((x) => x.version === `v${pinned}`) ? INDEX : [{ version: `v${pinned}`, date: TODAY, security: false, lts: 'Jod' }, ...INDEX];
+  const r = classifyPin({ pinned, index, schedule: SCHEDULE, today: TODAY });
   assert.ok(['current', 'patch-drift'].includes(r.category), 'a real pin on the approved line classifies without throwing');
 });
