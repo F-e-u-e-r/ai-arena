@@ -5,7 +5,7 @@ Portfolio stay decoupled; this file is the shared reference, copied by hand when
 changes. The source of truth for the live values is `:root` in `assets/style.css`; this doc
 records the values, their provenance, and the decisions behind them.
 
-Aligns Arena **to** the Portfolio brand (`github.com/F-e-u-e-r/portfolio`, visual language
+Aligns Arena **to** the Portfolio brand (`github.com/S-E-C-C/portfolio`, visual language
 FROZEN). Arena is Build Stream row 4 + a Knowledge-graph node in Portfolio, so the tie is real,
 not cosmetic. WS4 never modifies the Portfolio repo.
 

@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         Submissions themselves go in via pull request — see
-        [CONTRIBUTING.md](https://github.com/F-e-u-e-r/ai-arena/blob/main/CONTRIBUTING.md).
+        [CONTRIBUTING.md](https://github.com/S-E-C-C/ai-arena/blob/main/CONTRIBUTING.md).
         This form is for proposing a **new task** for the gallery.
   - type: textarea
     id: task

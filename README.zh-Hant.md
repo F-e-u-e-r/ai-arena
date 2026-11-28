@@ -2,7 +2,7 @@
 
 **同一個 prompt 的 AI 輸出並排比較——跨模型、思考強度與 client，附時間／token／成本指標。**
 
-![status](https://img.shields.io/badge/status-LIVE-2ee6a6) [![version](https://img.shields.io/badge/version-v0.1.0-orange)](https://github.com/F-e-u-e-r/ai-arena/releases/tag/v0.1.0) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) · [線上 gallery →](https://f-e-u-e-r.github.io/ai-arena/) · [English](README.md) · 繁體中文
+![status](https://img.shields.io/badge/status-LIVE-2ee6a6) [![version](https://img.shields.io/badge/version-v0.1.0-orange)](https://github.com/S-E-C-C/ai-arena/releases/tag/v0.1.0) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) · [線上 gallery →](https://s-e-c-c.github.io/ai-arena/) · [English](README.md) · 繁體中文
 
 AI Arena 是一個靜態展示網站，用來比較不同 AI 模型與不同思考強度設定在同一個任務上的輸出結果。
 
@@ -89,7 +89,7 @@ tasks/spinning-cube/openai-gpt-high/
 }
 ```
 
-`client` 是用來產生輸出的工具，例如 `claude-code`、`codex`、`opencode`、`kiro`、`cursor` 或 `api`。`skills` 與 `subagents` 記錄這次執行的方式：執行時掛載的 skills / 指示包，以及用來 cross-check 產出的 sub-agent 模型——填 `Nil` 表示明確未使用，不確定就省略該欄位（顯示為 —）。`generatedAt` 會以 UTC 顯示在 GitHub author 連結前，例如 `2026-07-02 18:00 @F-e-u-e-r`。更多 metrics 與成本細節請見 [CONTRIBUTING.zh-Hant.md](CONTRIBUTING.zh-Hant.md)。
+`client` 是用來產生輸出的工具，例如 `claude-code`、`codex`、`opencode`、`kiro`、`cursor` 或 `api`。`skills` 與 `subagents` 記錄這次執行的方式：執行時掛載的 skills / 指示包，以及用來 cross-check 產出的 sub-agent 模型——填 `Nil` 表示明確未使用，不確定就省略該欄位（顯示為 —）。`generatedAt` 會以 UTC 顯示在 GitHub author 連結前，例如 `2026-07-02 18:00 @S-E-C-C`。更多 metrics 與成本細節請見 [CONTRIBUTING.zh-Hant.md](CONTRIBUTING.zh-Hant.md)。
 
 未知欄位會被 build 擋下（拼錯會直接失敗，而不是被無聲忽略）。想記錄新種類的比較 metadata，請在同一個 PR 把欄位加進 `schema/submission.schema.json`——`skills` 與 `subagents` 就是這樣加入的。
 
