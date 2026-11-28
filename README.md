@@ -2,7 +2,7 @@
 
 **Side-by-side AI outputs for the same prompt — across model, effort and client, with time/token/cost metrics.**
 
-![status](https://img.shields.io/badge/status-LIVE-2ee6a6) [![version](https://img.shields.io/badge/version-v0.1.0-orange)](https://github.com/F-e-u-e-r/ai-arena/releases/tag/v0.1.0) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) · [Live gallery →](https://f-e-u-e-r.github.io/ai-arena/) · English · [繁體中文](README.zh-Hant.md)
+![status](https://img.shields.io/badge/status-LIVE-2ee6a6) [![version](https://img.shields.io/badge/version-v0.1.0-orange)](https://github.com/S-E-C-C/ai-arena/releases/tag/v0.1.0) [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE) · [Live gallery →](https://s-e-c-c.github.io/ai-arena/) · English · [繁體中文](README.zh-Hant.md)
 
 AI Arena is a static gallery for comparing outputs from different AI models and thinking-effort settings on the same task.
 
@@ -89,7 +89,7 @@ tasks/spinning-cube/openai-gpt-high/
 }
 ```
 
-`client` is the tool used to generate the output, such as `claude-code`, `codex`, `opencode`, `kiro`, `cursor`, or `api`. `skills` and `subagents` record how the run was conducted: the skills / instruction packs mounted during the run, and the sub-agent models used to cross-check the output — use `Nil` to state explicitly that none were used, or omit the field when unknown (shown as a dash). `generatedAt` is rendered in UTC before the GitHub author link, for example `2026-07-02 18:00 @F-e-u-e-r`. See [CONTRIBUTING.md](CONTRIBUTING.md) for metrics and cost details.
+`client` is the tool used to generate the output, such as `claude-code`, `codex`, `opencode`, `kiro`, `cursor`, or `api`. `skills` and `subagents` record how the run was conducted: the skills / instruction packs mounted during the run, and the sub-agent models used to cross-check the output — use `Nil` to state explicitly that none were used, or omit the field when unknown (shown as a dash). `generatedAt` is rendered in UTC before the GitHub author link, for example `2026-07-02 18:00 @S-E-C-C`. See [CONTRIBUTING.md](CONTRIBUTING.md) for metrics and cost details.
 
 Unknown fields are rejected by the build (so typos fail fast instead of being silently ignored). To record a new kind of comparison metadata, add the field to `schema/submission.schema.json` in the same PR — that is how `skills` and `subagents` were introduced.
 

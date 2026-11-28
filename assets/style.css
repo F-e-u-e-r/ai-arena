@@ -15,7 +15,7 @@
 :root {
   /* WS4 Option A — Portfolio-aligned green-black palette (docs/brand-tokens.md).
      Surfaces are the Owner-approved Arena green-black values; text/muted/border are
-     Portfolio's own tokens (github.com/F-e-u-e-r/portfolio). Functional colours
+     Portfolio's own tokens (github.com/S-E-C-C/portfolio). Functional colours
      (effort/client badges, --accent-2 error pink) are intentionally NOT recoloured. */
   --bg: #0a0d0c;         /* page */
   --panel: #111715;      /* primary surface (cards, panels) */

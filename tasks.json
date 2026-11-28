@@ -16,7 +16,7 @@
         "client": "claude-code",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-02T09:12:00Z",
         "metrics": {
           "durationMs": 38200,
@@ -37,7 +37,7 @@
         "client": "claude-code",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-02T09:20:00Z",
         "metrics": {
           "durationMs": 11800,
@@ -69,7 +69,7 @@
         "client": "claude-code",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-02T09:34:00Z",
         "metrics": {
           "durationMs": 41800,
@@ -90,7 +90,7 @@
         "client": "claude-code",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-02T09:41:00Z",
         "metrics": {
           "durationMs": 9600,
@@ -121,7 +121,7 @@
         "client": "cursor",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-11T12:00:00Z",
         "metrics": {
           "durationMs": 210000
@@ -138,7 +138,7 @@
         "client": "claude-code",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-05T08:55:45Z",
         "metrics": {
           "durationMs": 12867813,
@@ -159,7 +159,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "f-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-05T00:00:00Z",
         "order": 10,
         "id": "gpt-5.5-medium-f-e-u-e-r",
@@ -173,7 +173,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-11T00:00:00Z",
         "order": 10,
         "id": "gpt-5.6-terra-high",
@@ -187,7 +187,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-11T00:00:00Z",
         "order": 10,
         "id": "gpt-5.6-terra-max",
@@ -201,7 +201,7 @@
         "client": "opencode",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-18T21:34:59Z",
         "order": 10,
         "id": "kimi-k3-max",
@@ -215,7 +215,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-05T04:00:00Z",
         "order": 10,
         "id": "openai-gpt-5.5-xhigh-codex",
@@ -229,7 +229,7 @@
         "client": "claude-code",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-05T12:00:00Z",
         "metrics": {
           "durationMs": 0,
@@ -250,7 +250,7 @@
         "client": "claude-code",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-05T06:05:00Z",
         "order": 10,
         "id": "opus-4.8-max",
@@ -264,7 +264,7 @@
         "client": "claude-code",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "f-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-05T06:32:00Z",
         "metrics": {
           "durationMs": 2346380,
@@ -285,7 +285,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-11T00:00:00Z",
         "id": "gpt-5.6-luna-high",
         "path": "tasks/savannah-ecosystem/gpt-5.6-luna-high/"
@@ -298,7 +298,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-11T00:00:00Z",
         "id": "gpt-5.6-luna-max",
         "path": "tasks/savannah-ecosystem/gpt-5.6-luna-max/"
@@ -311,7 +311,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-10T16:03:34Z",
         "id": "gpt-5.6-sol-high",
         "path": "tasks/savannah-ecosystem/gpt-5.6-sol-high/"
@@ -324,7 +324,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-10T16:32:55Z",
         "type": "iframe",
         "runtime": "canvas",
@@ -339,7 +339,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-10-14T05:39:23.535Z",
         "metrics": {
           "durationMs": 1022411,
@@ -360,7 +360,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-10-14T01:47:58.620Z",
         "metrics": {
           "durationMs": 2631699,
@@ -381,7 +381,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-10-14T00:24:01.586Z",
         "metrics": {
           "durationMs": 167003,
@@ -402,7 +402,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-10-14T00:51:42.341Z",
         "metrics": {
           "durationMs": 371108,
@@ -423,7 +423,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-10-14T16:15:50.233Z",
         "metrics": {
           "durationMs": 691746,
@@ -444,7 +444,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-10-14T16:04:18.437Z",
         "metrics": {
           "durationMs": 1147918,
@@ -465,7 +465,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-10-15T08:05:23.544Z",
         "metrics": {
           "durationMs": 1344465,
@@ -486,7 +486,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-10-15T07:42:59.004Z",
         "metrics": {
           "durationMs": 1970644,
@@ -507,7 +507,7 @@
         "client": "grok",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-10T16:20:42Z",
         "id": "grok-4.5-high",
         "path": "tasks/savannah-ecosystem/grok-4.5-high/"
@@ -520,7 +520,7 @@
         "client": "grok",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-10-12T12:27:04Z",
         "metrics": {
           "durationMs": 1200137,
@@ -540,7 +540,7 @@
         "client": "grok",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-10-12T13:53:52Z",
         "metrics": {
           "durationMs": 2533625,
@@ -570,7 +570,7 @@
         "client": "cursor",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-11T12:00:00Z",
         "metrics": {
           "durationMs": 150000
@@ -587,7 +587,7 @@
         "client": "claude-code",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-05T09:48:09Z",
         "metrics": {
           "durationMs": 3048467,
@@ -608,7 +608,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "f-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-05T00:00:00Z",
         "order": 10,
         "id": "gpt-5.5-medium-f-e-u-e-r",
@@ -622,7 +622,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-11T00:00:00Z",
         "order": 10,
         "id": "gpt-5.6-terra-high",
@@ -636,7 +636,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-11T00:00:00Z",
         "order": 10,
         "id": "gpt-5.6-terra-max",
@@ -650,7 +650,7 @@
         "client": "opencode",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-18T21:48:00Z",
         "order": 10,
         "id": "kimi-k3-max",
@@ -664,7 +664,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-05T04:00:00Z",
         "order": 10,
         "id": "openai-gpt-5.5-xhigh-codex",
@@ -678,7 +678,7 @@
         "client": "claude-code",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-05T12:00:00Z",
         "metrics": {
           "durationMs": 0,
@@ -699,7 +699,7 @@
         "client": "claude-code",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-05T06:05:00Z",
         "order": 10,
         "id": "opus-4.8-max",
@@ -713,7 +713,7 @@
         "client": "claude-code",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "f-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-05T05:50:00Z",
         "metrics": {
           "durationMs": 2346381,
@@ -734,7 +734,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-11T00:00:00Z",
         "id": "gpt-5.6-luna-high",
         "path": "tasks/tokyo-island/gpt-5.6-luna-high/"
@@ -747,7 +747,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-11T00:00:00Z",
         "id": "gpt-5.6-luna-max",
         "path": "tasks/tokyo-island/gpt-5.6-luna-max/"
@@ -760,7 +760,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-10T16:03:34Z",
         "id": "gpt-5.6-sol-high",
         "path": "tasks/tokyo-island/gpt-5.6-sol-high/"
@@ -773,7 +773,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-10T16:32:55Z",
         "type": "iframe",
         "runtime": "webgl",
@@ -788,7 +788,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-10-14T10:38:22.790Z",
         "metrics": {
           "durationMs": 771672,
@@ -809,7 +809,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-10-14T06:13:42.552Z",
         "metrics": {
           "durationMs": 2058950,
@@ -830,7 +830,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-10-14T00:57:15.264Z",
         "metrics": {
           "durationMs": 92535,
@@ -851,7 +851,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-10-14T00:55:42.679Z",
         "metrics": {
           "durationMs": 240281,
@@ -872,7 +872,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-10-14T16:34:43.848Z",
         "metrics": {
           "durationMs": 336937,
@@ -893,7 +893,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-10-14T16:29:06.845Z",
         "metrics": {
           "durationMs": 796502,
@@ -914,7 +914,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-10-15T08:52:35.074Z",
         "metrics": {
           "durationMs": 964935,
@@ -935,7 +935,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-10-15T08:36:30.066Z",
         "metrics": {
           "durationMs": 1866419,
@@ -956,7 +956,7 @@
         "client": "grok",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-10T16:20:42Z",
         "id": "grok-4.5-high",
         "path": "tasks/tokyo-island/grok-4.5-high/"
@@ -969,7 +969,7 @@
         "client": "grok",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-10-12T12:48:56Z",
         "metrics": {
           "durationMs": 1207997,
@@ -989,7 +989,7 @@
         "client": "grok",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-10-12T14:47:12Z",
         "metrics": {
           "durationMs": 3200030,
@@ -1019,7 +1019,7 @@
         "client": "cursor",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-11T12:00:00Z",
         "metrics": {
           "durationMs": 180000
@@ -1036,7 +1036,7 @@
         "client": "claude-code",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-05T00:00:00Z",
         "metrics": {
           "durationMs": 420000,
@@ -1057,7 +1057,7 @@
         "client": "claude-code",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-05T16:45:00Z",
         "order": 10,
         "metrics": {
@@ -1078,7 +1078,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-11T00:00:00Z",
         "order": 10,
         "id": "gpt-5.6-terra-high",
@@ -1092,7 +1092,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-11T00:00:00Z",
         "order": 10,
         "id": "gpt-5.6-terra-max",
@@ -1106,7 +1106,7 @@
         "client": "opencode",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-18T15:22:54Z",
         "order": 10,
         "id": "kimi-k3-max",
@@ -1120,7 +1120,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-11T00:00:00Z",
         "id": "gpt-5.6-luna-high",
         "path": "tasks/london-island/gpt-5.6-luna-high/"
@@ -1133,7 +1133,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-11T00:00:00Z",
         "id": "gpt-5.6-luna-max",
         "path": "tasks/london-island/gpt-5.6-luna-max/"
@@ -1146,7 +1146,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-10T16:03:34Z",
         "id": "gpt-5.6-sol-high",
         "path": "tasks/london-island/gpt-5.6-sol-high/"
@@ -1159,7 +1159,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-10T16:32:55Z",
         "type": "iframe",
         "runtime": "webgl",
@@ -1174,7 +1174,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-10-14T15:45:10.449Z",
         "metrics": {
           "durationMs": 989351,
@@ -1195,7 +1195,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-10-14T11:07:22.181Z",
         "metrics": {
           "durationMs": 1739329,
@@ -1216,7 +1216,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-10-14T01:04:06.840Z",
         "metrics": {
           "durationMs": 101926,
@@ -1237,7 +1237,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-10-14T01:02:24.848Z",
         "metrics": {
           "durationMs": 309519,
@@ -1258,7 +1258,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-10-14T17:04:32.225Z",
         "metrics": {
           "durationMs": 1006953,
@@ -1279,7 +1279,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-10-14T16:47:45.171Z",
         "metrics": {
           "durationMs": 781259,
@@ -1300,7 +1300,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-10-15T09:48:02.038Z",
         "metrics": {
           "durationMs": 1146588,
@@ -1321,7 +1321,7 @@
         "client": "codex",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-10-15T09:28:55.384Z",
         "metrics": {
           "durationMs": 2180204,
@@ -1342,7 +1342,7 @@
         "client": "grok",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-07-10T16:20:42Z",
         "id": "grok-4.5-high",
         "path": "tasks/london-island/grok-4.5-high/"
@@ -1355,7 +1355,7 @@
         "client": "grok",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-10-12T13:11:38Z",
         "metrics": {
           "durationMs": 1362487,
@@ -1375,7 +1375,7 @@
         "client": "grok",
         "skills": "Nil",
         "subagents": "Nil",
-        "author": "F-e-u-e-r",
+        "author": "S-E-C-C",
         "generatedAt": "2026-10-12T15:57:05Z",
         "metrics": {
           "durationMs": 4192862,
